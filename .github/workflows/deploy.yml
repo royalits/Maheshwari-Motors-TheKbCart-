@@ -24,16 +24,27 @@ jobs:
             git fetch origin
             git reset --hard origin/main
 
+            echo "Installing backend dependencies..."
             cd backend
-            npm install
+            npm ci
 
+            echo "Building frontend..."
             cd ../frontend
-            npm install
+            npm ci
             npm run build
 
+            echo "Deploying frontend..."
             sudo rm -rf /var/www/thekbcart/*
             sudo cp -r dist/* /var/www/thekbcart/
 
+            echo "Restarting backend..."
             cd ../backend
             pm2 restart thekbcart-backend
             pm2 save
+
+            echo "Waiting for backend..."
+            sleep 10
+
+            curl -f https://api.thekbcart.com
+
+            echo "Deployment completed successfully"
