@@ -1,0 +1,1798 @@
+[
+  {
+    "id": "4c8576bb-b79c-4eda-b590-a1a743ef2530",
+    "user_id": "69dde34b15e7221db34ccd9d",
+    "created_at": "2026-05-19T13:23:35.380Z",
+    "date": "2026-05-19 18:53:35",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260519_185335.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "326 records across 23 collections",
+    "location": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/64b66cdf63fdb1c67cb0e7e5d49488f8.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/64b66cdf63fdb1c67cb0e7e5d49488f8.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260519%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260519T132336Z&X-Amz-Expires=604800&X-Amz-Signature=5d368778c4f9349bd590c7d7e24cea5eacc9a4131a2824da25ea11493da454a2&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-05-26T13:23:36.667Z",
+    "s3_key": "backups/thekbcart/64b66cdf63fdb1c67cb0e7e5d49488f8.xlsx",
+    "local_path": "D:\\Projects\\flutter_projects\\ROYAL\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260519_185335.xlsx",
+    "backup_id": "7e2cf088-86e9-449f-ba5e-d2b0a58fa6f8",
+    "database_name": "maheshwari_motors",
+    "total_collections": 23,
+    "total_records": 326,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 7
+      },
+      {
+        "collection": "areas",
+        "records": 4
+      },
+      {
+        "collection": "autobills",
+        "records": 0
+      },
+      {
+        "collection": "banks",
+        "records": 4
+      },
+      {
+        "collection": "bills",
+        "records": 18
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 29
+      },
+      {
+        "collection": "contacts",
+        "records": 23
+      },
+      {
+        "collection": "counters",
+        "records": 40
+      },
+      {
+        "collection": "departments",
+        "records": 9
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 3
+      },
+      {
+        "collection": "hsns",
+        "records": 6
+      },
+      {
+        "collection": "items",
+        "records": 5
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 0
+      },
+      {
+        "collection": "returns",
+        "records": 1
+      },
+      {
+        "collection": "sessions",
+        "records": 132
+      },
+      {
+        "collection": "subscriptions",
+        "records": 2
+      },
+      {
+        "collection": "transactions",
+        "records": 6
+      },
+      {
+        "collection": "users",
+        "records": 4
+      },
+      {
+        "collection": "chequesetups",
+        "records": 1
+      },
+      {
+        "collection": "financialyears",
+        "records": 5
+      },
+      {
+        "collection": "transports",
+        "records": 7
+      }
+    ]
+  },
+  {
+    "id": "b50cd73b-50fc-40d8-af5a-3cb0c56b4b6a",
+    "user_id": "69dde34b15e7221db34ccd9d",
+    "created_at": "2026-05-19T11:31:32.015Z",
+    "date": "2026-05-19 17:01:32",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260519_170132.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 318 records across 23 collections",
+    "location": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/7696825a1f7b6fe1705a6b9eda93b6b0.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/7696825a1f7b6fe1705a6b9eda93b6b0.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260519%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260519T113132Z&X-Amz-Expires=604800&X-Amz-Signature=21ef3953216bea4ab8e2b0937eae3467db4456d3460da7802f2cee42fddd4941&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-05-26T11:31:32.873Z",
+    "s3_key": "backups/thekbcart/7696825a1f7b6fe1705a6b9eda93b6b0.xlsx",
+    "local_path": "D:\\Projects\\flutter_projects\\ROYAL\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260519_170132.xlsx",
+    "backup_id": "7ab63758-2913-452f-bfab-011a52001449",
+    "database_name": "maheshwari_motors",
+    "total_collections": 23,
+    "total_records": 318,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 7
+      },
+      {
+        "collection": "areas",
+        "records": 4
+      },
+      {
+        "collection": "autobills",
+        "records": 0
+      },
+      {
+        "collection": "banks",
+        "records": 4
+      },
+      {
+        "collection": "bills",
+        "records": 16
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 27
+      },
+      {
+        "collection": "contacts",
+        "records": 23
+      },
+      {
+        "collection": "counters",
+        "records": 40
+      },
+      {
+        "collection": "departments",
+        "records": 9
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 2
+      },
+      {
+        "collection": "hsns",
+        "records": 6
+      },
+      {
+        "collection": "items",
+        "records": 5
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 0
+      },
+      {
+        "collection": "returns",
+        "records": 1
+      },
+      {
+        "collection": "sessions",
+        "records": 132
+      },
+      {
+        "collection": "subscriptions",
+        "records": 2
+      },
+      {
+        "collection": "transactions",
+        "records": 4
+      },
+      {
+        "collection": "users",
+        "records": 4
+      },
+      {
+        "collection": "chequesetups",
+        "records": 1
+      },
+      {
+        "collection": "financialyears",
+        "records": 4
+      },
+      {
+        "collection": "transports",
+        "records": 7
+      }
+    ]
+  },
+  {
+    "id": "db00fc02-64ad-409f-99ab-a655921a67bb",
+    "user_id": "69dde34b15e7221db34ccd9d",
+    "created_at": "2026-05-19T11:31:07.790Z",
+    "date": "2026-05-19 17:01:07",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260519_170107.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 316 records across 23 collections",
+    "location": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/91d311a9256a811f4219dd22563ee02b.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/91d311a9256a811f4219dd22563ee02b.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260519%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260519T113109Z&X-Amz-Expires=604800&X-Amz-Signature=6732f464c219338d03175234cbe0e438ebd71d7ca3358c3d61e45e236f945b90&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-05-26T11:31:09.189Z",
+    "s3_key": "backups/thekbcart/91d311a9256a811f4219dd22563ee02b.xlsx",
+    "local_path": "D:\\Projects\\flutter_projects\\ROYAL\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260519_170107.xlsx",
+    "backup_id": "f1c7a005-2d3c-4326-a3e2-9eb6f5d25e18",
+    "database_name": "maheshwari_motors",
+    "total_collections": 23,
+    "total_records": 316,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 7
+      },
+      {
+        "collection": "areas",
+        "records": 4
+      },
+      {
+        "collection": "autobills",
+        "records": 0
+      },
+      {
+        "collection": "banks",
+        "records": 4
+      },
+      {
+        "collection": "bills",
+        "records": 16
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 27
+      },
+      {
+        "collection": "contacts",
+        "records": 23
+      },
+      {
+        "collection": "counters",
+        "records": 40
+      },
+      {
+        "collection": "departments",
+        "records": 9
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 1
+      },
+      {
+        "collection": "hsns",
+        "records": 6
+      },
+      {
+        "collection": "items",
+        "records": 5
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 0
+      },
+      {
+        "collection": "returns",
+        "records": 1
+      },
+      {
+        "collection": "sessions",
+        "records": 132
+      },
+      {
+        "collection": "subscriptions",
+        "records": 2
+      },
+      {
+        "collection": "transactions",
+        "records": 4
+      },
+      {
+        "collection": "users",
+        "records": 4
+      },
+      {
+        "collection": "chequesetups",
+        "records": 1
+      },
+      {
+        "collection": "financialyears",
+        "records": 3
+      },
+      {
+        "collection": "transports",
+        "records": 7
+      }
+    ]
+  },
+  {
+    "id": "b118e375-44d5-49a6-86a6-53a73b43ae91",
+    "user_id": "69dde34b15e7221db34ccd9d",
+    "created_at": "2026-05-19T10:29:21.953Z",
+    "date": "2026-05-19 15:59:21",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260519_155921.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "293 records across 23 collections",
+    "location": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/90edd7ddb64d25b2b9e04eedfb5e6b0f.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/90edd7ddb64d25b2b9e04eedfb5e6b0f.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260519%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260519T102922Z&X-Amz-Expires=604800&X-Amz-Signature=0536ed36c04896c54060060af91779424d4bf0b2cd5a14b44a715930d2899704&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-05-26T10:29:22.877Z",
+    "s3_key": "backups/thekbcart/90edd7ddb64d25b2b9e04eedfb5e6b0f.xlsx",
+    "local_path": "D:\\Projects\\flutter_projects\\ROYAL\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260519_155921.xlsx",
+    "backup_id": "5a064239-96c4-4047-bca9-d60bb9b23f74",
+    "database_name": "maheshwari_motors",
+    "total_collections": 23,
+    "total_records": 293,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 7
+      },
+      {
+        "collection": "areas",
+        "records": 4
+      },
+      {
+        "collection": "autobills",
+        "records": 0
+      },
+      {
+        "collection": "banks",
+        "records": 4
+      },
+      {
+        "collection": "bills",
+        "records": 10
+      },
+      {
+        "collection": "brands",
+        "records": 9
+      },
+      {
+        "collection": "challans",
+        "records": 20
+      },
+      {
+        "collection": "contacts",
+        "records": 21
+      },
+      {
+        "collection": "counters",
+        "records": 40
+      },
+      {
+        "collection": "departments",
+        "records": 8
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 1
+      },
+      {
+        "collection": "hsns",
+        "records": 5
+      },
+      {
+        "collection": "items",
+        "records": 4
+      },
+      {
+        "collection": "labels",
+        "records": 9
+      },
+      {
+        "collection": "reports",
+        "records": 0
+      },
+      {
+        "collection": "returns",
+        "records": 1
+      },
+      {
+        "collection": "sessions",
+        "records": 132
+      },
+      {
+        "collection": "subscriptions",
+        "records": 2
+      },
+      {
+        "collection": "transactions",
+        "records": 3
+      },
+      {
+        "collection": "users",
+        "records": 4
+      },
+      {
+        "collection": "chequesetups",
+        "records": 1
+      },
+      {
+        "collection": "financialyears",
+        "records": 1
+      },
+      {
+        "collection": "transports",
+        "records": 7
+      }
+    ]
+  },
+  {
+    "id": "35d57554-b19d-4e7e-ac29-8bc502e1f412",
+    "user_id": "69df201d34247e348a557bce",
+    "created_at": "2026-04-15T05:24:37.801Z",
+    "date": "2026-04-15 10:54:37",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260415_105437.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "288 records across 22 collections",
+    "location": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/468a3aca8d06e6eaf83a340e5dcb88f5.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/468a3aca8d06e6eaf83a340e5dcb88f5.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260415%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260415T052439Z&X-Amz-Expires=604800&X-Amz-Signature=b38d43714f5e63bd9a52ffb4f616fcbf1d9b3b59af6c762e44f1620115fbbb59&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-22T05:24:39.699Z",
+    "s3_key": "backups/thekbcart/468a3aca8d06e6eaf83a340e5dcb88f5.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260415_105437.xlsx",
+    "backup_id": "c435dc47-f51f-4e4b-8d2b-ee487fa11767",
+    "database_name": "maheshwari_motors",
+    "total_collections": 22,
+    "total_records": 288,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 1
+      },
+      {
+        "collection": "banks",
+        "records": 28
+      },
+      {
+        "collection": "bills",
+        "records": 6
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 20
+      },
+      {
+        "collection": "contacts",
+        "records": 42
+      },
+      {
+        "collection": "counters",
+        "records": 33
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 3
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 10
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 11
+      },
+      {
+        "collection": "sessions",
+        "records": 22
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "chequesetups",
+        "records": 0
+      },
+      {
+        "collection": "transports",
+        "records": 10
+      }
+    ]
+  },
+  {
+    "id": "b230f2be-4238-4c9b-9c54-723f66018db1",
+    "user_id": "69ddd80cd34e05338b4e47fd",
+    "created_at": "2026-04-14T06:20:48.842Z",
+    "date": "2026-04-14 11:50:48",
+    "type": "File Import",
+    "filename": "maheshwari_motors_backup_20260413_170447_20260414_115048.xlsx",
+    "status": "Success",
+    "size": "0.10 MB",
+    "note": "Excel file uploaded successfully",
+    "location": "https://thekbcart.s3.amazonaws.com/imports/excel/65e0a824b343708f1eb247919869aee2.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/imports/excel/65e0a824b343708f1eb247919869aee2.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260414%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260414T062049Z&X-Amz-Expires=604800&X-Amz-Signature=a9158a4e7aa5e8ff6584ddd843402ddf61060ef150baa8aab3994d1bb65c48cb&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-21T06:20:49.576Z",
+    "s3_key": "imports/excel/65e0a824b343708f1eb247919869aee2.xlsx",
+    "original_name": "maheshwari_motors_backup_20260413_170447.xlsx"
+  },
+  {
+    "id": "6a02be17-2901-449a-bc44-ba2f3308c869",
+    "user_id": "69d392a862d7c0af9dd82cb0",
+    "created_at": "2026-04-13T13:33:19.250Z",
+    "date": "2026-04-13 19:03:19",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260413_190319.xlsx",
+    "status": "Success",
+    "size": "0.10 MB",
+    "note": "506 records across 21 collections",
+    "location": "https://thekbcart.s3.amazonaws.com/backups/thekbcart/0b937439b3b9004be707bfdf644912e7.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/0b937439b3b9004be707bfdf644912e7.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260413%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260413T133321Z&X-Amz-Expires=604800&X-Amz-Signature=5497d7b652dc6d79237c56520636359354ea21fbc3d01a02467f89820cd98fde&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-20T13:33:21.136Z",
+    "s3_key": "backups/thekbcart/0b937439b3b9004be707bfdf644912e7.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260413_190319.xlsx",
+    "backup_id": "1ff07d00-1e51-4247-a4c8-8dce36cffd40",
+    "database_name": "maheshwari_motors",
+    "total_collections": 21,
+    "total_records": 506,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 2
+      },
+      {
+        "collection": "banks",
+        "records": 30
+      },
+      {
+        "collection": "bills",
+        "records": 65
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 83
+      },
+      {
+        "collection": "contacts",
+        "records": 50
+      },
+      {
+        "collection": "counters",
+        "records": 34
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 1
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 22
+      },
+      {
+        "collection": "labels",
+        "records": 14
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 16
+      },
+      {
+        "collection": "sessions",
+        "records": 85
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "transports",
+        "records": 12
+      }
+    ]
+  },
+  {
+    "id": "f98d83fd-7982-4294-9ec0-a55baccbffa4",
+    "user_id": "69d392a862d7c0af9dd82cb0",
+    "created_at": "2026-04-13T11:34:47.118Z",
+    "date": "2026-04-13 17:04:47",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260413_170447.xlsx",
+    "status": "Success",
+    "size": "0.10 MB",
+    "note": "496 records across 21 collections",
+    "location": "https://thekbcart.s3.amazonaws.com/backups/thekbcart/e7443a21935685a7406762da1b5e15a0.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/e7443a21935685a7406762da1b5e15a0.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260413%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260413T113448Z&X-Amz-Expires=604800&X-Amz-Signature=12de07ece541a48a1580ebead365605a9af52e8a33713d486157f19c1298a53c&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-20T11:34:48.667Z",
+    "s3_key": "backups/thekbcart/e7443a21935685a7406762da1b5e15a0.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260413_170447.xlsx",
+    "backup_id": "eeac0d76-a993-49d1-a444-a225812d6cbf",
+    "database_name": "maheshwari_motors",
+    "total_collections": 21,
+    "total_records": 496,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 2
+      },
+      {
+        "collection": "banks",
+        "records": 30
+      },
+      {
+        "collection": "bills",
+        "records": 63
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 79
+      },
+      {
+        "collection": "contacts",
+        "records": 50
+      },
+      {
+        "collection": "counters",
+        "records": 34
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 1
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 22
+      },
+      {
+        "collection": "labels",
+        "records": 14
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 15
+      },
+      {
+        "collection": "sessions",
+        "records": 82
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "transports",
+        "records": 12
+      }
+    ]
+  },
+  {
+    "id": "03983e94-8518-45ec-b5d8-758c07c9ac09",
+    "user_id": "69d36eddb3fac39f5f361821",
+    "created_at": "2026-04-06T08:45:18.721Z",
+    "date": "2026-04-06 14:15:18",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260406_141518.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 297 records across 22 collections",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/backups/maheshwari_motors/de325d123158e67c191a122653398590.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/backups/maheshwari_motors/de325d123158e67c191a122653398590.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260406%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T084521Z&X-Amz-Expires=604800&X-Amz-Signature=2f1540955572b8014bcecde8e117a199497c75bb8f4f935a0190230af27c9bb5&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-13T08:45:21.658Z",
+    "s3_key": "backups/maheshwari_motors/de325d123158e67c191a122653398590.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260406_141518.xlsx",
+    "backup_id": "514c331f-6e20-45c5-bf2a-024e5051a409",
+    "database_name": "maheshwari_motors",
+    "total_collections": 22,
+    "total_records": 297,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 1
+      },
+      {
+        "collection": "banks",
+        "records": 28
+      },
+      {
+        "collection": "bills",
+        "records": 7
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 25
+      },
+      {
+        "collection": "contacts",
+        "records": 42
+      },
+      {
+        "collection": "counters",
+        "records": 33
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 0
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 10
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 13
+      },
+      {
+        "collection": "sessions",
+        "records": 22
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "roles",
+        "records": 4
+      },
+      {
+        "collection": "transports",
+        "records": 10
+      }
+    ]
+  },
+  {
+    "id": "f2f8bce9-c9a5-4704-a74a-c7a57b31a292",
+    "user_id": "69d36eddb3fac39f5f361821",
+    "created_at": "2026-04-06T08:40:05.238Z",
+    "date": "2026-04-06 14:10:05",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260406_141005.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 298 records across 22 collections",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/backups/maheshwari_motors/c4fb0b1ebb6b5616e96db2ee88758d91.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/backups/maheshwari_motors/c4fb0b1ebb6b5616e96db2ee88758d91.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260406%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T084006Z&X-Amz-Expires=604800&X-Amz-Signature=7e3979c9d0da984a0c80e3021f48399e4c12ab3dd6f799b29baf386f0f4dc147&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-13T08:40:06.251Z",
+    "s3_key": "backups/maheshwari_motors/c4fb0b1ebb6b5616e96db2ee88758d91.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260406_141005.xlsx",
+    "backup_id": "f7d8f965-412f-42ae-aa0a-4bf1b2cd3c4f",
+    "database_name": "maheshwari_motors",
+    "total_collections": 22,
+    "total_records": 298,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 1
+      },
+      {
+        "collection": "banks",
+        "records": 28
+      },
+      {
+        "collection": "bills",
+        "records": 7
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 25
+      },
+      {
+        "collection": "contacts",
+        "records": 42
+      },
+      {
+        "collection": "counters",
+        "records": 33
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 1
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 10
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 13
+      },
+      {
+        "collection": "sessions",
+        "records": 22
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "roles",
+        "records": 4
+      },
+      {
+        "collection": "transports",
+        "records": 10
+      }
+    ]
+  },
+  {
+    "id": "59dfb6d7-dc22-464f-b7c9-8c04322cfb9c",
+    "user_id": "69d36eddb3fac39f5f361821",
+    "created_at": "2026-04-06T08:37:15.058Z",
+    "date": "2026-04-06 14:07:15",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260406_140715.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 298 records across 22 collections",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/backups/maheshwari_motors/bfc32b870e0129183a2c34a30ea952d2.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/backups/maheshwari_motors/bfc32b870e0129183a2c34a30ea952d2.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260406%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T083716Z&X-Amz-Expires=604800&X-Amz-Signature=a0d632a78b2ce46ff5ee7d9411323ee25f9acdeab7773f72e530e590a8fd2137&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-13T08:37:16.114Z",
+    "s3_key": "backups/maheshwari_motors/bfc32b870e0129183a2c34a30ea952d2.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260406_140715.xlsx",
+    "backup_id": "5ac31584-d40c-42a9-bf85-68d64bf0343a",
+    "database_name": "maheshwari_motors",
+    "total_collections": 22,
+    "total_records": 298,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 1
+      },
+      {
+        "collection": "banks",
+        "records": 28
+      },
+      {
+        "collection": "bills",
+        "records": 7
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 25
+      },
+      {
+        "collection": "contacts",
+        "records": 42
+      },
+      {
+        "collection": "counters",
+        "records": 33
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 1
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 10
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 13
+      },
+      {
+        "collection": "sessions",
+        "records": 22
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "roles",
+        "records": 4
+      },
+      {
+        "collection": "transports",
+        "records": 10
+      }
+    ]
+  },
+  {
+    "id": "3defc62a-f70e-47f3-9df4-7aa68548b24e",
+    "user_id": "69d36b1888cdc50d67683ea1",
+    "created_at": "2026-04-06T08:22:52.673Z",
+    "date": "2026-04-06 13:52:52",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260406_135252.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 297 records across 22 collections",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/backups/maheshwari_motors/8031147349a99e1a6154328e233c8abd.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/backups/maheshwari_motors/8031147349a99e1a6154328e233c8abd.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260406%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T082253Z&X-Amz-Expires=604800&X-Amz-Signature=83f6583acbbd3b667f6684c2f03c0b984a9fbc6d543c022547889fe4a27b2259&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-13T08:22:53.916Z",
+    "s3_key": "backups/maheshwari_motors/8031147349a99e1a6154328e233c8abd.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260406_135252.xlsx",
+    "backup_id": "06b05572-c2c4-441b-87e6-a92ca4fbf91e",
+    "database_name": "maheshwari_motors",
+    "total_collections": 22,
+    "total_records": 297,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 1
+      },
+      {
+        "collection": "banks",
+        "records": 28
+      },
+      {
+        "collection": "bills",
+        "records": 6
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 23
+      },
+      {
+        "collection": "contacts",
+        "records": 42
+      },
+      {
+        "collection": "counters",
+        "records": 33
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 3
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 10
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 13
+      },
+      {
+        "collection": "sessions",
+        "records": 22
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "roles",
+        "records": 4
+      },
+      {
+        "collection": "transports",
+        "records": 10
+      }
+    ]
+  },
+  {
+    "id": "cdfc0900-fc2b-4b79-bc5b-a458fee34823",
+    "user_id": "69d35c466cc71fc28548452f",
+    "created_at": "2026-04-06T07:17:55.552Z",
+    "date": "2026-04-06 12:47:55",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260406_124755.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 296 records across 22 collections",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/backups/maheshwari_motors/2637aff2a9763236f28eeef07592e9da.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/backups/maheshwari_motors/2637aff2a9763236f28eeef07592e9da.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260406%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T071756Z&X-Amz-Expires=604800&X-Amz-Signature=fa2ed0d00fb16885c70955b52ef2eedbadfb4a8bdb3b165033f7953dd6ee7682&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-13T07:17:56.630Z",
+    "s3_key": "backups/maheshwari_motors/2637aff2a9763236f28eeef07592e9da.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260406_124755.xlsx",
+    "backup_id": "7c623a2a-1814-4362-94b1-e9332add4400",
+    "database_name": "maheshwari_motors",
+    "total_collections": 22,
+    "total_records": 296,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 1
+      },
+      {
+        "collection": "banks",
+        "records": 28
+      },
+      {
+        "collection": "bills",
+        "records": 7
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 24
+      },
+      {
+        "collection": "contacts",
+        "records": 42
+      },
+      {
+        "collection": "counters",
+        "records": 33
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 0
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 10
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 13
+      },
+      {
+        "collection": "sessions",
+        "records": 22
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "roles",
+        "records": 4
+      },
+      {
+        "collection": "transports",
+        "records": 10
+      }
+    ]
+  },
+  {
+    "id": "f2558da4-1432-4b45-8aec-98458cbaa498",
+    "user_id": "69d35a925d328d63e3f82b70",
+    "created_at": "2026-04-06T07:06:55.515Z",
+    "date": "2026-04-06 12:36:55",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260406_123655.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 294 records across 22 collections",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/backups/maheshwari_motors/361e74c5a2ec0e22fe75060ee586763f.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/backups/maheshwari_motors/361e74c5a2ec0e22fe75060ee586763f.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260406%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T070656Z&X-Amz-Expires=604800&X-Amz-Signature=6b679d2c7615dbc14eca6ebf7002d5e5904250141c9881e1b592a0d0a3c64a25&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-13T07:06:56.445Z",
+    "s3_key": "backups/maheshwari_motors/361e74c5a2ec0e22fe75060ee586763f.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260406_123655.xlsx",
+    "backup_id": "bb23a14d-30e7-4b2f-8eaf-f56c5eae55ff",
+    "database_name": "maheshwari_motors",
+    "total_collections": 22,
+    "total_records": 294,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 1
+      },
+      {
+        "collection": "banks",
+        "records": 28
+      },
+      {
+        "collection": "bills",
+        "records": 5
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 21
+      },
+      {
+        "collection": "contacts",
+        "records": 42
+      },
+      {
+        "collection": "counters",
+        "records": 33
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 3
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 10
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 13
+      },
+      {
+        "collection": "sessions",
+        "records": 22
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "roles",
+        "records": 4
+      },
+      {
+        "collection": "transports",
+        "records": 10
+      }
+    ]
+  },
+  {
+    "id": "22c6212a-4c4d-444d-9b2b-304667e45a3d",
+    "user_id": "69d35a925d328d63e3f82b70",
+    "created_at": "2026-04-06T07:06:41.138Z",
+    "date": "2026-04-06 12:36:41",
+    "type": "Financial Year Close Backup",
+    "filename": "maheshwari_motors_backup_20260406_123641.xlsx",
+    "status": "Success",
+    "size": "0.07 MB",
+    "note": "FY close | 294 records across 22 collections",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/backups/maheshwari_motors/2bee4d1660c31bc82c5a215a90c443f5.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/backups/maheshwari_motors/2bee4d1660c31bc82c5a215a90c443f5.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260406%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T070642Z&X-Amz-Expires=604800&X-Amz-Signature=4c8625c79f9eaa54b346d2114052ea40844881e8ef4fc369e5560a990e49fdbc&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-13T07:06:42.451Z",
+    "s3_key": "backups/maheshwari_motors/2bee4d1660c31bc82c5a215a90c443f5.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260406_123641.xlsx",
+    "backup_id": "fa4a8d8b-ed31-401e-a8bd-cfc8151fd67c",
+    "database_name": "maheshwari_motors",
+    "total_collections": 22,
+    "total_records": 294,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 10
+      },
+      {
+        "collection": "areas",
+        "records": 10
+      },
+      {
+        "collection": "autobills",
+        "records": 1
+      },
+      {
+        "collection": "banks",
+        "records": 28
+      },
+      {
+        "collection": "bills",
+        "records": 5
+      },
+      {
+        "collection": "brands",
+        "records": 10
+      },
+      {
+        "collection": "challans",
+        "records": 21
+      },
+      {
+        "collection": "contacts",
+        "records": 42
+      },
+      {
+        "collection": "counters",
+        "records": 33
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 3
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 10
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 10
+      },
+      {
+        "collection": "returns",
+        "records": 13
+      },
+      {
+        "collection": "sessions",
+        "records": 22
+      },
+      {
+        "collection": "subscriptions",
+        "records": 11
+      },
+      {
+        "collection": "transactions",
+        "records": 10
+      },
+      {
+        "collection": "users",
+        "records": 11
+      },
+      {
+        "collection": "roles",
+        "records": 4
+      },
+      {
+        "collection": "transports",
+        "records": 10
+      }
+    ]
+  },
+  {
+    "id": "776d9fc0-e5a2-4501-8a00-0d8869558424",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "created_at": "2026-04-02T09:09:10.687Z",
+    "date": "2026-04-02 14:39:10",
+    "type": "File Import",
+    "filename": "9780128206751_Ch07.alleast_20260402_143910.xlsx",
+    "status": "Success",
+    "size": "0.87 MB",
+    "note": "Excel file uploaded successfully",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/imports/excel/b6133a9951ad1e248c9b8f6e1bb86c5f.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/imports/excel/b6133a9951ad1e248c9b8f6e1bb86c5f.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260402%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260402T090911Z&X-Amz-Expires=604800&X-Amz-Signature=5f84c00224a1f116c697c8563d18cf6519401a10316fb2ee0d198e92fe405091&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-09T09:09:11.185Z",
+    "s3_key": "imports/excel/b6133a9951ad1e248c9b8f6e1bb86c5f.xlsx",
+    "original_name": "9780128206751_Ch07.alleast.xlsx"
+  },
+  {
+    "id": "e3890237-47f8-4c5f-bc19-f23f1de1386f",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "created_at": "2026-04-02T08:40:35.897Z",
+    "date": "2026-04-02 14:10:35",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260402_141035.xlsx",
+    "status": "Success",
+    "size": "0.29 MB",
+    "note": "1625 records across 21 collections",
+    "location": "https://maheshwari-motors.s3.amazonaws.com/backups/maheshwari_motors/c7da4c44f5973358fbcac6921566a7ae.xlsx",
+    "download_url": "https://maheshwari-motors.s3.ap-south-1.amazonaws.com/backups/maheshwari_motors/c7da4c44f5973358fbcac6921566a7ae.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA3NUGFTPP3QUSBOPC%2F20260402%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260402T084038Z&X-Amz-Expires=604800&X-Amz-Signature=10c4596b311acdc50a6c6946f80960f595637af156edd4262ffc222c4cafedef&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-04-09T08:40:38.405Z",
+    "s3_key": "backups/maheshwari_motors/c7da4c44f5973358fbcac6921566a7ae.xlsx",
+    "local_path": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260402_141035.xlsx",
+    "backup_id": "b535e636-2796-4cbd-aa1f-71e0adc27669",
+    "database_name": "maheshwari_motors",
+    "total_collections": 21,
+    "total_records": 1625,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 20
+      },
+      {
+        "collection": "areas",
+        "records": 30
+      },
+      {
+        "collection": "autobills",
+        "records": 26
+      },
+      {
+        "collection": "banks",
+        "records": 148
+      },
+      {
+        "collection": "bills",
+        "records": 116
+      },
+      {
+        "collection": "brands",
+        "records": 16
+      },
+      {
+        "collection": "challans",
+        "records": 349
+      },
+      {
+        "collection": "contacts",
+        "records": 178
+      },
+      {
+        "collection": "counters",
+        "records": 42
+      },
+      {
+        "collection": "departments",
+        "records": 10
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 3
+      },
+      {
+        "collection": "hsns",
+        "records": 24
+      },
+      {
+        "collection": "items",
+        "records": 263
+      },
+      {
+        "collection": "labels",
+        "records": 10
+      },
+      {
+        "collection": "reports",
+        "records": 30
+      },
+      {
+        "collection": "returns",
+        "records": 38
+      },
+      {
+        "collection": "sessions",
+        "records": 46
+      },
+      {
+        "collection": "subscriptions",
+        "records": 19
+      },
+      {
+        "collection": "transactions",
+        "records": 220
+      },
+      {
+        "collection": "users",
+        "records": 19
+      },
+      {
+        "collection": "transports",
+        "records": 18
+      }
+    ]
+  },
+  {
+    "id": "c5f13895-3af2-4c55-b357-d092784f7f78",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "created_at": "2026-04-02T08:10:51.317Z",
+    "date": "2026-04-02 13:40:51",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260402_134051.xlsx",
+    "status": "Failed",
+    "size": "0 MB",
+    "note": "Failed to upload file, SignatureDoesNotMatch: The request signature we calculated does not match the signature you provided. Check your key and signing method.",
+    "location": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260402_134051.xlsx",
+    "download_url": null,
+    "download_expires_at": null
+  },
+  {
+    "id": "039ada28-df7e-4404-8ed9-631e314b956c",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "created_at": "2026-04-02T07:38:08.853Z",
+    "date": "2026-04-02 13:08:08",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260402_130808.xlsx",
+    "status": "Failed",
+    "size": "0 MB",
+    "note": "Failed to upload file, SignatureDoesNotMatch: The request signature we calculated does not match the signature you provided. Check your key and signing method.",
+    "location": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260402_130808.xlsx",
+    "download_url": null,
+    "download_expires_at": null
+  },
+  {
+    "id": "d967b33e-856c-4805-979c-5467121730bb",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "created_at": "2026-04-02T07:37:33.327Z",
+    "date": "2026-04-02 13:07:33",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260402_130733.xlsx",
+    "status": "Failed",
+    "size": "0 MB",
+    "note": "Failed to upload file, SignatureDoesNotMatch: The request signature we calculated does not match the signature you provided. Check your key and signing method.",
+    "location": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260402_130733.xlsx",
+    "download_url": null,
+    "download_expires_at": null
+  },
+  {
+    "id": "82cd774a-cb6c-477a-8fed-b7cd6591f12e",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "created_at": "2026-04-02T07:31:31.697Z",
+    "date": "2026-04-02 13:01:31",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260402_130131.xlsx",
+    "status": "Failed",
+    "size": "0 MB",
+    "note": "Failed to upload file, SignatureDoesNotMatch: The request signature we calculated does not match the signature you provided. Check your key and signing method.",
+    "location": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260402_130131.xlsx",
+    "download_url": null,
+    "download_expires_at": null
+  },
+  {
+    "id": "200aae64-a99f-4347-929a-9091cb01af0e",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "created_at": "2026-04-02T07:31:19.774Z",
+    "date": "2026-04-02 13:01:19",
+    "type": "Manual Backup",
+    "filename": "maheshwari_motors_backup_20260402_130119.xlsx",
+    "status": "Failed",
+    "size": "0 MB",
+    "note": "Failed to upload file, SignatureDoesNotMatch: The request signature we calculated does not match the signature you provided. Check your key and signing method.",
+    "location": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\maheshwari_motors_backup_20260402_130119.xlsx",
+    "download_url": null,
+    "download_expires_at": null
+  },
+  {
+    "id": "7dcded80-1b5e-42c2-ba81-24987292b470",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "date": "2026-04-02 12:57:59",
+    "type": "Manual Backup",
+    "size": "0.00 MB",
+    "status": "Success",
+    "location": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\backup_20260402_125759.sql",
+    "filename": "backup_20260402_125759.sql"
+  },
+  {
+    "id": "55d420e9-4382-4546-a128-d0ac38670b04",
+    "user_id": "69cd023abd5be2fdf8ff7115",
+    "date": "2026-04-02 11:14:34",
+    "type": "Manual Backup",
+    "size": "0.00 MB",
+    "status": "Success",
+    "location": "C:\\Users\\honey\\OneDrive\\Desktop\\MMOTORS\\maheshwari-motors\\backend\\storage\\backups\\backup_20260402_111434.sql",
+    "filename": "backup_20260402_111434.sql"
+  },
+  {
+    "id": "0d7356ae-08d7-43a7-8f52-ed234c43c674",
+    "user_id": "69cbac62e813e5ffee96284b",
+    "date": "2026-04-01 15:25:44",
+    "type": "Manual Backup",
+    "size": "0.00 MB",
+    "status": "Success",
+    "location": "D:\\Royal it company\\clone\\backend maheshwari\\maheshwari-motors\\backend\\storage\\backups\\backup_20260401_152544.sql",
+    "filename": "backup_20260401_152544.sql"
+  },
+  {
+    "id": "74a3fd28-b294-4fdd-823e-5a393dc7e704",
+    "user_id": "69cbac62e813e5ffee96284b",
+    "date": "2026-04-01 15:19:47",
+    "type": "Manual Backup",
+    "size": "0.00 MB",
+    "status": "Success",
+    "location": "D:\\Royal it company\\clone\\backend maheshwari\\maheshwari-motors\\backend\\storage\\backups\\backup_20260401_151947.sql",
+    "filename": "backup_20260401_151947.sql"
+  }
+]

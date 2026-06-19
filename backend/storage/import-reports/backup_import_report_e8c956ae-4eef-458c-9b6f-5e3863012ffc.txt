@@ -1,0 +1,39 @@
+Backup Import Report - 2026-04-14T18:41:24.605Z
+Job ID: e8c956ae-4eef-458c-9b6f-5e3863012ffc
+User: 69dde34b15e7221db34ccd9d
+File: maheshwari_motors_backup_20260413_170447.xlsx
+
+✓ agents: 10 records imported (0 new, 0 updated)
+✓ areas: 10 records imported (0 new, 0 updated)
+✓ autobills: 2 records imported (0 new, 0 updated)
+✓ banks: 30 records imported (0 new, 0 updated)
+✓ bills: 63 records imported (0 new, 0 updated)
+✓ brands: 10 records imported (0 new, 0 updated)
+✓ challans: 79 records imported (0 new, 0 updated)
+✓ contacts: 50 records imported (0 new, 0 updated)
+✓ counters: 34 records imported (0 new, 1 updated)
+✓ departments: 10 records imported (0 new, 0 updated)
+✓ financialyearcloses: 1 records imported (0 new, 0 updated)
+✓ hsns: 10 records imported (0 new, 0 updated)
+❌ items: Error - E11000 duplicate key error collection: maheshwari_motors.items index: item_id_1 dup key: { item_id: null }
+✓ labels: 14 records imported (0 new, 0 updated)
+✓ reports: 10 records imported (0 new, 0 updated)
+✓ returns: 15 records imported (0 new, 0 updated)
+✓ sessions: 82 records imported (0 new, 0 updated)
+✓ subscriptions: 11 records imported (0 new, 10 updated)
+✓ transactions: 10 records imported (0 new, 0 updated)
+✓ users: 11 records imported (0 new, 11 updated)
+✓ transports: 12 records imported (0 new, 0 updated)
+
+Summary:
+- Collections: 21
+- Total Records: 474
+- Errors: 1
+
+Errors:
+  items: E11000 duplicate key error collection: maheshwari_motors.items index: item_id_1 dup key: { item_id: null }
+
+Import Notes:
+- Invalid ObjectId values in Excel (numeric IDs, non-hex format) were converted to null
+- Reference fields (contact_id, bank_id, transport_id, etc) with null values need manual remapping
+- Ensure all Bills have valid contact_id references pointing to imported Contacts

@@ -1,0 +1,58 @@
+Backup Import Report - 2026-04-14T19:26:21.319Z
+Job ID: a41b69f0-3edc-412b-a0ce-98fdf04946c9
+User: 69dde34b15e7221db34ccd9d
+File: maheshwari_motors_backup_20260413_170447.xlsx
+
+✓ agents: 10 records imported (0 new, 0 updated)
+✓ areas: 10 records imported (0 new, 0 updated)
+✓ autobills: 2 records imported (0 new, 0 updated)
+✓ banks: 30 records imported (0 new, 0 updated)
+✓ bills: 63 records imported (0 new, 0 updated)
+✓ brands: 10 records imported (0 new, 0 updated)
+✓ challans: 79 records imported (0 new, 0 updated)
+✓ contacts: 50 records imported (0 new, 0 updated)
+✓ counters: 34 records imported (0 new, 1 updated)
+✓ departments: 10 records imported (0 new, 0 updated)
+✓ financialyearcloses: 1 records imported (0 new, 0 updated)
+✓ hsns: 10 records imported (0 new, 0 updated)
+Row 2: Created new item "Item AxlePro 9 1" (ID: ITM000001)
+Row 3: Created new item "Item DriveCore 6 2" (ID: ITM000002)
+Row 4: Created new item "Item SureFit 10 3" (ID: ITM000003)
+Row 5: Created new item "Item SureFit 10 4" (ID: ITM000004)
+Row 6: Created new item "Item NitroLine 7 5" (ID: ITM000005)
+Row 7: Created new item "Item PrecisionX 5 6" (ID: ITM000006)
+Row 8: Created new item "Item SpeedNest 4 7" (ID: ITM000007)
+Row 9: Created new item "Item UrbanTorque 3 8" (ID: ITM000008)
+Row 10: Created new item "Item Alpha Motion 1 9" (ID: ITM000009)
+Row 11: Created new item "Item AxlePro 9 10" (ID: ITM000010)
+Row 12: Created new item "n" (ID: I1)
+Row 13: Created new item "test3" (ID: I2)
+Row 14: Created new item "testtt" (ID: I3)
+Row 15: Created new item "tushar sir" (ID: I4)
+Row 16: Created new item "test" (ID: I5)
+Row 17: Created new item "Premium Motor Oil 5L" (ID: OIL001)
+Row 18: Created new item "Spark Plug Set (4pcs)" (ID: SPARK002)
+Row 19: Created new item "Engine Air Filter" (ID: AIR003)
+Row 20: Created new item "Service Hour Pack - 10hrs" (ID: SRV001)
+Row 21: Created new item "Shell Helix HX7 10W40" (ID: SHELL001)
+Row 22: Created new item "Generic Oil - Low Cost" (ID: I6)
+Row 23: Created new item "Brake Fluid DOT3" (ID: BRAKE001)
+✓ items: 22/22 items processed successfully
+✓ labels: 14 records imported (0 new, 0 updated)
+✓ reports: 10 records imported (0 new, 0 updated)
+✓ returns: 15 records imported (0 new, 0 updated)
+✓ sessions: 82 records imported (0 new, 0 updated)
+✓ subscriptions: 11 records imported (0 new, 10 updated)
+✓ transactions: 10 records imported (0 new, 0 updated)
+✓ users: 11 records imported (0 new, 11 updated)
+✓ transports: 12 records imported (0 new, 0 updated)
+
+Summary:
+- Collections: 21
+- Total Records: 496
+- Errors: 0
+
+Import Notes:
+- Invalid ObjectId values in Excel (numeric IDs, non-hex format) were converted to null
+- Reference fields (contact_id, bank_id, transport_id, etc) with null values need manual remapping
+- Ensure all Bills have valid contact_id references pointing to imported Contacts

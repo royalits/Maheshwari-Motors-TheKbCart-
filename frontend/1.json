@@ -1,0 +1,3040 @@
+﻿{
+  "info": {
+    "_postman_id": "mm2-the-kbcart-v2",
+    "name": "The KbCart V2",
+    "description": "Complete API collection for The KbCart backend.\n\nBase URL: {{baseUrl}}/api/v1\n\n## Auth Flow\n1. Register main user (POST /auth/admin/register)\n2. Login as admin/firm (POST /auth/login)\n3. Token is returned → set as Bearer token\n\n## Roles\n- **admin**: User management\n- **firm (GST/Non-GST)**: All master + transaction endpoints\n\n## Login Credentials (Seed Data)\n| Role | Username | Password |\n|------|----------|----------|\n| Admin | admin_ramesh | Admin@1234 |\n| GST Firm | gst_ramesh | Test@1234 |\n| Non-GST Firm | nongst_ramesh | Test@1234 |\n| Staff GST | gst_suresh | Staff@1234 |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "firmToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "brandId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hsnId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "itemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contactId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "partyId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "supplierId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transportId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "areaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "challanId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "billId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "secondaryUserId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Check if server is running. No auth required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication & session management.\n\nFlow: Register → Login → use token for all other requests.",
+      "item": [
+        {
+          "name": "Register Main User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ramesh Sharma\",\n  \"email\": \"ramesh@thekbcart.com\",\n  \"phone\": \"9876543210\",\n  \"admin\": {\n    \"username\": \"admin_ramesh\",\n    \"password\": \"Admin@1234\"\n  },\n  \"gst_firm\": {\n    \"username\": \"gst_ramesh\",\n    \"password\": \"Test@1234\",\n    \"name\": \"The KbCart GST\",\n    \"phone\": \"9876543210\",\n    \"email\": \"gst@thekbcart.com\",\n    \"address\": \"123 Industrial Area\",\n    \"godown_address\": \"456 Warehouse Lane\",\n    \"city\": \"Indore\",\n    \"state\": \"Madhya Pradesh\",\n    \"GSTIN\": \"23AABCU9603R1ZM\",\n    \"CIN\": \"U29100MP2020PTC012345\",\n    \"reg_number\": \"MP-IND-2020-0001\",\n    \"bank_name\": \"State Bank of India\",\n    \"bank_branch\": \"Indore Main\",\n    \"ifsc_code\": \"SBIN0001234\",\n    \"account_number\": \"12345678901234\"\n  },\n  \"nongst_firm\": {\n    \"username\": \"nongst_ramesh\",\n    \"password\": \"Test@1234\",\n    \"name\": \"The KbCart Non-GST\",\n    \"phone\": \"9876543211\",\n    \"email\": \"nongst@thekbcart.com\",\n    \"address\": \"789 Market Road\",\n    \"city\": \"Indore\",\n    \"state\": \"Madhya Pradesh\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/admin/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "admin",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Register the main user with admin + GST firm + Non-GST firm credentials. No auth required."
+          }
+        },
+        {
+          "name": "Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "  pm.collectionVariables.set('adminToken', res.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin_ramesh\",\n  \"password\": \"Admin@1234\",\n  \"device_name\": \"Postman\",\n  \"device_type\": \"web\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Login as admin. Auto-saves token to collection variables."
+          }
+        },
+        {
+          "name": "Login (GST Firm)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "  pm.collectionVariables.set('firmToken', res.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"gst_ramesh\",\n  \"password\": \"Test@1234\",\n  \"device_name\": \"Postman\",\n  \"device_type\": \"web\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Login as GST firm. Auto-saves token. Use this for master + transaction APIs."
+          }
+        },
+        {
+          "name": "Login (Non-GST Firm)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"nongst_ramesh\",\n  \"password\": \"Test@1234\",\n  \"device_name\": \"Postman\",\n  \"device_type\": \"web\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Login as Non-GST firm."
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Get current user profile. Returns user info + firm details based on token role."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"Test@1234\",\n  \"new_password\": \"NewPass@1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Change password for currently logged-in user/firm."
+          }
+        },
+        {
+          "name": "Get Sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sessions"
+              ]
+            },
+            "description": "List all active sessions for current user. Current session is marked."
+          }
+        },
+        {
+          "name": "Revoke Session",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/sessions/{{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sessions",
+                "{{sessionId}}"
+              ]
+            },
+            "description": "Revoke a specific session by ID."
+          }
+        },
+        {
+          "name": "Revoke All Other Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sessions"
+              ]
+            },
+            "description": "Revoke all sessions except the current one."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Logout current session. Invalidates the token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin (User Management)",
+      "description": "Admin-only endpoints for managing secondary users.\n\nRequires: Admin token (login as admin_ramesh).",
+      "item": [
+        {
+          "name": "Get Secondary Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users?page=1&limit=10&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page (default: 5, max: 10)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name"
+                }
+              ]
+            },
+            "description": "List all secondary (staff) users with pagination."
+          }
+        },
+        {
+          "name": "Create Secondary User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('secondaryUserId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Suresh Verma\",\n  \"email\": \"suresh@thekbcart.com\",\n  \"phone\": \"9988776655\",\n  \"gst_firm\": {\n    \"username\": \"gst_suresh\",\n    \"password\": \"Staff@1234\",\n    \"name\": \"Suresh Verma GST\",\n    \"phone\": \"9988776655\",\n    \"email\": \"gst_suresh@staff.com\",\n    \"address\": \"Staff Office\",\n    \"city\": \"Indore\",\n    \"state\": \"Madhya Pradesh\"\n  },\n  \"nongst_firm\": {\n    \"username\": \"nongst_suresh\",\n    \"password\": \"Staff@1234\",\n    \"name\": \"Suresh Verma Non-GST\",\n    \"phone\": \"9988776655\",\n    \"email\": \"nongst_suresh@staff.com\",\n    \"address\": \"Staff Office\",\n    \"city\": \"Indore\",\n    \"state\": \"Madhya Pradesh\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ]
+            },
+            "description": "Create a secondary (staff) user with GST + Non-GST firm credentials."
+          }
+        },
+        {
+          "name": "Get Secondary User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{secondaryUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{secondaryUserId}}"
+              ]
+            },
+            "description": "Get a specific secondary user by ID."
+          }
+        },
+        {
+          "name": "Update Secondary User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Suresh Verma Updated\",\n  \"phone\": \"9988776600\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{secondaryUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{secondaryUserId}}"
+              ]
+            },
+            "description": "Update a secondary user. Partial update supported."
+          }
+        },
+        {
+          "name": "Deactivate Secondary User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{secondaryUserId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{secondaryUserId}}",
+                "deactivate"
+              ]
+            },
+            "description": "Deactivate a secondary user. They won't be able to login."
+          }
+        },
+        {
+          "name": "Reactivate Secondary User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{secondaryUserId}}/reactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{secondaryUserId}}",
+                "reactivate"
+              ]
+            },
+            "description": "Reactivate a previously deactivated user."
+          }
+        },
+        {
+          "name": "Delete Secondary User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{secondaryUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{secondaryUserId}}"
+              ]
+            },
+            "description": "Permanently delete a secondary user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "description": "Category master CRUD.\n\nCategories group brands. Each category has a list of brand_ids.",
+      "item": [
+        {
+          "name": "Get Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories?page=1&limit=10&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by category name"
+                }
+              ]
+            },
+            "description": "List all categories with pagination and search."
+          }
+        },
+        {
+          "name": "Create Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('categoryId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_name\": \"Engine Parts\",\n  \"description\": \"Pistons, rings, valves, gaskets\",\n  \"brands\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ]
+            },
+            "description": "Create a new category. `brands` is an optional array of brand ObjectIds."
+          }
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Get a single category by ID."
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_name\": \"Engine Parts Updated\",\n  \"description\": \"Updated description\",\n  \"brands\": [\"{{brandId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Update a category. Partial update supported."
+          }
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Delete a category. Removes brand associations."
+          }
+        }
+      ]
+    },
+    {
+      "name": "HSN",
+      "description": "HSN (Harmonized System of Nomenclature) code master.\n\nEach HSN has a gst_rate that applies to all items in a brand when HSN is assigned to that brand.",
+      "item": [
+        {
+          "name": "Get HSN Codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hsn?page=1&limit=10&search=&is_active=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "hsn"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by HSN code or description"
+                },
+                {
+                  "key": "is_active",
+                  "value": "true",
+                  "description": "Filter by active status (true/false)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all HSN codes with pagination. Searchable by code or description."
+          }
+        },
+        {
+          "name": "Create HSN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('hsnId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hsn_code\": \"8714\",\n  \"description\": \"Parts and accessories of motorcycles and cycles\",\n  \"gst_rate\": 18,\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hsn",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "hsn"
+              ]
+            },
+            "description": "Create a new HSN code. hsn_code & gst_rate are required."
+          }
+        },
+        {
+          "name": "Get HSN by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hsn/{{hsnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "hsn",
+                "{{hsnId}}"
+              ]
+            },
+            "description": "Get a single HSN code by ID."
+          }
+        },
+        {
+          "name": "Update HSN",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated - Motorcycle parts & accessories\",\n  \"gst_rate\": 28\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hsn/{{hsnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "hsn",
+                "{{hsnId}}"
+              ]
+            },
+            "description": "Update an HSN code. Partial update supported."
+          }
+        },
+        {
+          "name": "Delete HSN",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hsn/{{hsnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "hsn",
+                "{{hsnId}}"
+              ]
+            },
+            "description": "Delete an HSN code. Unsets hsn_id from any brands referencing it."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Brands",
+      "description": "Brand master CRUD.\n\nEach brand has:\n- discount1 (GST discount: normal + special %)\n- discount2 (Non-GST discount: normal + special %)\n- hsn_id (optional, links to HSN for GST rate)",
+      "item": [
+        {
+          "name": "Get Brands",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands?page=1&limit=10&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by brand name"
+                }
+              ]
+            },
+            "description": "List all brands with pagination. HSN is populated."
+          }
+        },
+        {
+          "name": "Create Brand",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('brandId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand_name\": \"Bajaj Genuine\",\n  \"discount1\": {\n    \"normal\": 15,\n    \"special\": 3\n  },\n  \"discount2\": {\n    \"normal\": 10,\n    \"special\": 2\n  },\n  \"hsn_id\": \"{{hsnId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands"
+              ]
+            },
+            "description": "Create a new brand with discount structure and optional HSN."
+          }
+        },
+        {
+          "name": "Get Brand by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "{{brandId}}"
+              ]
+            },
+            "description": "Get a single brand by ID. HSN is populated."
+          }
+        },
+        {
+          "name": "Update Brand",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand_name\": \"Bajaj Genuine Updated\",\n  \"discount1\": {\n    \"normal\": 18,\n    \"special\": 5\n  },\n  \"hsn_id\": \"{{hsnId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "{{brandId}}"
+              ]
+            },
+            "description": "Update a brand. Partial update supported."
+          }
+        },
+        {
+          "name": "Delete Brand",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "{{brandId}}"
+              ]
+            },
+            "description": "Delete a brand. Unsets brand_id from items, removes from category brand_ids."
+          }
+        },
+        {
+          "name": "Update Discount",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discount1\": {\n    \"normal\": 20,\n    \"special\": 5\n  },\n  \"discount2\": {\n    \"normal\": 12,\n    \"special\": 3\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/{{brandId}}/discount",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "{{brandId}}",
+                "discount"
+              ]
+            },
+            "description": "Update only the discount fields on a brand. Values must be 0-100."
+          }
+        },
+        {
+          "name": "Get Discounts by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/category/{{categoryId}}/discounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "category",
+                "{{categoryId}}",
+                "discounts"
+              ]
+            },
+            "description": "Get all brands + their discounts + HSN for a specific category."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Items",
+      "description": "Item master CRUD.\n\nItems belong to a category, brand, and supplier (contact).\nImage upload supported via multipart/form-data.",
+      "item": [
+        {
+          "name": "Get Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/items?page=1&limit=10&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by item name"
+                }
+              ]
+            },
+            "description": "List items with pagination and search."
+          }
+        },
+        {
+          "name": "Create Item (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('itemId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "item_name",
+                  "value": "Piston Assembly (Bajaj Pulsar)",
+                  "type": "text"
+                },
+                {
+                  "key": "sale_rate",
+                  "value": "1200",
+                  "type": "text"
+                },
+                {
+                  "key": "purchase_rate",
+                  "value": "800",
+                  "type": "text"
+                },
+                {
+                  "key": "mrp_rate",
+                  "value": "1400",
+                  "type": "text"
+                },
+                {
+                  "key": "gst_percent",
+                  "value": "18",
+                  "type": "text"
+                },
+                {
+                  "key": "discount",
+                  "value": "0",
+                  "type": "text"
+                },
+                {
+                  "key": "stock",
+                  "value": "35",
+                  "type": "text"
+                },
+                {
+                  "key": "threshold",
+                  "value": "5",
+                  "type": "text"
+                },
+                {
+                  "key": "category_id",
+                  "value": "{{categoryId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "brand_id",
+                  "value": "{{brandId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "contact_id",
+                  "value": "{{supplierId}}",
+                  "type": "text",
+                  "description": "Supplier contact ID"
+                },
+                {
+                  "key": "is_gst",
+                  "value": "1",
+                  "type": "text",
+                  "description": "1=GST, 0=Non-GST"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "",
+                  "description": "Optional product image (max 5MB)",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items"
+              ]
+            },
+            "description": "Create an item. Uses multipart/form-data for optional image upload.\n\nRequired: item_name, sale_rate.\nOptional: purchase_rate, mrp_rate, gst_percent, discount, stock, threshold, category_id, brand_id, contact_id, is_gst, image."
+          }
+        },
+        {
+          "name": "Get Item by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "description": "Get a single item by ID with populated category, brand, contact."
+          }
+        },
+        {
+          "name": "Update Item",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "item_name",
+                  "value": "Piston Assembly (Bajaj Pulsar) Updated",
+                  "type": "text"
+                },
+                {
+                  "key": "sale_rate",
+                  "value": "1300",
+                  "type": "text"
+                },
+                {
+                  "key": "stock",
+                  "value": "40",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "description": "Update an item. Partial update supported. Uses multipart/form-data."
+          }
+        },
+        {
+          "name": "Delete Item",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "description": "Delete an item permanently."
+          }
+        },
+        {
+          "name": "Get Low Stock Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/items/low-stock?page=1&limit=10&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "low-stock"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "disabled": true,
+                  "description": "Search by item name",
+                  "key": "search",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get items where stock is at or below threshold."
+          }
+        },
+        {
+          "name": "Update Stock",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stock\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/items/{{itemId}}/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "items",
+                "{{itemId}}",
+                "stock"
+              ]
+            },
+            "description": "Update stock quantity for an item."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contacts",
+      "description": "Contact master CRUD (parties + suppliers in one model).\n\ntype: \"party\" or \"supplier\"\n\nParties can have: category_id, transport_id\nBoth can have: category_id\n\nBalance tracking: negative = due, positive = overpaid.",
+      "item": [
+        {
+          "name": "Get Contacts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts?page=1&limit=10&search=&type=&balance_status=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name"
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "Filter: party | supplier",
+                  "disabled": true
+                },
+                {
+                  "key": "balance_status",
+                  "value": "",
+                  "description": "Filter: due | overpaid",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all contacts with pagination, search, and type/balance filters."
+          }
+        },
+        {
+          "name": "Create Party",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('contactId', res.data._id);",
+                  "  pm.collectionVariables.set('partyId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sharma Auto Works\",\n  \"type\": \"party\",\n  \"phone\": \"9876501234\",\n  \"email\": \"sharma.auto@customer.com\",\n  \"address\": \"42 MG Road\",\n  \"city\": \"Indore\",\n  \"state\": \"Madhya Pradesh\",\n  \"gstin\": \"23AABCS1234D1ZR\",\n  \"is_gst\": 1,\n  \"category_id\": \"{{categoryId}}\",\n  \"transport_id\": \"{{transportId}}\",\n  \"area_id\": \"{{areaId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts"
+              ]
+            },
+            "description": "Create a party. category_id, transport_id, and area_id are optional (party-only for transport_id and area_id)."
+          }
+        },
+        {
+          "name": "Create Supplier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('supplierId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AutoParts India Pvt Ltd\",\n  \"type\": \"supplier\",\n  \"phone\": \"9111222333\",\n  \"email\": \"autoparts@suppliers.com\",\n  \"address\": \"55 Industrial Area\",\n  \"city\": \"Pune\",\n  \"state\": \"Maharashtra\",\n  \"gstin\": \"27AABCA1234B1ZP\",\n  \"is_gst\": 1,\n  \"category_id\": \"{{categoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts"
+              ]
+            },
+            "description": "Create a supplier contact."
+          }
+        },
+        {
+          "name": "Get Contact by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts",
+                "{{contactId}}"
+              ]
+            },
+            "description": "Get a single contact (party or supplier) by ID."
+          }
+        },
+        {
+          "name": "Update Contact",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sharma Auto Works Updated\",\n  \"phone\": \"9876500000\",\n  \"category_id\": \"{{categoryId}}\",\n  \"transport_id\": null,\n  \"area_id\": \"{{areaId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts",
+                "{{contactId}}"
+              ]
+            },
+            "description": "Update a contact. Partial update. Set transport_id or area_id to null to unassign."
+          }
+        },
+        {
+          "name": "Delete Contact",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts",
+                "{{contactId}}"
+              ]
+            },
+            "description": "Delete a contact. Parties with active challans/unpaid bills cannot be deleted."
+          }
+        },
+        {
+          "name": "Get Contacts with Due",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/due?page=1&limit=10&search=&type=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts",
+                "due"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "party | supplier",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get contacts with negative balance (due amount)."
+          }
+        },
+        {
+          "name": "Get Contacts with Overpaid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/overpaid?page=1&limit=10&search=&type=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts",
+                "overpaid"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "party | supplier",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get contacts with positive balance (overpaid)."
+          }
+        },
+        {
+          "name": "Get Contact Balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}/balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts",
+                "{{contactId}}",
+                "balance"
+              ]
+            },
+            "description": "Get the current balance of a contact."
+          }
+        },
+        {
+          "name": "Update Contact Balance",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000,\n  \"operation\": \"add\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contacts/{{contactId}}/balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contacts",
+                "{{contactId}}",
+                "balance"
+              ]
+            },
+            "description": "Manually adjust contact balance. operation: \"add\" or \"subtract\"."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Agents",
+      "description": "Agent (salesman) master CRUD.\n\nEvery agent is associated with a party (contact of type 'party'). party_id is required.",
+      "item": [
+        {
+          "name": "Get Agents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/agents?page=1&limit=10&search=&party_id=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by agent name"
+                },
+                {
+                  "key": "party_id",
+                  "value": "",
+                  "description": "Filter by party ObjectId",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List agents with pagination. party_id is populated."
+          }
+        },
+        {
+          "name": "Create Agent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('agentId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Vijay Kumar\",\n  \"address\": \"12 Station Road\",\n  \"city\": \"Indore\",\n  \"pincode\": \"452001\",\n  \"phone\": \"9876512345\",\n  \"whatsapp\": \"9876512345\",\n  \"party_id\": \"{{partyId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/agents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents"
+              ]
+            },
+            "description": "Create an agent (salesman). party_id is required and must be a contact of type 'party'."
+          }
+        },
+        {
+          "name": "Get Agent by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/agents/{{agentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agentId}}"
+              ]
+            },
+            "description": "Get a single agent by ID. party_id is populated."
+          }
+        },
+        {
+          "name": "Update Agent",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Vijay Kumar Updated\",\n  \"city\": \"Bhopal\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/agents/{{agentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agentId}}"
+              ]
+            },
+            "description": "Update an agent. Partial update supported."
+          }
+        },
+        {
+          "name": "Delete Agent",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/agents/{{agentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agentId}}"
+              ]
+            },
+            "description": "Delete an agent."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transports",
+      "description": "Transport master CRUD.\n\nTransports can be assigned to parties via contact.transport_id.",
+      "item": [
+        {
+          "name": "Get Transports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transports?page=1&limit=10&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by transport name"
+                }
+              ]
+            },
+            "description": "List transports with pagination and search."
+          }
+        },
+        {
+          "name": "Create Transport",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('transportId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Shree Maruti Courier\",\n  \"address\": \"Transport Nagar\",\n  \"city\": \"Indore\",\n  \"pincode\": \"452001\",\n  \"phone\": \"9111333555\",\n  \"whatsapp\": \"9111333555\",\n  \"gstin\": \"23AABCS5555E1ZT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports"
+              ]
+            },
+            "description": "Create a new transport. All fields except name are optional."
+          }
+        },
+        {
+          "name": "Get Transport by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transports/{{transportId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports",
+                "{{transportId}}"
+              ]
+            },
+            "description": "Get a single transport by ID."
+          }
+        },
+        {
+          "name": "Update Transport",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Shree Maruti Courier Updated\",\n  \"city\": \"Bhopal\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transports/{{transportId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports",
+                "{{transportId}}"
+              ]
+            },
+            "description": "Update a transport. Partial update supported."
+          }
+        },
+        {
+          "name": "Delete Transport",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transports/{{transportId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transports",
+                "{{transportId}}"
+              ]
+            },
+            "description": "Delete a transport."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Areas",
+      "description": "Area master CRUD.\n\nAreas group city/state/pincode with an optional agent and transport.\nAreas are assigned to parties via contact.area_id.",
+      "item": [
+        {
+          "name": "Get Areas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/areas?page=1&limit=10&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "areas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by city name",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List areas with pagination and search."
+          }
+        },
+        {
+          "name": "Create Area",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('areaId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"Indore\",\n  \"state\": \"Madhya Pradesh\",\n  \"pincode\": \"452001\",\n  \"phone\": \"9850111000\",\n  \"whatsapp\": \"9850111000\",\n  \"agent_id\": \"{{agentId}}\",\n  \"transport_id\": \"{{transportId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/areas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "areas"
+              ]
+            },
+            "description": "Create an area. agent_id and transport_id are optional."
+          }
+        },
+        {
+          "name": "Get Area by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/areas/{{areaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "areas",
+                "{{areaId}}"
+              ]
+            },
+            "description": "Get a single area by ID. Populates agent and transport."
+          }
+        },
+        {
+          "name": "Update Area",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pincode\": \"452002\",\n  \"agent_id\": null,\n  \"transport_id\": \"{{transportId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/areas/{{areaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "areas",
+                "{{areaId}}"
+              ]
+            },
+            "description": "Update an area. Partial update. Set agent_id or transport_id to null to unassign."
+          }
+        },
+        {
+          "name": "Delete Area",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/areas/{{areaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "areas",
+                "{{areaId}}"
+              ]
+            },
+            "description": "Delete an area. Unlinks all parties referencing this area."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Challans",
+      "description": "Challan (delivery note) CRUD.\n\nRequires: Firm token (GST or Non-GST).\n\nTypes: sale | purchase\n- Sale challans auto-apply brand discounts\n- Purchase challans auto-update stock & mark items with supplier's is_gst",
+      "item": [
+        {
+          "name": "Get Sale Challans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans/sale?page=1&limit=10&contact_id=&payment_status=&from_date=&to_date=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans",
+                "sale"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "contact_id",
+                  "value": "",
+                  "description": "Filter by party ObjectId",
+                  "disabled": true
+                },
+                {
+                  "key": "payment_status",
+                  "value": "",
+                  "description": "Filter: due | partial | paid",
+                  "disabled": true
+                },
+                {
+                  "key": "from_date",
+                  "value": "",
+                  "description": "From date (YYYY-MM-DD)",
+                  "disabled": true
+                },
+                {
+                  "key": "to_date",
+                  "value": "",
+                  "description": "To date (YYYY-MM-DD)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List sale challans (unconverted only). Requires firm token."
+          }
+        },
+        {
+          "name": "Get Purchase Challans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans/purchase?page=1&limit=10&contact_id=&payment_status=&from_date=&to_date=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans",
+                "purchase"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "contact_id",
+                  "value": "",
+                  "description": "Filter by supplier ObjectId",
+                  "disabled": true
+                },
+                {
+                  "key": "payment_status",
+                  "value": "",
+                  "description": "Filter: due | partial | paid",
+                  "disabled": true
+                },
+                {
+                  "key": "from_date",
+                  "value": "",
+                  "description": "From date (YYYY-MM-DD)",
+                  "disabled": true
+                },
+                {
+                  "key": "to_date",
+                  "value": "",
+                  "description": "To date (YYYY-MM-DD)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List purchase challans. Requires firm token."
+          }
+        },
+        {
+          "name": "Create Sale Challan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('challanId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challan_type\": \"sale\",\n  \"date\": \"2026-02-18\",\n  \"contact_id\": \"{{partyId}}\",\n  \"is_gst\": 1,\n  \"items\": [\n    {\n      \"item_id\": \"{{itemId}}\",\n      \"quantity\": 5,\n      \"rate\": 1200,\n      \"discount\": 10,\n      \"special_discount\": 2,\n      \"discount_amount\": 0,\n      \"gst_percent\": 18,\n      \"is_gst\": 1\n    }\n  ],\n  \"discount\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans"
+              ]
+            },
+            "description": "Create a sale challan. Brand discounts are auto-applied.\n\nRequired: challan_type, contact_id, items (array with item_id, quantity, rate)."
+          }
+        },
+        {
+          "name": "Create Purchase Challan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challan_type\": \"purchase\",\n  \"date\": \"2026-02-18\",\n  \"contact_id\": \"{{supplierId}}\",\n  \"is_gst\": 1,\n  \"items\": [\n    {\n      \"item_id\": \"{{itemId}}\",\n      \"quantity\": 20,\n      \"rate\": 800,\n      \"gst_percent\": 18,\n      \"is_gst\": 1\n    }\n  ],\n  \"discount\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans"
+              ]
+            },
+            "description": "Create a purchase challan. Auto-updates item stock and marks items with supplier's is_gst."
+          }
+        },
+        {
+          "name": "Get Challan by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans/{{challanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans",
+                "{{challanId}}"
+              ]
+            },
+            "description": "Get a single challan by ID with populated items and contact."
+          }
+        },
+        {
+          "name": "Update Challan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"item_id\": \"{{itemId}}\",\n      \"quantity\": 10,\n      \"rate\": 1200,\n      \"discount\": 12,\n      \"gst_percent\": 18,\n      \"is_gst\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans/{{challanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans",
+                "{{challanId}}"
+              ]
+            },
+            "description": "Update a challan. Cannot update converted challans."
+          }
+        },
+        {
+          "name": "Delete Challan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans/{{challanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans",
+                "{{challanId}}"
+              ]
+            },
+            "description": "Delete a challan. Cannot delete converted challans."
+          }
+        },
+        {
+          "name": "Get Unconverted Challans for Contact",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans/contact/{{partyId}}/unconverted",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans",
+                "contact",
+                "{{partyId}}",
+                "unconverted"
+              ]
+            },
+            "description": "Get all unconverted sale challans for a party. Used before creating a bill."
+          }
+        },
+        {
+          "name": "Record Challan Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/challans/{{challanId}}/payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "challans",
+                "{{challanId}}",
+                "payment"
+              ]
+            },
+            "description": "Record a payment against a challan. amount must be > 0."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bills",
+      "description": "Bill management.\n\nBills are created from unconverted sale challans.\nRequires: Firm token.",
+      "item": [
+        {
+          "name": "Get Bills",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills?page=1&limit=10&contact_id=&payment_status=&from_date=&to_date=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "contact_id",
+                  "value": "",
+                  "description": "Filter by contact ObjectId",
+                  "disabled": true
+                },
+                {
+                  "key": "payment_status",
+                  "value": "",
+                  "description": "Filter: due | partial | paid",
+                  "disabled": true
+                },
+                {
+                  "key": "from_date",
+                  "value": "",
+                  "description": "From date (YYYY-MM-DD)",
+                  "disabled": true
+                },
+                {
+                  "key": "to_date",
+                  "value": "",
+                  "description": "To date (YYYY-MM-DD)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List bills with pagination and optional filters."
+          }
+        },
+        {
+          "name": "Create Bill",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "  pm.collectionVariables.set('billId', res.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contact_id\": \"{{partyId}}\",\n  \"challan_ids\": [\"{{challanId}}\"],\n  \"apply_balance\": false,\n  \"delivered_amount\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills"
+              ]
+            },
+            "description": "Create a bill from unconverted challans.\n\nRequired: contact_id, challan_ids (array).\nOptional: apply_balance (deduct party balance), delivered_amount (partial delivery)."
+          }
+        },
+        {
+          "name": "Get Bill by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills/{{billId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills",
+                "{{billId}}"
+              ]
+            },
+            "description": "Get a single bill with populated contact and challans."
+          }
+        },
+        {
+          "name": "Get Bill Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills",
+                "summary"
+              ]
+            },
+            "description": "Get aggregate bill summary (total, paid, due, etc.)."
+          }
+        },
+        {
+          "name": "Get Bills by Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills/status/due?page=1&limit=10&contact_id=&from_date=&to_date=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills",
+                "status",
+                "due"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "contact_id",
+                  "value": "",
+                  "description": "Filter by contact ObjectId",
+                  "disabled": true
+                },
+                {
+                  "key": "from_date",
+                  "value": "",
+                  "description": "From date (YYYY-MM-DD)",
+                  "disabled": true
+                },
+                {
+                  "key": "to_date",
+                  "value": "",
+                  "description": "To date (YYYY-MM-DD)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get bills filtered by status. Status in URL: due | partial | paid."
+          }
+        },
+        {
+          "name": "Get Bills for Contact",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills/contact/{{partyId}}?page=1&limit=10&payment_status=&from_date=&to_date=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills",
+                "contact",
+                "{{partyId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "payment_status",
+                  "value": "",
+                  "description": "Filter: due | partial | paid",
+                  "disabled": true
+                },
+                {
+                  "key": "from_date",
+                  "value": "",
+                  "description": "From date (YYYY-MM-DD)",
+                  "disabled": true
+                },
+                {
+                  "key": "to_date",
+                  "value": "",
+                  "description": "To date (YYYY-MM-DD)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all bills for a specific party/contact."
+          }
+        },
+        {
+          "name": "Record Bill Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills/{{billId}}/payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills",
+                "{{billId}}",
+                "payment"
+              ]
+            },
+            "description": "Record a payment against a bill. Updates payment_status automatically."
+          }
+        },
+        {
+          "name": "Handle Return",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"return_amount\": 1200\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills/{{billId}}/return",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills",
+                "{{billId}}",
+                "return"
+              ]
+            },
+            "description": "Process a return against a bill. Adjusts bill total and party balance."
+          }
+        },
+        {
+          "name": "Delete Bill",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bills/{{billId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bills",
+                "{{billId}}"
+              ]
+            },
+            "description": "Delete a bill. Reverts challans to unconverted and restores party balance."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard endpoints for overview data.",
+      "item": [
+        {
+          "name": "Get Dashboard (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard"
+              ]
+            },
+            "description": "Get general dashboard data. Works with any token (admin or firm)."
+          }
+        },
+        {
+          "name": "Get Firm Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/firm?period=monthly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "firm"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "monthly",
+                  "description": "Period: today | monthly | yearly"
+                }
+              ]
+            },
+            "description": "Get firm-specific dashboard with period filtering. Requires firm token.\n\nPeriods: today, monthly, yearly."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "description": "Purchase and sales reports.\n\nRequires: Firm token.",
+      "item": [
+        {
+          "name": "Get Purchase Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reports/purchase?from_date=2026-01-01&to_date=2026-02-28",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "purchase"
+              ],
+              "query": [
+                {
+                  "key": "from_date",
+                  "value": "2026-01-01",
+                  "description": "From date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "to_date",
+                  "value": "2026-02-28",
+                  "description": "To date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Get purchase report with date range. Returns total purchase amount, supplier count, challan count, and top 5 suppliers."
+          }
+        },
+        {
+          "name": "Get Sales Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reports/sales?from_date=2026-01-01&to_date=2026-02-28",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "from_date",
+                  "value": "2026-01-01",
+                  "description": "From date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "to_date",
+                  "value": "2026-02-28",
+                  "description": "To date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Get sales report with date range. Returns total sales amount, party count, bill count, and top 5 parties."
+          }
+        }
+      ]
+    }
+  ]
+}

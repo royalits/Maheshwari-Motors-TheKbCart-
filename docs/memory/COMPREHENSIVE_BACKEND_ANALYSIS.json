@@ -1,0 +1,2017 @@
+{
+    "projectMetadata": {
+        "name": "Maheshwari Motors - Multi-user Inventory Management System",
+        "version": "1.1.0",
+        "type": "Node.js + Express Backend",
+        "database": "MongoDB + Mongoose",
+        "baseUrl": "/api/v1",
+        "apiResponseFormat": {
+            "success": "boolean",
+            "statusCode": "number",
+            "message": "string",
+            "data": "object|array|null"
+        },
+        "errorResponseFormat": {
+            "success": false,
+            "statusCode": "number (400|401|403|404|409|500)",
+            "message": "string",
+            "errors": "array"
+        }
+    },
+    "architectureOverview": {
+        "keyTechnologies": [
+            "Express 5.2.1",
+            "Mongoose 9.3.0",
+            "JWT (jsonwebtoken 9.0.3)",
+            "Bcrypt (bcryptjs 3.0.3)",
+            "AWS S3 (@aws-sdk/client-s3)",
+            "Multer 2.1.1 (file uploads)",
+            "Node-cron 4.2.1 (scheduled jobs)"
+        ],
+        "directoryStructure": {
+            "routers/": "API endpoint definitions organized by feature",
+            "controllers/": "Request handlers for each endpoint",
+            "services/": "Business logic and data operations",
+            "models/": "MongoDB Mongoose schemas",
+            "middlewares/": "Authentication, authorization, error handling",
+            "helpers/": "Utility functions",
+            "utils/": "Custom error/response classes and utilities",
+            "jobs/": "Scheduled background jobs (cron)",
+            "config/": "Environment configuration"
+        },
+        "layerPattern": "Controller → Service → Model (with stock validation)",
+        "authenticationMethod": "JWT-based with Session tracking"
+    },
+    "authenticationSystem": {
+        "overview": "Multi-tier JWT authentication with two firm types (GST and Non-GST)",
+        "tokenTypes": {
+            "admin": {
+                "payload": {
+                    "_id": "userId",
+                    "role": "admin",
+                    "user_type": "main|secondary"
+                },
+                "expiresIn": "from JWT_EXPIRES_IN env",
+                "usage": "Admin panel and user management"
+            },
+            "firm_gst": {
+                "payload": {
+                    "_id": "userId",
+                    "role": "firm",
+                    "firm_type": "GST",
+                    "user_type": "main|secondary"
+                },
+                "usage": "GST firm operations - stock deduction enabled"
+            },
+            "firm_nongst": {
+                "payload": {
+                    "_id": "userId",
+                    "role": "firm",
+                    "firm_type": "Non-GST",
+                    "user_type": "main|secondary"
+                },
+                "usage": "Non-GST firm operations - logical stock tracking only"
+            }
+        },
+        "authFlow": {
+            "step1": "POST /api/v1/auth/admin/register → Main user registration (admin role)",
+            "step2": "POST /api/v1/auth/login → Authenticate with username/password",
+            "step3": "Response contains JWT token + session tracking",
+            "step4": "Token sent via 'Authorization: Bearer <token>' header on all requests",
+            "step5": "authMiddleware validates token and session status",
+            "step6": "User context attached to req.user with role and firm type"
+        },
+        "endpoints": [
+            {
+                "route": "POST /auth/admin/register",
+                "protected": false,
+                "requestBody": {
+                    "name": "string",
+                    "email": "string (optional)",
+                    "phone": "string",
+                    "admin": {
+                        "username": "string (unique)",
+                        "password": "string"
+                    },
+                    "gst_firm": {
+                        "username": "string (unique)",
+                        "password": "string",
+                        "name": "string",
+                        "phone": "string",
+                        "email": "string (optional)",
+                        "address": "string (required)",
+                        "godown_address": "string (optional)",
+                        "city": "string (required)",
+                        "state": "string (required)",
+                        "GSTIN": "string (optional)",
+                        "CIN": "string (optional)",
+                        "reg_number": "string (optional)",
+                        "bank_ids": "array of bank ObjectIds (optional)"
+                    },
+                    "nongst_firm": {
+                        "username": "string (unique)",
+                        "password": "string",
+                        "name": "string",
+                        "phone": "string",
+                        "email": "string (optional)",
+                        "address": "string (required)",
+                        "godown_address": "string (optional)",
+                        "city": "string (required)",
+                        "state": "string (required)",
+                        "GSTIN": "string (optional)",
+                        "CIN": "string (optional)",
+                        "reg_number": "string (optional)",
+                        "bank_ids": "array of bank ObjectIds (optional)"
+                    }
+                },
+                "responseBody": {
+                    "_id": "userId",
+                    "name": "string",
+                    "type": "main",
+                    "role": "admin",
+                    "token": "JWT token"
+                },
+                "businessLogic": "Creates main user with dual firm capabilities (GST and Non-GST), creates CASHBOOK and BANKBOOK contacts automatically"
+            },
+            {
+                "route": "POST /auth/login",
+                "protected": false,
+                "requestBody": {
+                    "username": "string",
+                    "password": "string",
+                    "device_name": "string (optional)",
+                    "device_type": "string (optional, e.g. mobile|web|desktop)"
+                },
+                "headers": {
+                    "x-forwarded-for": "string (optional, IP address)"
+                },
+                "responseBody": {
+                    "_id": "userId",
+                    "type": "main|secondary",
+                    "role": "admin|firm",
+                    "token": "JWT token",
+                    "loginTime": "ISO date",
+                    "gstFirm": {
+                        "name": "string",
+                        "username": "string",
+                        "address": "string",
+                        "GSTIN": "string"
+                    },
+                    "nongstFirm": {
+                        "name": "string",
+                        "username": "string",
+                        "address": "string"
+                    }
+                },
+                "businessLogic": "Validates credentials, creates session, tracks device info and IP address, ensures book contacts exist"
+            },
+            {
+                "route": "POST /auth/logout",
+                "protected": true,
+                "requestBody": null,
+                "responseBody": null,
+                "businessLogic": "Invalidates current session token"
+            },
+            {
+                "route": "GET /auth/me",
+                "protected": true,
+                "responseBody": "User profile based on role (admin/firm)"
+            },
+            {
+                "route": "PUT /auth/change-password",
+                "protected": true,
+                "requestBody": {
+                    "current_password": "string",
+                    "new_password": "string"
+                }
+            },
+            {
+                "route": "GET /auth/sessions",
+                "protected": true,
+                "responseBody": "Array of active sessions with device info"
+            },
+            {
+                "route": "DELETE /auth/sessions/:sessionId",
+                "protected": true,
+                "businessLogic": "Revoke specific session for multi-device management"
+            },
+            {
+                "route": "DELETE /auth/sessions",
+                "protected": true,
+                "businessLogic": "Revoke all other sessions, keep current session active"
+            },
+            {
+                "route": "POST /auth/signature",
+                "protected": true,
+                "contentType": "multipart/form-data",
+                "fileUpload": "signature (image file, max 2MB)",
+                "businessLogic": "Upload user signature for bill printing"
+            },
+            {
+                "route": "PUT /auth/signature",
+                "protected": true,
+                "contentType": "multipart/form-data",
+                "fileUpload": "signature (image file, max 2MB)",
+                "businessLogic": "Update existing signature"
+            }
+        ],
+        "adminUserManagement": [
+            {
+                "route": "GET /admin/users",
+                "protected": true,
+                "requiresRole": "admin",
+                "responseBody": "Array of secondary users"
+            },
+            {
+                "route": "POST /admin/users",
+                "protected": true,
+                "requiresRole": "admin",
+                "requestBody": {
+                    "name": "string",
+                    "email": "string (optional)",
+                    "phone": "string",
+                    "gst_firm": {
+                        "username": "string",
+                        "password": "string"
+                    },
+                    "nongst_firm": {
+                        "username": "string",
+                        "password": "string"
+                    }
+                }
+            },
+            {
+                "route": "GET /admin/users/:userId",
+                "protected": true,
+                "requiresRole": "admin"
+            },
+            {
+                "route": "PUT /admin/users/:userId",
+                "protected": true,
+                "requiresRole": "admin"
+            },
+            {
+                "route": "DELETE /admin/users/:userId",
+                "protected": true,
+                "requiresRole": "admin"
+            },
+            {
+                "route": "POST /admin/users/:userId/deactivate",
+                "protected": true,
+                "requiresRole": "admin",
+                "businessLogic": "Deactivate secondary user"
+            },
+            {
+                "route": "POST /admin/users/:userId/reactivate",
+                "protected": true,
+                "requiresRole": "admin",
+                "businessLogic": "Reactivate deactivated user"
+            }
+        ]
+    },
+    "subscriptionManagement": {
+        "endpoints": [
+            {
+                "route": "GET /admin/subscriptions",
+                "protected": true,
+                "requiresRole": "admin",
+                "responseBody": "Array of all subscriptions with expiry dates"
+            },
+            {
+                "route": "GET /admin/subscriptions/expiring-today",
+                "protected": true,
+                "requiresRole": "admin",
+                "businessLogic": "Get subscriptions expiring today for renewal alerts"
+            },
+            {
+                "route": "POST /admin/subscriptions/expire-check",
+                "protected": true,
+                "requiresRole": "admin",
+                "businessLogic": "Manually trigger subscription expiry check (normally runs via cron)"
+            },
+            {
+                "route": "POST /admin/subscriptions",
+                "protected": true,
+                "requiresRole": "admin",
+                "requestBody": {
+                    "user_id": "ObjectId",
+                    "expiry_date": "ISO date"
+                }
+            },
+            {
+                "route": "PUT /admin/subscriptions/:userId",
+                "protected": true,
+                "requiresRole": "admin",
+                "requestBody": {
+                    "expiry_date": "ISO date"
+                }
+            }
+        ],
+        "backgroundJobs": {
+            "subscriptionExpiryCron": {
+                "trigger": "Node-cron schedule",
+                "filename": "subscriptionExpiry.cron.js",
+                "purpose": "Automatically check and update subscription statuses",
+                "deactivatesInactiveUsers": true
+            },
+            "autoBillCron": {
+                "trigger": "Node-cron schedule",
+                "filename": "autoBill.cron.js",
+                "purpose": "Auto-convert challans to bills based on automation rules"
+            }
+        }
+    },
+    "masterDataAPIs": {
+        "description": "APIs for managing reference data (items, contacts, brands, etc.)",
+        "endpoints": {
+            "items": {
+                "baseRoute": "/items",
+                "protected": true,
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/",
+                        "description": "List all items with pagination",
+                        "queryParams": {
+                            "page": "number (default 1)",
+                            "limit": "number (default 10)",
+                            "search": "string (item_name or alias)",
+                            "sort": "string (field:-1 for descending)",
+                            "is_gst": "0|1 (filter by firm type)"
+                        },
+                        "responseBody": {
+                            "items": "array of item objects",
+                            "pagination": {
+                                "total": "number",
+                                "page": "number",
+                                "limit": "number",
+                                "pages": "number"
+                            }
+                        }
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "contentType": "multipart/form-data",
+                        "requestBody": {
+                            "item_name": "string (required)",
+                            "barcode": "string (unique, optional)",
+                            "item_id": "string (unique, optional)",
+                            "alias": "string (optional)",
+                            "description": "string (optional)",
+                            "sale_rate": "number (required)",
+                            "purchase_rate": "number (default 0)",
+                            "mrp_rate": "number (default 0)",
+                            "gst_percent": "number (default 0)",
+                            "stock": "number (default 0)",
+                            "physical_stock": "number (default 0, non-negative)",
+                            "logical_stock": "number (default 0)",
+                            "threshold": "number (default 0, for low stock alerts)",
+                            "image": "file (optional, image upload)",
+                            "is_gst": "0|1 (default 1)",
+                            "brand_id": "ObjectId (optional)",
+                            "dept_id": "ObjectId (optional)",
+                            "hsn_id": "ObjectId (optional)"
+                        },
+                        "responseBody": "created item object with generated id"
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/low-stock",
+                        "description": "Get items below threshold",
+                        "responseBody": "array of low stock items"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/check-barcode",
+                        "requestBody": {
+                            "barcode": "string",
+                            "exclude_item_id": "ObjectId (optional, for update validation)"
+                        },
+                        "responseBody": {
+                            "available": "boolean",
+                            "message": "string"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:itemId",
+                        "description": "Get single item with populated references"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:itemId",
+                        "contentType": "multipart/form-data",
+                        "description": "Update item details and image"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:itemId",
+                        "businessLogic": "Soft delete or hard delete based on references"
+                    }
+                ],
+                "stockManagementLogic": {
+                    "gstFirm": {
+                        "physical_stock": "Actual physical quantity (enforced minimum)",
+                        "stock": "Mirror of physical_stock for GST firms",
+                        "deduction": "Both physical_stock and stock are decremented on challan/bill",
+                        "insufficientStockCheck": true
+                    },
+                    "nongstFirm": {
+                        "logical_stock": "Tracked separately for non-GST firms",
+                        "physical_stock": "Not enforced, can be negative",
+                        "deduction": "Only logical_stock is decremented",
+                        "insufficientStockCheck": false
+                    }
+                }
+            },
+            "contacts": {
+                "baseRoute": "/contacts",
+                "protected": true,
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/",
+                        "description": "List all contacts with type filtering",
+                        "queryParams": {
+                            "page": "number",
+                            "limit": "number",
+                            "type": "party|supplier|book (optional)",
+                            "search": "string (name or alias)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/parties",
+                        "description": "Get only party contacts"
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/suppliers",
+                        "description": "Get only supplier contacts"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "name": "string (required)",
+                            "alias": "string (optional)",
+                            "type": "party|supplier|book (required, book=auto-created)",
+                            "phone": "string (optional)",
+                            "whatsapp_number": "string (optional)",
+                            "email": "string (optional)",
+                            "address": "string (optional)",
+                            "city": "string (optional)",
+                            "state": "string (optional)",
+                            "gstin": "string (optional)",
+                            "cin": "string (optional)",
+                            "reg_number": "string (optional)",
+                            "label_ids": "array of ObjectIds (optional)",
+                            "bank_id": "ObjectId (optional)",
+                            "transport_charge": "number (default 0)",
+                            "area": "string (optional)",
+                            "transport_id": "ObjectId (optional)",
+                            "agent_id": "ObjectId (optional)",
+                            "area_id": "ObjectId (optional)",
+                            "balance": "number (auto-calculated, default 0)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/due",
+                        "description": "Get contacts with outstanding dues (balance > 0)"
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/overpaid",
+                        "description": "Get contacts with overpayments (balance < 0)"
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:contactId/balance",
+                        "description": "Get current balance for contact"
+                    },
+                    {
+                        "method": "PATCH",
+                        "route": "/:contactId/balance",
+                        "requestBody": {
+                            "amount": "number",
+                            "operation": "set|add|subtract"
+                        },
+                        "description": "Update contact balance manually"
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:contactId",
+                        "description": "Get single contact detail"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:contactId",
+                        "description": "Update contact"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:contactId",
+                        "description": "Delete contact"
+                    }
+                ]
+            },
+            "brands": {
+                "baseRoute": "/brands",
+                "protected": true,
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "name": "string (required)",
+                            "description": "string (optional)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:brandId"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:brandId"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:brandId"
+                    }
+                ]
+            },
+            "hsn": {
+                "baseRoute": "/hsn",
+                "protected": true,
+                "description": "HSN (Harmonized System of Nomenclature) codes for GST",
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "hsn_code": "string (required, unique)",
+                            "description": "string (optional)",
+                            "gst_rate": "number (optional, %)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:hsnId"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:hsnId"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:hsnId"
+                    }
+                ]
+            },
+            "labels": {
+                "baseRoute": "/labels",
+                "protected": true,
+                "description": "Sales labels with brand-wise discount matrices",
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "name": "string (required, unique per user)",
+                            "description": "string (optional)",
+                            "is_active": "boolean (default true)",
+                            "brand_discounts": [
+                                {
+                                    "brand_id": "ObjectId (required)",
+                                    "disc1": {
+                                        "normal": "number (% discount)",
+                                        "special": "number (% discount)"
+                                    },
+                                    "disc2": {
+                                        "normal": "number",
+                                        "special": "number"
+                                    },
+                                    "item_discounts": [
+                                        {
+                                            "item_id": "ObjectId",
+                                            "discount": "number (%)"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "businessLogic": "Multi-level discount system: label → brand → item specific"
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:labelId"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:labelId"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:labelId"
+                    }
+                ]
+            },
+            "agents": {
+                "baseRoute": "/agents",
+                "protected": true,
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "name": "string (required)",
+                            "commission": "number (% commission)",
+                            "contact_number": "string (optional)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:agentId"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:agentId"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:agentId"
+                    }
+                ]
+            },
+            "transports": {
+                "baseRoute": "/transports",
+                "protected": true,
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "name": "string (required)",
+                            "charges": "number (default charge per transaction)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:transportId"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:transportId"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:transportId"
+                    }
+                ]
+            },
+            "areas": {
+                "baseRoute": "/areas",
+                "protected": true,
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "name": "string (required)",
+                            "state": "string (optional)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:areaId"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:areaId"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:areaId"
+                    }
+                ]
+            },
+            "departments": {
+                "baseRoute": "/departments",
+                "protected": true,
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "name": "string (required)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:deptId"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:deptId"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:deptId"
+                    }
+                ]
+            },
+            "banks": {
+                "baseRoute": "/banks",
+                "protected": true,
+                "description": "Bank account management for payment tracking",
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "route": "/"
+                    },
+                    {
+                        "method": "POST",
+                        "route": "/",
+                        "requestBody": {
+                            "bank_name": "string (required)",
+                            "bank_branch": "string (optional)",
+                            "ifsc_code": "string (optional)",
+                            "account_number": "string (required, unique per user)",
+                            "account_holder": "string (optional)",
+                            "upi_id": "string (optional)",
+                            "assignment_type": "firm|party|supplier|null",
+                            "assigned_to": "ObjectId (optional, contact/user id)"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "route": "/:bankId"
+                    },
+                    {
+                        "method": "PUT",
+                        "route": "/:bankId"
+                    },
+                    {
+                        "method": "DELETE",
+                        "route": "/:bankId"
+                    }
+                ]
+            }
+        }
+    },
+    "transactionAPIs": {
+        "description": "Core business transaction flows: challans, bills, payments, returns",
+        "challanFlow": {
+            "overview": "Intermediate document before billing. Sale challans generate bills, purchase challans record receipts.",
+            "challanTypes": {
+                "sale": {
+                    "purpose": "Delivery note/proforma invoice to customers",
+                    "stockImpact": "Deduct stock (GST firm only)",
+                    "label": "Required (sales label for discount matrix)",
+                    "convertsToBill": true,
+                    "billCreation": "Automatic or manual conversion to bill"
+                },
+                "purchase": {
+                    "purpose": "Purchase order receipt from suppliers",
+                    "stockImpact": "Can add stock on conversion",
+                    "label": "Not required",
+                    "convertsToBill": false,
+                    "billCreation": "N/A - separate bill created in transaction module"
+                }
+            },
+            "baseRoute": "/challans",
+            "endpoints": [
+                {
+                    "method": "POST",
+                    "route": "/",
+                    "requestBody": {
+                        "challan_type": "sale|purchase (required)",
+                        "challan_no": "string (optional, auto-generated if omitted)",
+                        "date": "ISO date (optional, defaults to now)",
+                        "contact_id": "ObjectId (required)",
+                        "label_id": "ObjectId (required for sale chall ans, optional for purchase)",
+                        "print_option": "1|2 (default 2, for print format)",
+                        "from_bank": {
+                            "bank_id": "ObjectId (optional)",
+                            "bank_name": "string (optional)",
+                            "bank_branch": "string (optional)",
+                            "ifsc_code": "string (optional)",
+                            "account_number": "string (optional)",
+                            "account_holder": "string (optional)"
+                        },
+                        "to_bank": {
+                            "bank_id": "ObjectId (optional)",
+                            "bank_name": "string (optional)",
+                            "bank_branch": "string (optional)",
+                            "ifsc_code": "string (optional)",
+                            "account_number": "string (optional)",
+                            "account_holder": "string (optional)"
+                        },
+                        "items": [
+                            {
+                                "item_id": "ObjectId (required)",
+                                "quantity": "number (default 1)",
+                                "rate": "number (required, unit price)",
+                                "discount": "number (% or amount, default 0)",
+                                "special_discount": "number (additional %, default 0)",
+                                "is_gst": "0|1 (default 1)"
+                            }
+                        ],
+                        "is_gst": "0|1 (challan classification, default 1)",
+                        "deduct_from_stock": "0|1 (only for GST, default 1)"
+                    },
+                    "responseBody": {
+                        "challan": {
+                            "_id": "ObjectId",
+                            "challan_no": "string (auto-generated)",
+                            "challan_type": "sale|purchase",
+                            "date": "ISO date",
+                            "contact_id": "ObjectId",
+                            "items": "calculated with amounts",
+                            "gross_total": "number (before discount)",
+                            "sub_total": "number (after discount)",
+                            "discount": "number (total discount)",
+                            "amount": "number (final amount)",
+                            "is_gst": "0|1",
+                            "converted_to_bill": false,
+                            "payment_status": "due",
+                            "user_id": "ObjectId"
+                        }
+                    },
+                    "businessLogic": [
+                        "Auto-generates challan_no from counter",
+                        "GST calculation per item based on HSN",
+                        "Multi-level discount calculation (label→brand→item)",
+                        "Stock deduction for GST firm on creation",
+                        "Linked challan support (e.g., for two-way exchange)",
+                        "Validates contact exists",
+                        "Validates all items exist"
+                    ]
+                },
+                {
+                    "method": "GET",
+                    "route": "/",
+                    "description": "Get all challans (both sale and purchase)",
+                    "queryParams": {
+                        "page": "number",
+                        "limit": "number",
+                        "status": "due|paid|overpaid",
+                        "challan_type": "sale|purchase",
+                        "from_date": "ISO date",
+                        "to_date": "ISO date",
+                        "contact_id": "ObjectId"
+                    }
+                },
+                {
+                    "method": "GET",
+                    "route": "/sale",
+                    "description": "Get only sale challans"
+                },
+                {
+                    "method": "GET",
+                    "route": "/purchase",
+                    "description": "Get only purchase challans"
+                },
+                {
+                    "method": "GET",
+                    "route": "/contact/:contactId/unconverted",
+                    "description": "Get sale challans not yet converted to bills for a contact",
+                    "businessLogic": "Used to batch-convert challans to bills"
+                },
+                {
+                    "method": "GET",
+                    "route": "/item/:itemId/last-sold",
+                    "description": "Get last challan/bill where this item was sold"
+                },
+                {
+                    "method": "POST",
+                    "route": "/check-challan-no",
+                    "requestBody": {
+                        "challan_no": "string"
+                    },
+                    "responseBody": {
+                        "available": "boolean"
+                    }
+                },
+                {
+                    "method": "GET",
+                    "route": "/:challanId",
+                    "description": "Get single challan with populated references"
+                },
+                {
+                    "method": "PUT",
+                    "route": "/:challanId",
+                    "description": "Update challan (before conversion to bill)",
+                    "businessLogic": "Cannot update if already converted to bill; stock adjustments applied"
+                },
+                {
+                    "method": "DELETE",
+                    "route": "/:challanId",
+                    "description": "Delete challan",
+                    "businessLogic": "Restore stock if it was deducted"
+                },
+                {
+                    "method": "POST",
+                    "route": "/:challanId/payment",
+                    "description": "Record payment against challan",
+                    "requestBody": {
+                        "amount": "number",
+                        "payment_type": "bank_transaction_received_amount|cash_payment_received_amount|bank_transfer_payment_given|cash_payment_given",
+                        "bank_id": "ObjectId (required for bank payment types)",
+                        "reference_no": "string (optional, cheque number etc)",
+                        "note": "string (optional)",
+                        "date": "ISO date (optional)"
+                    }
+                }
+            ]
+        },
+        "billFlow": {
+            "overview": "Final billing document against which payment is tracked. Created from challans or independently.",
+            "billCreationMethods": [
+                {
+                    "method": "Create from single Challan",
+                    "endpoint": "POST /bills with challan_id",
+                    "result": "New bill linked to challan, challan marked as converted_to_bill"
+                },
+                {
+                    "method": "Batch convert Challans",
+                    "endpoint": "POST /bills/batch-convert with challan_ids array",
+                    "result": "Multiple bills created, all challans marked converted"
+                },
+                {
+                    "method": "Create Direct Bill",
+                    "endpoint": "POST /bills with items directly",
+                    "result": "Standalone bill without challan"
+                }
+            ],
+            "baseRoute": "/bills",
+            "endpoints": [
+                {
+                    "method": "POST",
+                    "route": "/",
+                    "requestBody": {
+                        "bill_no": "string (optional, auto-generated)",
+                        "date": "ISO date (optional, defaults to now)",
+                        "contact_id": "ObjectId (required)",
+                        "transport_id": "ObjectId (optional)",
+                        "customer_name": "string (optional)",
+                        "vehicle_number": "string (optional)",
+                        "transport_charge": "number (default 0)",
+                        "amount": "number (required if creating standalone, optional if from challan)",
+                        "is_gst": "0|1 (required)",
+                        "challan_id": "ObjectId (optional, link to source challan)",
+                        "items": [
+                            {
+                                "item_id": "ObjectId",
+                                "quantity": "number",
+                                "rate": "number",
+                                "discount": "number",
+                                "special_discount": "number",
+                                "gst_percent": "number",
+                                "is_gst": "0|1"
+                            }
+                        ]
+                    },
+                    "responseBody": {
+                        "bill": {
+                            "_id": "ObjectId",
+                            "bill_no": "string",
+                            "date": "ISO date",
+                            "contact_id": "ObjectId",
+                            "amount": "number",
+                            "paid_amount": 0,
+                            "payment_status": "due",
+                            "challan_ids": "array of linked challans (if batch converted)",
+                            "balance": "virtual field = amount - paid_amount"
+                        }
+                    }
+                },
+                {
+                    "method": "GET",
+                    "route": "/",
+                    "description": "List all bills with filters",
+                    "queryParams": {
+                        "page": "number",
+                        "limit": "number",
+                        "contact_id": "ObjectId",
+                        "status": "due|paid|overpaid",
+                        "from_date": "ISO date",
+                        "to_date": "ISO date"
+                    }
+                },
+                {
+                    "method": "GET",
+                    "route": "/:billId",
+                    "description": "Get single bill"
+                },
+                {
+                    "method": "PUT",
+                    "route": "/:billId",
+                    "description": "Update bill details (amount, contact, etc.)"
+                },
+                {
+                    "method": "DELETE",
+                    "route": "/:billId",
+                    "description": "Delete bill and restore linked challan"
+                },
+                {
+                    "method": "POST",
+                    "route": "/batch-convert",
+                    "requestBody": {
+                        "challan_ids": "array of ObjectIds"
+                    },
+                    "responseBody": {
+                        "total_bills_created": "number",
+                        "bills": "array of created bills"
+                    },
+                    "businessLogic": "Convert multiple sale challans to bills in single operation"
+                },
+                {
+                    "method": "POST",
+                    "route": "/check-bill-no",
+                    "requestBody": {
+                        "bill_no": "string"
+                    },
+                    "responseBody": {
+                        "available": "boolean"
+                    }
+                },
+                {
+                    "method": "POST",
+                    "route": "/settlements",
+                    "requestBody": {
+                        "bills": [
+                            {
+                                "bill_id": "ObjectId",
+                                "settled_amount": "number",
+                                "payment_type": "bank_transaction_received_amount|cash_payment_received_amount|bank_transfer_payment_given|cash_payment_given",
+                                "bank_id": "ObjectId (optional but required for bank types)",
+                                "reference_no": "string (optional)",
+                                "note": "string (optional)",
+                                "settled_to": "bill|unsettled_balance (default bill)"
+                            }
+                        ]
+                    },
+                    "responseBody": {
+                        "settled": "number of bills settled",
+                        "unsettled": "number that failed"
+                    },
+                    "businessLogic": "Multi-bill payment settlement in one operation"
+                },
+                {
+                    "method": "POST",
+                    "route": "/:billId/payment",
+                    "requestBody": {
+                        "amount": "number",
+                        "payment_type": "bank_transaction_received_amount|cash_payment_received_amount|bank_transfer_payment_given|cash_payment_given",
+                        "bank_id": "ObjectId (required for bank types)",
+                        "reference_no": "string",
+                        "note": "string",
+                        "settled_to": "bill|unsettled_balance",
+                        "date": "ISO date"
+                    },
+                    "businessLogic": [
+                        "Validates bank_id for bank payment types",
+                        "Updates bill's paid_amount and payment_status",
+                        "Stores payment entry in payment_entries array",
+                        "Recalculates payment status (due/paid/overpaid)",
+                        "Can settle to balance account or direct to bill"
+                    ]
+                },
+                {
+                    "method": "POST",
+                    "route": "/:billId/return",
+                    "requestBody": {
+                        "return_items": [
+                            {
+                                "item_id": "ObjectId",
+                                "quantity": "number",
+                                "rate": "number",
+                                "discount": "number",
+                                "is_damaged": "boolean"
+                            }
+                        ]
+                    },
+                    "businessLogic": "Create return docume nt and adjust bill amount"
+                },
+                {
+                    "method": "GET",
+                    "route": "/item/:itemId/last-sold",
+                    "description": "Get last bill where item was sold (for pricing reference)"
+                },
+                {
+                    "method": "GET",
+                    "route": "/summary",
+                    "description": "Get bill summary (total billed, paid, due amounts)"
+                },
+                {
+                    "method": "GET",
+                    "route": "/status/:status",
+                    "description": "Get bills by payment status"
+                },
+                {
+                    "method": "GET",
+                    "route": "/contact/:contactId",
+                    "description": "Get bills for specific contact"
+                }
+            ]
+        },
+        "returnFlow": {
+            "overview": "Handle sales returns and purchase returns with stock restoration",
+            "returnTypes": {
+                "sale_return": {
+                    "meaning": "Customer returns goods",
+                    "stockImpact": "Add stock back to GST firm",
+                    "creditNote": "Reduces customer bill"
+                },
+                "purchase_return": {
+                    "meaning": "Return goods to supplier",
+                    "stockImpact": "Reduce stock received from supplier",
+                    "debitNote": "Reduces supplier payable"
+                }
+            },
+            "baseRoute": "/returns",
+            "endpoints": [
+                {
+                    "method": "GET",
+                    "route": "/",
+                    "description": "List all returns"
+                },
+                {
+                    "method": "POST",
+                    "route": "/sale",
+                    "requestBody": {
+                        "return_no": "string (optional, auto-generated)",
+                        "date": "ISO date",
+                        "contact_id": "ObjectId (required)",
+                        "bill_id": "ObjectId (optional, link to original bill)",
+                        "items": [
+                            {
+                                "item_id": "ObjectId (required)",
+                                "quantity": "number (required, must be ≤ original quantity)",
+                                "rate": "number (required)",
+                                "discount": "number (% or amount, default 0)",
+                                "special_discount": "number (%, default 0)",
+                                "gst_percent": "number",
+                                "is_damaged": "boolean (damage flag)",
+                                "is_gst": "0|1"
+                            }
+                        ],
+                        "note": "string (optional)"
+                    },
+                    "businessLogic": [
+                        "Creates return document",
+                        "Calculates total_amount",
+                        "For GST firms: restores stock to items",
+                        "Links to original bill if provided",
+                        "Generates return_no from counter"
+                    ]
+                },
+                {
+                    "method": "POST",
+                    "route": "/purchase",
+                    "requestBody": {
+                        "return_no": "string (optional, auto-generated)",
+                        "date": "ISO date",
+                        "contact_id": "ObjectId (required, supplier)",
+                        "challan_id": "ObjectId (optional, link to original challan)",
+                        "items": [
+                            {
+                                "item_id": "ObjectId",
+                                "quantity": "number",
+                                "rate": "number",
+                                "discount": "number",
+                                "gst_percent": "number"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "method": "GET",
+                    "route": "/summary",
+                    "description": "Get return summary (total returned amount)"
+                },
+                {
+                    "method": "GET",
+                    "route": "/bill/:billId",
+                    "description": "Get returns linked to bill"
+                },
+                {
+                    "method": "GET",
+                    "route": "/challan/:challanId",
+                    "description": "Get returns linked to challan"
+                },
+                {
+                    "method": "GET",
+                    "route": "/:returnId",
+                    "description": "Get return details"
+                },
+                {
+                    "method": "DELETE",
+                    "route": "/:returnId",
+                    "businessLogic": "Delete return and restore stock/bill amount"
+                }
+            ]
+        },
+        "transactionJournal": {
+            "overview": "Manual journal entries for cash/bank transactions (receipts and payments)",
+            "transactionTypes": [
+                "bank_received - Cash received via bank",
+                "cash_received - Direct cash receipt",
+                "bank_payment - Payment sent via bank",
+                "cash_payment - Direct cash payment"
+            ],
+            "baseRoute": "/transactions",
+            "endpoints": [
+                {
+                    "method": "GET",
+                    "route": "/",
+                    "description": "List all journal transactions"
+                },
+                {
+                    "method": "POST",
+                    "route": "/",
+                    "requestBody": {
+                        "transaction_no": "string (optional, auto-generated)",
+                        "type": "bank_received|cash_received|bank_payment|cash_payment",
+                        "date": "ISO date",
+                        "contact_id": "ObjectId (optional, party/supplier)",
+                        "amount": "number (required, min 0)",
+                        "bank_id": "ObjectId (optional but required for bank types)",
+                        "reference": "string (optional, cheque no etc)",
+                        "remarks": "string (optional)",
+                        "is_gst": "0|1"
+                    }
+                },
+                {
+                    "method": "GET",
+                    "route": "/summary",
+                    "description": "Get transaction summary (total cash in/out)"
+                },
+                {
+                    "method": "GET",
+                    "route": "/:transactionId",
+                    "description": "Get single transaction"
+                },
+                {
+                    "method": "PUT",
+                    "route": "/:transactionId",
+                    "description": "Update transaction"
+                },
+                {
+                    "method": "DELETE",
+                    "route": "/:transactionId",
+                    "description": "Delete transaction"
+                }
+            ]
+        },
+        "automationRules": {
+            "overview": "Auto-convert challans to bills based on triggers",
+            "baseRoute": "/automation-rules",
+            "rules": [
+                {
+                    "name": "Time-based auto-bill",
+                    "trigger": "After X days of challan creation",
+                    "action": "Auto-convert challan to bill"
+                },
+                {
+                    "name": "Amount-based auto-bill",
+                    "trigger": "When total amount exceeds threshold",
+                    "action": "Auto-convert to bill"
+                },
+                {
+                    "name": "Quantity-based auto-bill",
+                    "trigger": "When quantity delivered exceeds limit",
+                    "action": "Auto-convert to bill"
+                }
+            ],
+            "endpoints": [
+                {
+                    "method": "GET",
+                    "route": "/",
+                    "description": "List all automation rules"
+                },
+                {
+                    "method": "POST",
+                    "route": "/",
+                    "requestBody": {
+                        "name": "string (rule name)",
+                        "description": "string (optional)",
+                        "trigger_type": "days_elapsed|amount_threshold|quantity_threshold",
+                        "trigger_value": "number",
+                        "is_active": "boolean (default true)"
+                    }
+                },
+                {
+                    "method": "GET",
+                    "route": "/:ruleId",
+                    "description": "Get rule details"
+                },
+                {
+                    "method": "PUT",
+                    "route": "/:ruleId",
+                    "description": "Update rule"
+                },
+                {
+                    "method": "DELETE",
+                    "route": "/:ruleId",
+                    "description": "Delete rule"
+                }
+            ]
+        }
+    },
+    "reportingAndAnalytics": {
+        "baseRoute": "/reports",
+        "description": "Comprehensive reporting for inventory, sales, purchases, GST",
+        "endpoints": [
+            {
+                "method": "GET",
+                "route": "/purchase",
+                "description": "Purchase summary report",
+                "queryParams": {
+                    "from_date": "ISO date",
+                    "to_date": "ISO date",
+                    "contact_id": "ObjectId (supplier filter)"
+                },
+                "responseBody": {
+                    "total_purchase_amount": "number",
+                    "total_purchases": "number",
+                    "entries": "array of purchase summaries"
+                }
+            },
+            {
+                "method": "GET",
+                "route": "/purchase/details",
+                "description": "Detailed purchase report with item breakdown"
+            },
+            {
+                "method": "GET",
+                "route": "/sales",
+                "description": "Sales summary report"
+            },
+            {
+                "method": "GET",
+                "route": "/sales/details",
+                "description": "Detailed sales report with item breakdown"
+            },
+            {
+                "method": "GET",
+                "route": "/collection",
+                "description": "Cash collection report"
+            },
+            {
+                "method": "GET",
+                "route": "/account-ledger",
+                "description": "Account ledger with running balances"
+            },
+            {
+                "method": "GET",
+                "route": "/gst-dashboard",
+                "description": "GST summary (input tax, output tax)"
+            },
+            {
+                "method": "GET",
+                "route": "/gst-report",
+                "description": "Detailed GST report for compliance"
+            }
+        ]
+    },
+    "dashboardAPIs": {
+        "baseRoute": "/dashboard",
+        "endpoints": [
+            {
+                "method": "GET",
+                "route": "/",
+                "description": "Get admin dashboard (can work for both admin and firm)"
+            },
+            {
+                "method": "GET",
+                "route": "/firm",
+                "protected": true,
+                "requiresRole": "firm",
+                "description": "Get firm-specific dashboard",
+                "responseBody": {
+                    "summary": {
+                        "total_bills": "number",
+                        "total_challenging": "number",
+                        "cash_balance": "number",
+                        "bank_balance": "number",
+                        "outstanding_amounts": "object"
+                    },
+                    "topItems": "array of best sellers",
+                    "recentTransactions": "array of latest transactions",
+                    "lowStockItems": "array of items below threshold"
+                }
+            }
+        ]
+    },
+    "outstandingAccountsReporting": {
+        "baseRoute": "/outstanding",
+        "endpoints": [
+            {
+                "method": "GET",
+                "route": "/",
+                "description": "Get all outstanding accounts with due amounts"
+            },
+            {
+                "method": "GET",
+                "route": "/aging",
+                "description": "Get ageing analysis (0-30 days, 30-60 days, etc.)"
+            }
+        ]
+    },
+    "itemLedgerReporting": {
+        "baseRoute": "/item-ledger",
+        "endpoints": [
+            {
+                "method": "GET",
+                "route": "/",
+                "description": "Get item-wise stock movement ledger"
+            },
+            {
+                "method": "GET",
+                "route": "/:itemId",
+                "description": "Get stock movement for specific item",
+                "responseBody": {
+                    "item_details": "object",
+                    "movements": [
+                        {
+                            "date": "ISO date",
+                            "type": "challan|bill|return",
+                            "quantity": "number",
+                            "running_balance": "number"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "gstCalculationSystem": {
+        "overview": "Automatic GST calculation based on HSN codes and item classification",
+        "gstFlow": [
+            {
+                "step": 1,
+                "description": "Item has HSN code and is_gst=1"
+            },
+            {
+                "step": 2,
+                "description": "HSN code has gst_percent configured"
+            },
+            {
+                "step": 3,
+                "description": "On challan/bill creation, gst_amount = taxable_amount * (gst_percent / 100)"
+            },
+            {
+                "step": 4,
+                "description": "Taxable amount = (Gross amount - discount - special_discount)"
+            },
+            {
+                "step": 5,
+                "description": "Final amount = Taxable amount + GST amount"
+            },
+            {
+                "step": 6,
+                "description": "All amounts rounded to 2 decimals with proper rounding logic"
+            }
+        ],
+        "gstTracking": {
+            "inputGST": "GST paid on purchases (tracked via purchase bills)",
+            "outputGST": "GST collected on sales (tracked via sale bills)",
+            "netGST": "output_gst - input_gst (IGST liability)",
+            "reporting": "Available in /reports/gst-dashboard and /reports/gst-report"
+        }
+    },
+    "paymentSettlementFlow": {
+        "step1": "Payment recorded against bill/challan via POST /:id/payment",
+        "step2": "Payment validates payment_type and bank_id (if required)",
+        "step3": "Payment entry appended to payment_entries array",
+        "step4": "bill.paid_amount incremented by payment amount",
+        "step5": "payment_status recalculated: due | paid | overpaid",
+        "step6": "contact.balance updated accordingly",
+        "multiplePayments": "Bill can receive multiple partial payments before becoming 'paid'",
+        "batchSettlement": "POST /bills/settlements allows settling multiple bills at once",
+        "twoModes": {
+            "mode1": "settled_to: 'bill' - payment directly reduces bill amount",
+            "mode2": "settled_to: 'unsettled_balance' - payment goes into balance account for future use"
+        }
+    },
+    "stockManagementSystem": {
+        "overview": "Dual stock tracking: physical for GST, logical for non-GST",
+        "stockTypes": {
+            "physical_stock": {
+                "usage": "GST firms only",
+                "enforcement": "Strict (cannot go negative)",
+                "synchronized": "Always equals stock field",
+                "deductionOn": "Challan creation (sale), Bill from challan"
+            },
+            "logical_stock": {
+                "usage": "Non-GST firms only",
+                "enforcement": "Soft (can be negative)",
+                "synchronized": "Independent tracking",
+                "deductionOn": "Challan creation, explicit decrements"
+            },
+            "stock": {
+                "usage": "Mirror field for GST physical_stock",
+                "auto_sync": true
+            }
+        },
+        "stockOperations": {
+            "deductStock": {
+                "function": "stockService.deductStock(items, userId, challanIsGst)",
+                "usage": "On challan/bill creation",
+                "validation": "For GST: checks physical_stock >= quantity",
+                "error": "Throws if insufficient stock"
+            },
+            "addStock": {
+                "function": "stockService.addStock(items, userId, challanIsGst)",
+                "usage": "On return creation",
+                "validation": "None"
+            },
+            "removeStock": {
+                "function": "stockService.removeStock(items, userId, challanIsGst)",
+                "usage": "On challan update/delete",
+                "safeguard": "Ensures stock never goes below 0 for GST"
+            },
+            "restoreStock": {
+                "function": "stockService.restoreStock(items, userId, challanIsGst)",
+                "usage": "On bill/challan deletion",
+                "validation": "None"
+            }
+        },
+        "lowStockAlerts": {
+            "endpoint": "GET /items/low-stock",
+            "logic": "Returns items where stock < threshold",
+            "thresholdField": "item.threshold"
+        }
+    },
+    "errorHandlingSystem": {
+        "errorClasses": {
+            "ApiError": {
+                "constructor": "new ApiError(statusCode, message, errors[], stack)",
+                "staticMethods": [
+                    "ApiError.badRequest(message) → 400",
+                    "ApiError.unauthorized(message) → 401",
+                    "ApiError.forbidden(message) → 403",
+                    "ApiError.notFound(message) → 404",
+                    "ApiError.conflict(message) → 409",
+                    "ApiError.internal(message) → 500"
+                ]
+            }
+        },
+        "errorMiddleware": {
+            "path": "/middlewares/error.middleware.js",
+            "function": "errorHandler(err, req, res, next)",
+            "responsFormat": {
+                "statusCode": "number",
+                "message": "string",
+                "errors": "array",
+                "success": false
+            }
+        },
+        "commonErrors": [
+            {
+                "error": "No token provided",
+                "code": 401,
+                "cause": "Missing Authorization header"
+            },
+            {
+                "error": "Invalid token",
+                "code": 401,
+                "cause": "Expired or tampered JWT"
+            },
+            {
+                "error": "Session expired or revoked",
+                "code": 401,
+                "cause": "Session not found in database"
+            },
+            {
+                "error": "Insufficient stock for item",
+                "code": 400,
+                "cause": "Stock deduction on GST firm challan"
+            },
+            {
+                "error": "contact_id is required",
+                "code": 400,
+                "cause": "Missing required field"
+            },
+            {
+                "error": "Bank not found",
+                "code": 400,
+                "cause": "Invalid bank_id for payment"
+            },
+            {
+                "error": "Resource not found",
+                "code": 404,
+                "cause": "Document not found by ID"
+            }
+        ]
+    },
+    "databaseModels": {
+        "User": {
+            "type": "main|secondary",
+            "name": "string",
+            "email": "string",
+            "phone": "string",
+            "gst_firm": "firmSubSchema (username, password, address, GSTIN, etc)",
+            "nongst_firm": "firmSubSchema",
+            "admin": "adminSubSchema (username, password)",
+            "signature": "string (S3 URL)",
+            "is_active": "boolean",
+            "uniqueConstraints": [
+                "gst_firm.username unique",
+                "nongst_firm.username unique",
+                "admin.username unique (partial)"
+            ]
+        },
+        "Session": {
+            "user_id": "ObjectId ref User",
+            "role": "admin|firm",
+            "token": "JWT string",
+            "device_name": "string",
+            "device_type": "string",
+            "ip_address": "string",
+            "last_active": "Date",
+            "createdAt": "Date"
+        },
+        "Item": {
+            "item_name": "string (required)",
+            "barcode": "string (unique, sparse)",
+            "item_id": "string (unique, sparse)",
+            "alias": "string",
+            "sale_rate": "number",
+            "purchase_rate": "number",
+            "mrp_rate": "number",
+            "gst_percent": "number",
+            "stock": "number (GST physical stock)",
+            "physical_stock": "number (min 0, GST)",
+            "logical_stock": "number (non-GST, can go negative)",
+            "threshold": "number (low stock alert)",
+            "image": "string (S3 URL)",
+            "is_gst": "0|1",
+            "brand_id": "ObjectId ref Brand",
+            "dept_id": "ObjectId ref Department",
+            "hsn_id": "ObjectId ref Hsn"
+        },
+        "Contact": {
+            "name": "string (required)",
+            "alias": "string",
+            "type": "party|supplier|book",
+            "phone": "string",
+            "whatsapp_number": "string",
+            "email": "string",
+            "address": "string",
+            "gstin": "string",
+            "label_ids": "array ObjectId ref Label",
+            "bank_id": "ObjectId ref Bank",
+            "transport_charge": "number",
+            "agent_id": "ObjectId ref Agent",
+            "area_id": "ObjectId ref Area",
+            "balance": "number (auto-calculated)",
+            "is_gst": "0|1"
+        },
+        "Challan": {
+            "challan_no": "string (auto-generated, unique per user+is_gst)",
+            "challan_type": "sale|purchase (required)",
+            "date": "Date",
+            "contact_id": "ObjectId ref Contact (required)",
+            "label_id": "ObjectId ref Label (required for sale)",
+            "items": [
+                {
+                    "item_id": "ObjectId ref Item",
+                    "quantity": "number",
+                    "rate": "number",
+                    "discount": "number",
+                    "special_discount": "number",
+                    "gst_percent": "number",
+                    "gst_amount": "number",
+                    "taxable_amount": "number",
+                    "amount": "number",
+                    "is_gst": "0|1"
+                }
+            ],
+            "gross_total": "number",
+            "sub_total": "number",
+            "discount": "number",
+            "amount": "number (final)",
+            "converted_to_bill": "boolean (default false)",
+            "bill_id": "ObjectId ref Bill (when converted)",
+            "payment_status": "due|paid|overpaid",
+            "paid_amount": "number",
+            "is_gst": "0|1",
+            "user_id": "ObjectId ref User"
+        },
+        "Bill": {
+            "bill_no": "string (auto-generated, unique per user+is_gst)",
+            "date": "Date",
+            "contact_id": "ObjectId ref Contact (required)",
+            "transport_id": "ObjectId ref Transport",
+            "customer_name": "string",
+            "vehicle_number": "string",
+            "transport_charge": "number",
+            "amount": "number (total bill amount)",
+            "paid_amount": "number (accumulated payments)",
+            "return_amount": "number (returns deducted)",
+            "payment_status": "due|paid|overpaid",
+            "payment_entries": [
+                {
+                    "amount": "number",
+                    "payment_type": "bank_transaction_received_amount|cash_payment_received_amount|...",
+                    "bank_id": "ObjectId ref Bank",
+                    "reference_no": "string",
+                    "note": "string",
+                    "settled_to": "bill|unsettled_balance",
+                    "date": "Date"
+                }
+            ],
+            "challan_ids": "array ObjectId ref Challan",
+            "is_gst": "0|1",
+            "user_id": "ObjectId ref User",
+            "virtual balance": "amount - paid_amount"
+        },
+        "Transaction": {
+            "transaction_no": "string (auto-generated, unique per user+is_gst)",
+            "type": "bank_received|cash_received|bank_payment|cash_payment",
+            "date": "Date",
+            "contact_id": "ObjectId ref Contact (optional)",
+            "amount": "number (required, min 0)",
+            "bank_id": "ObjectId ref Bank (optional)",
+            "reference": "string (cheque no, etc)",
+            "remarks": "string",
+            "is_gst": "0|1",
+            "user_id": "ObjectId ref User"
+        },
+        "Return": {
+            "return_no": "string (auto-generated, unique per user+is_gst)",
+            "return_type": "sale_return|purchase_return",
+            "date": "Date",
+            "contact_id": "ObjectId ref Contact",
+            "bill_id": "ObjectId ref Bill (optional)",
+            "challan_id": "ObjectId ref Challan (optional)",
+            "items": [
+                {
+                    "item_id": "ObjectId ref Item",
+                    "quantity": "number",
+                    "rate": "number",
+                    "discount": "number",
+                    "gst_percent": "number",
+                    "gst_amount": "number",
+                    "taxable_amount": "number",
+                    "amount": "number",
+                    "is_damaged": "boolean",
+                    "is_gst": "0|1"
+                }
+            ],
+            "total_amount": "number",
+            "note": "string",
+            "is_gst": "0|1",
+            "user_id": "ObjectId ref User"
+        }
+    },
+    "requestResponseExamples": {
+        "exampleChallanCreation": {
+            "endpoint": "POST /api/v1/challans",
+            "headers": {
+                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIs...",
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "challan_type": "sale",
+                "date": "2026-03-24T10:30:00.000Z",
+                "contact_id": "507f1f77bcf86cd799439011",
+                "label_id": "507f1f77bcf86cd799439012",
+                "items": [
+                    {
+                        "item_id": "507f1f77bcf86cd799439013",
+                        "quantity": 5,
+                        "rate": 500,
+                        "discount": 10,
+                        "special_discount": 5,
+                        "is_gst": 1
+                    }
+                ],
+                "is_gst": 1
+            },
+            "responseBody": {
+                "success": true,
+                "statusCode": 201,
+                "message": "sale challan created successfully",
+                "data": {
+                    "challan": {
+                        "_id": "507f1f77bcf86cd799439020",
+                        "challan_no": "CH-001",
+                        "challan_type": "sale",
+                        "date": "2026-03-24T10:30:00.000Z",
+                        "contact_id": "507f1f77bcf86cd799439011",
+                        "label_id": "507f1f77bcf86cd799439012",
+                        "items": [
+                            {
+                                "item_id": "507f1f77bcf86cd799439013",
+                                "item_name": "Air Filter",
+                                "quantity": 5,
+                                "rate": 500,
+                                "discount": 10,
+                                "special_discount": 5,
+                                "gross_amount": 2500,
+                                "discount_amount": 250,
+                                "total_discount": 337.5,
+                                "taxable_amount": 2162.5,
+                                "gst_percent": 18,
+                                "gst_amount": 389.25,
+                                "amount": 2551.75,
+                                "is_gst": 1
+                            }
+                        ],
+                        "gross_total": 2500,
+                        "sub_total": 2162.5,
+                        "discount": 337.5,
+                        "amount": 2551.75,
+                        "converted_to_bill": false,
+                        "payment_status": "due",
+                        "paid_amount": 0,
+                        "is_gst": 1,
+                        "user_id": "507f1f77bcf86cd799439000",
+                        "createdAt": "2026-03-24T10:30:00.000Z",
+                        "updatedAt": "2026-03-24T10:30:00.000Z"
+                    }
+                }
+            }
+        },
+        "exampleBillFromChallan": {
+            "endpoint": "POST /api/v1/bills",
+            "requestBody": {
+                "challan_id": "507f1f77bcf86cd799439020",
+                "is_gst": 1
+            },
+            "responseBody": {
+                "success": true,
+                "statusCode": 201,
+                "message": "Bill created successfully",
+                "data": {
+                    "bill": {
+                        "_id": "507f1f77bcf86cd799439030",
+                        "bill_no": "BILL-001",
+                        "date": "2026-03-24T10:30:00.000Z",
+                        "contact_id": "507f1f77bcf86cd799439011",
+                        "amount": 2551.75,
+                        "paid_amount": 0,
+                        "payment_status": "due",
+                        "challan_ids": [
+                            "507f1f77bcf86cd799439020"
+                        ],
+                        "balance": 2551.75,
+                        "is_gst": 1,
+                        "user_id": "507f1f77bcf86cd799439000",
+                        "createdAt": "2026-03-24T10:30:00.000Z"
+                    }
+                }
+            }
+        },
+        "examplePaymentRecording": {
+            "endpoint": "POST /api/v1/bills/507f1f77bcf86cd799439030/payment",
+            "requestBody": {
+                "amount": 1000,
+                "payment_type": "bank_transaction_received_amount",
+                "bank_id": "507f1f77bcf86cd799439040",
+                "reference_no": "CHQ-2026-001",
+                "note": "Cheque received",
+                "date": "2026-03-24T11:00:00.000Z"
+            },
+            "responseBody": {
+                "success": true,
+                "statusCode": 200,
+                "message": "Payment recorded successfully",
+                "data": {
+                    "bill": {
+                        "_id": "507f1f77bcf86cd799439030",
+                        "bill_no": "BILL-001",
+                        "amount": 2551.75,
+                        "paid_amount": 1000,
+                        "payment_status": "due",
+                        "balance": 1551.75,
+                        "payment_entries": [
+                            {
+                                "amount": 1000,
+                                "payment_type": "bank_transaction_received_amount",
+                                "bank_id": "507f1f77bcf86cd799439040",
+                                "reference_no": "CHQ-2026-001",
+                                "note": "Cheque received",
+                                "settled_to": "bill",
+                                "date": "2026-03-24T11:00:00.000Z"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "exampleReturnCreation": {
+            "endpoint": "POST /api/v1/returns/sale",
+            "requestBody": {
+                "date": "2026-03-24T12:00:00.000Z",
+                "contact_id": "507f1f77bcf86cd799439011",
+                "bill_id": "507f1f77bcf86cd799439030",
+                "items": [
+                    {
+                        "item_id": "507f1f77bcf86cd799439013",
+                        "quantity": 2,
+                        "rate": 500,
+                        "discount": 10,
+                        "gst_percent": 18,
+                        "is_damaged": false
+                    }
+                ],
+                "note": "Customer return - defective units"
+            },
+            "responseBody": {
+                "success": true,
+                "statusCode": 201,
+                "message": "Sale return created successfully",
+                "data": {
+                    "return": {
+                        "_id": "507f1f77bcf86cd799439050",
+                        "return_no": "RET-001",
+                        "return_type": "sale_return",
+                        "date": "2026-03-24T12:00:00.000Z",
+                        "contact_id": "507f1f77bcf86cd799439011",
+                        "bill_id": "507f1f77bcf86cd799439030",
+                        "items": [
+                            {
+                                "item_id": "507f1f77bcf86cd799439013",
+                                "quantity": 2,
+                                "rate": 500,
+                                "discount": 10,
+                                "gst_percent": 18,
+                                "gst_amount": 156.08,
+                                "taxable_amount": 990,
+                                "amount": 1146.08
+                            }
+                        ],
+                        "total_amount": 1146.08,
+                        "note": "Customer return - defective units",
+                        "is_gst": 1,
+                        "createdAt": "2026-03-24T12:00:00.000Z"
+                    }
+                }
+            }
+        }
+    },
+    "keyBusinessRules": {
+        "rule1": "Each user can have GST and Non-GST firm variants, accessed by separate tokens",
+        "rule2": "Stock management differs: GST uses physical_stock (enforced), Non-GST uses logical_stock (soft)",
+        "rule3": "Sale challans must have label_id for discount matrix application",
+        "rule4": "Purchase challans dont need label and don't automatically convert to bills",
+        "rule5": "Bills can only be created from sale challans or as standalone documents",
+        "rule6": "Bill amount = challan amount + transport_charge - return_amount",
+        "rule7": "Payment status calculated: due (balance > 0), paid (balance = 0), overpaid (balance < 0)",
+        "rule8": "Multiple payments can be recorded against one bill until balance reaches 0",
+        "rule9": "Returns restore stock (GST) and reduce bill/challan amount",
+        "rule10": "GST calculation: (Rate - discount - special_discount) * gst_percent / 100",
+        "rule11": "All monetary amounts rounded to 2 decimals with proper rounding",
+        "rule12": "Bill/Challan numbers auto-generated per user+is_gst combination",
+        "rule13": "Contact balance auto-updated from bill/return operations",
+        "rule14": "Bank-type payments require valid bank_id in user's bank list",
+        "rule15": "Sessions track device info and last_active timestamp for security",
+        "rule16": "Subscription expiry checked via cron job; inactive users auto-deactivated",
+        "rule17": "CASHBOOK and BANKBOOK are auto-created book contacts on user registration",
+        "rule18": "Automation rules trigger challan-to-bill conversion based on conditions"
+    },
+    "apiEndpointSummary": {
+        "totalEndpoints": 80,
+        "authentication": 8,
+        "masterData": 42,
+        "transactions": 28,
+        "reporting": 10,
+        "dashboard": 2,
+        "protectionLevel": "All endpoints (except registration/login) require JWT token + role validation"
+    }
+}
