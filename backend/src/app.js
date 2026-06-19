@@ -14,28 +14,7 @@ const health = (res) => {
     status: "ok",
     message: "Service is active! 🚀",
     timestamp: new Date().toISOString(),
-    "Development Team": {
-      "Lead Engineer": {
-        name: "Tushar Gour",
-        linkedin: "https://www.linkedin.com/in/tushar-gour/",
-      },
-      "Frontend Engineer": [
-        {
-          name: "Shrivanshu Dubey",
-          linkedin: "https://www.linkedin.com",
-        },
-        {
-          name: "Roshani Sahu",
-          linkedin: "https://www.linkedin.com/in/roshani-sahu-1606b5228/",
-        },
-      ],
-      "DevOps Engineer": {
-        name: "Avi Tamrakar",
-        linkedin: "https://www.linkedin.com/in/avi-tamrakar-02b885243/",
-      },
-    },
     uptime: process.uptime(),
-    updated: "8 April, 2026 | 02:42 PM",
   });
 };
 
