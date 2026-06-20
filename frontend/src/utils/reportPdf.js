@@ -225,6 +225,36 @@ export const addBrandedReportFooters = (doc, options = {}) => {
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - marginRight, pageHeight - 7, {
       align: "right",
     });
+
+    // Draw centered branding links
+    const link1 = "thekbclick.com";
+    const sep = " / ";
+    const link2 = "thekbcart.com";
+    
+    const w1 = doc.getTextWidth(link1);
+    const wSep = doc.getTextWidth(sep);
+    const w2 = doc.getTextWidth(link2);
+    const totalW = w1 + wSep + w2;
+    const xOffset = (pageWidth - totalW) / 2;
+    const yPos = pageHeight - 7;
+    
+    // Draw first link
+    doc.setTextColor(0, 102, 204);
+    doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
+
+    // Draw separator
+    doc.setTextColor(80, 80, 80);
+    doc.text(sep, xOffset + w1, yPos);
+
+    // Draw second link
+    doc.setTextColor(0, 102, 204);
+    doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+
+    // Add underlines for links
+    doc.setDrawColor(0, 102, 204);
+    doc.setLineWidth(0.1);
+    doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+    doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
   }
 };
 

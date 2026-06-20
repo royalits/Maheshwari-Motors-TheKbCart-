@@ -54,6 +54,8 @@ const contactSchema = new mongoose.Schema(
       default: null,
     },
     balance: { type: Number, default: 0 },
+    gst_balance: { type: Number, default: 0 },
+    nongst_balance: { type: Number, default: 0 },
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

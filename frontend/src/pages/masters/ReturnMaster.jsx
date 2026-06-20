@@ -701,23 +701,39 @@ const ReturnMaster = () => {
         doc.text(`Note: ${data.note}`, 20, finalY + 8);
       }
 
-      // Add footer branding as a clickable link
-      const brandingText = "thekbclick.com / ThekbCart";
+      // Add footer branding as clickable links
+      const link1 = "thekbclick.com";
+      const sep = " / ";
+      const link2 = "thekbcart.com";
       const brandingFontSize = 7;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(brandingFontSize);
-      doc.setTextColor(0, 102, 204);
-      
-      const brandingWidth = (doc.getStringUnitWidth(brandingText) * brandingFontSize) / doc.internal.scaleFactor;
-      const xOffset = 105 - brandingWidth / 2;
+
+      const w1 = doc.getTextWidth(link1);
+      const wSep = doc.getTextWidth(sep);
+      const w2 = doc.getTextWidth(link2);
+      const totalW = w1 + wSep + w2;
+
+      const xOffset = 105 - totalW / 2;
       const yPos = 285;
-      
-      doc.textWithLink(brandingText, xOffset, yPos, { url: "https://thekbclick.com" });
-      
-      // Add underline
+
+      // Draw first link
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
+
+      // Draw separator
+      doc.setTextColor(0, 0, 0);
+      doc.text(sep, xOffset + w1, yPos);
+
+      // Draw second link
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+
+      // Add underlines for links
       doc.setDrawColor(0, 102, 204);
       doc.setLineWidth(0.1);
-      doc.line(xOffset, yPos + 0.5, xOffset + brandingWidth, yPos + 0.5);
+      doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+      doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
 
       doc.save(
         `${returnType.replace(" ", "_")}_${data?.return_no || "Return"}.pdf`,

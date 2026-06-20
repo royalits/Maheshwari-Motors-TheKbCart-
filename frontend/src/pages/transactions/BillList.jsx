@@ -9,6 +9,7 @@ import {
   FaEdit,
   FaTrash,
   FaDownload,
+  FaPrint,
   FaPlus,
   FaCamera,
   FaShoppingCart,
@@ -943,7 +944,7 @@ const BillList = () => {
     }
   };
 
-  const generateBillPDF = async (bill) => {
+  const generateBillPDF = async (bill, action = "download") => {
     if (!bill?.id) {
       showToast("Invalid bill selected", "error");
       return;
@@ -1292,7 +1293,7 @@ const BillList = () => {
     );
 
     const hideDiscountColumns =
-      localStorage.getItem("hide_discount_columns") === "true";
+      localStorage.getItem("hide_discount_columns") !== "false";
 
     const itemRows = parsedItems.map((item, index) => {
       const totalDiscount = toNumberValue(
@@ -1423,7 +1424,7 @@ const BillList = () => {
       }
       return `${rupeesText} ONLY`;
     })();
-    const ledgerBalance = Math.round(
+    const rawLedgerBalance = Math.round(
       toNumberValue(
         contact?.balance ??
           contact?.ledger_balance ??
@@ -1435,6 +1436,7 @@ const BillList = () => {
         0,
       ),
     );
+    const ledgerBalance = rawLedgerBalance < 0 ? Math.abs(rawLedgerBalance) : 0;
 
     const safeBillNo = String(billNo || bill?.billNo || bill?.id).replace(
       /[^\w-]+/g,
@@ -1873,29 +1875,53 @@ const BillList = () => {
         },
       );
 
-      // Add footer branding as a clickable link
-      const text = "thekbclick.com / ThekbCart";
+      // Add footer branding as clickable links
+      const link1 = "thekbclick.com";
+      const sep = " / ";
+      const link2 = "thekbcart.com";
       const fontSize = 6.5;
       compactDoc.setFont("helvetica", "normal");
       compactDoc.setFontSize(fontSize);
-      compactDoc.setTextColor(0, 102, 204);
 
-      const textWidth =
-        (compactDoc.getStringUnitWidth(text) * fontSize) /
-        compactDoc.internal.scaleFactor;
-      const xOffset = compactX + (compactContentWidth - textWidth) / 2;
+      const w1 = compactDoc.getTextWidth(link1);
+      const wSep = compactDoc.getTextWidth(sep);
+      const w2 = compactDoc.getTextWidth(link2);
+      const totalW = w1 + wSep + w2;
+
+      const xOffset = compactX + (compactContentWidth - totalW) / 2;
       const yPos = compactPageHeight - compactMargin + 3.5;
 
-      compactDoc.textWithLink(text, xOffset, yPos, {
-        url: "https://thekbclick.com",
-      });
+      // Draw first link
+      compactDoc.setTextColor(0, 102, 204);
+      compactDoc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
 
-      // Add underline
+      // Draw separator
+      compactDoc.setTextColor(0, 0, 0);
+      compactDoc.text(sep, xOffset + w1, yPos);
+
+      // Draw second link
+      compactDoc.setTextColor(0, 102, 204);
+      compactDoc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+
+      // Add underlines for links
       compactDoc.setDrawColor(0, 102, 204);
       compactDoc.setLineWidth(0.1);
-      compactDoc.line(xOffset, yPos + 0.5, xOffset + textWidth, yPos + 0.5);
+      compactDoc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+      compactDoc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
 
-      compactDoc.save(outputFileName);
+      if (action === "download") {
+        compactDoc.save(outputFileName);
+      } else {
+        compactDoc.autoPrint();
+        const previewUrl = compactDoc.output("bloburl");
+        const previewWindow = window.open(previewUrl, "_blank");
+        if (!previewWindow) {
+          showToast(
+            "Popup blocked. Please allow popups for print preview.",
+            "error",
+          );
+        }
+      }
       return;
     }
 
@@ -1934,24 +1960,39 @@ const BillList = () => {
       doc.setLineWidth(0.25);
       doc.rect(margin, margin, contentWidth, pageHeight - margin * 2);
 
-      // Add footer branding as a clickable link
-      const text = "thekbclick.com / ThekbCart";
+      // Add footer branding as clickable links
+      const link1 = "thekbclick.com";
+      const sep = " / ";
+      const link2 = "thekbcart.com";
       const fontSize = 7;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(fontSize);
-      doc.setTextColor(0, 102, 204);
 
-      const textWidth =
-        (doc.getStringUnitWidth(text) * fontSize) / doc.internal.scaleFactor;
-      const xOffset = margin + (contentWidth - textWidth) / 2;
+      const w1 = doc.getTextWidth(link1);
+      const wSep = doc.getTextWidth(sep);
+      const w2 = doc.getTextWidth(link2);
+      const totalW = w1 + wSep + w2;
+
+      const xOffset = margin + (contentWidth - totalW) / 2;
       const yPos = pageHeight - margin + 3.5;
 
-      doc.textWithLink(text, xOffset, yPos, { url: "https://thekbclick.com" });
+      // Draw first link
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
 
-      // Add underline
+      // Draw separator
+      doc.setTextColor(0, 0, 0);
+      doc.text(sep, xOffset + w1, yPos);
+
+      // Draw second link
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+
+      // Add underlines for links
       doc.setDrawColor(0, 102, 204);
       doc.setLineWidth(0.1);
-      doc.line(xOffset, yPos + 0.5, xOffset + textWidth, yPos + 0.5);
+      doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+      doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
     };
 
     drawPageBorder();
@@ -2110,17 +2151,21 @@ const BillList = () => {
       cursorY + 12.5,
     );
     doc.text(`City : ${receiverCity}`, leftPartyX, cursorY + 24.5);
-    doc.text(`Pin : ${receiverPin}`, leftPartyX + 32, cursorY + 24.5);
-    doc.text(`Phone : ${receiverPhone}`, leftPartyX, cursorY + 29.2);
-    doc.text(`GSTIN : ${receiverGstin}`, leftPartyX, cursorY + 34);
-    doc.text(`PAN No. : ${receiverPan}`, leftPartyX + 62, cursorY + 34);
-    doc.setFont("times", "bold");
-    doc.text(`State : ${receiverState}`, leftPartyX, cursorY + 41);
-    doc.text(
-      `State Code : ${receiverStateCode}`,
-      leftPartyX + 62,
-      cursorY + 41,
-    );
+    if (isGstBill) {
+      doc.text(`Pin : ${receiverPin}`, leftPartyX + 32, cursorY + 24.5);
+      doc.text(`Phone : ${receiverPhone}`, leftPartyX, cursorY + 29.2);
+      doc.text(`GSTIN : ${receiverGstin}`, leftPartyX, cursorY + 34);
+      doc.text(`PAN No. : ${receiverPan}`, leftPartyX + 62, cursorY + 34);
+      doc.setFont("times", "bold");
+      doc.text(`State : ${receiverState}`, leftPartyX, cursorY + 41);
+      doc.text(
+        `State Code : ${receiverStateCode}`,
+        leftPartyX + 62,
+        cursorY + 41,
+      );
+    } else {
+      doc.text(`Phone : ${receiverPhone}`, leftPartyX, cursorY + 29.2);
+    }
 
     doc.setFont("times", "bold");
     doc.text(`Name : ${consigneeName}`, rightPartyX, cursorY + 6.5);
@@ -2131,16 +2176,18 @@ const BillList = () => {
       cursorY + 12.5,
     );
     doc.text(`City : ${consigneeCity}`, rightPartyX, cursorY + 24.5);
-    doc.text(`Pin : ${consigneePin}`, rightPartyX + 32, cursorY + 24.5);
-    doc.text(`GSTIN : ${consigneeGstin}`, rightPartyX, cursorY + 34);
-    doc.text(`PAN No. : ${consigneePan}`, rightPartyX + 56, cursorY + 34);
-    doc.setFont("times", "bold");
-    doc.text(`State : ${consigneeState}`, rightPartyX, cursorY + 41);
-    doc.text(
-      `State Code : ${consigneeStateCode}`,
-      rightPartyX + 56,
-      cursorY + 41,
-    );
+    if (isGstBill) {
+      doc.text(`Pin : ${consigneePin}`, rightPartyX + 32, cursorY + 24.5);
+      doc.text(`GSTIN : ${consigneeGstin}`, rightPartyX, cursorY + 34);
+      doc.text(`PAN No. : ${consigneePan}`, rightPartyX + 56, cursorY + 34);
+      doc.setFont("times", "bold");
+      doc.text(`State : ${consigneeState}`, rightPartyX, cursorY + 41);
+      doc.text(
+        `State Code : ${consigneeStateCode}`,
+        rightPartyX + 56,
+        cursorY + 41,
+      );
+    }
 
     cursorY += partyBoxHeight;
 
@@ -2283,7 +2330,7 @@ const BillList = () => {
     const totalRowHeight = 13;
     const midBlockHeight = 32;
     const wordsRowHeight = 8;
-    const termsBlockHeight = 28;
+    const termsBlockHeight = 33;
     const summaryHeight =
       totalRowHeight + midBlockHeight + wordsRowHeight + termsBlockHeight;
 
@@ -2529,19 +2576,70 @@ const BillList = () => {
       margin + 1.8,
       termsY + 14.7,
     );
-    doc.text("GST Rule Follow.", margin + 1.8, termsY + 19.2);
+    const partyBalance = Number(
+      contact?.balance ??
+        contact?.ledger_balance ??
+        contact?.closing_balance ??
+        contact?.outstanding_balance ??
+        contact?.due_amount ??
+        0,
+    ) || 0;
+    const ldBalance = partyBalance < 0 ? Math.abs(partyBalance) : 0;
+
+    const drawRupee = (pdfDoc, x, y, size = 8.5) => {
+      const scale = size / 8.5;
+      const topY = y - 1.8 * scale;
+      pdfDoc.setLineWidth(0.18 * scale);
+      pdfDoc.setDrawColor(0, 0, 0);
+      
+      // Top bar
+      pdfDoc.line(x, topY, x + 1.3 * scale, topY);
+      // Mid bar
+      pdfDoc.line(x + 0.1 * scale, topY + 0.5 * scale, x + 1.1 * scale, topY + 0.5 * scale);
+      // Loop
+      pdfDoc.line(x + 0.2 * scale, topY, x + 0.2 * scale, topY + 1.0 * scale);
+      pdfDoc.line(x + 0.2 * scale, topY + 1.0 * scale, x + 0.9 * scale, topY + 1.0 * scale);
+      pdfDoc.line(x + 0.9 * scale, topY, x + 0.9 * scale, topY + 1.0 * scale);
+      // Diagonal leg
+      pdfDoc.line(x + 0.4 * scale, topY + 1.0 * scale, x + 1.1 * scale, y);
+    };
+
+    const labelX = margin + 1.8;
+    const valueX = margin + 34;
+
+    doc.text("GST Rule Follow.", margin + 1.8, termsY + 17.5);
     doc.setFont("times", "bold");
     doc.setFontSize(8.5);
-    doc.text(
-      `Last Payment Date: ${lastPaymentDate === "--" ? "N/A" : lastPaymentDate}`,
-      margin + 1.8,
-      termsY + 23.7,
+
+    const isBook = contact && (
+      String(contact.type || "").toLowerCase() === "book" ||
+      ["CASHBOOK", "BANKBOOK"].includes(String(contact.name || "").trim().toUpperCase())
     );
-    doc.text(
-      `Last Payment Amount: ${lastPaymentDate === "N/A" || lastPaymentDate === "--" ? "N/A" : formatAmount(lastPaymentAmount)}`,
-      margin + 1.8,
-      termsY + 28.2,
-    );
+
+    let currentY = termsY + 21.7;
+    if (!isBook) {
+      // LD Balance
+      doc.text("LD Balance", labelX, currentY);
+      doc.text(":", valueX, currentY);
+      drawRupee(doc, valueX + 1.8, currentY);
+      doc.text(String(formatAmount(ldBalance)), valueX + 3.5, currentY);
+      currentY += 4.0;
+    }
+
+    // Last Payment Date
+    doc.text("Last Payment Date", labelX, currentY);
+    doc.text(`: ${lastPaymentDate === "--" ? "N/A" : lastPaymentDate}`, valueX, currentY);
+    currentY += 4.0;
+
+    // Last Payment Amount
+    doc.text("Last Payment Amount", labelX, currentY);
+    doc.text(":", valueX, currentY);
+    if (lastPaymentDate === "N/A" || lastPaymentDate === "--") {
+      doc.text("N/A", valueX + 1.8, currentY);
+    } else {
+      drawRupee(doc, valueX + 1.8, currentY);
+      doc.text(String(formatAmount(lastPaymentAmount)), valueX + 3.5, currentY);
+    }
 
     doc.setFont("times", "bold");
     doc.setFontSize(8.8);
@@ -2670,7 +2768,19 @@ const BillList = () => {
       align: "center",
     });
 
-    doc.save(outputFileName);
+    if (action === "download") {
+      doc.save(outputFileName);
+    } else {
+      doc.autoPrint();
+      const previewUrl = doc.output("bloburl");
+      const previewWindow = window.open(previewUrl, "_blank");
+      if (!previewWindow) {
+        showToast(
+          "Popup blocked. Please allow popups for print preview.",
+          "error",
+        );
+      }
+    }
   };
 
   const columns = [
@@ -2758,49 +2868,15 @@ const BillList = () => {
     },
     {
       label: <FaDownload size={10} className="sm:size-3 md:size-4" />,
-      onClick: (bill) => {
-        generateBillPDF(bill);
-        /* Legacy print preview
-        // Generate PDF
-        const printWindow = window.open("", "", "width=800,height=600");
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Bill ${bill.billNo}</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 40px; }
-                h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
-                .info { margin: 20px 0; }
-                .label { font-weight: bold; display: inline-block; width: 150px; }
-                .challans { margin-top: 20px; }
-                .challans ul { list-style: none; padding: 0; }
-                .challans li { padding: 5px 0; border-bottom: 1px solid #eee; }
-              </style>
-            </head>
-            <body>
-              <h1>Bill Details</h1>
-              <div class="info">
-                <p><span class="label">Bill No:</span> ${bill.billNo}</p>
-                <p><span class="label">Date:</span> ${new Date(bill.date).toLocaleDateString()}</p>
-                <p><span class="label">Party:</span> ${bill.party}</p>
-                <p><span class="label">Amount:</span> ₹${Math.round(Number(bill.amount)||0).toLocaleString()}</p>
-                <p><span class="label">Type:</span> ${bill.gstType}</p>
-              </div>
-              <div class="challans">
-                <h3>Linked Challans:</h3>
-                <ul>
-                  ${bill.linkedChallans.map((challan) => `<li>${challan}</li>`).join("")}
-                </ul>
-              </div>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-        */
-      },
+      onClick: (bill) => generateBillPDF(bill, "download"),
       className:
         "bg-green-600 text-white hover:bg-green-700 p-1 sm:p-1.5 md:p-2 text-xs",
+    },
+    {
+      label: <FaPrint size={10} className="sm:size-3 md:size-4" />,
+      onClick: (bill) => generateBillPDF(bill, "print"),
+      className:
+        "bg-cyan-600 text-white hover:bg-cyan-700 p-1 sm:p-1.5 md:p-2 text-xs",
     },
   ];
 

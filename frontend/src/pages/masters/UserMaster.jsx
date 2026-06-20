@@ -662,6 +662,10 @@ const UserMaster = () => {
           ...base,
           id: user.id,
           role_users: mapRoleUsersFromUser(base),
+          subscription_amount: base.subscription?.amount || 0,
+          subscription_years: base.subscription?.timeline?.years || 0,
+          subscription_months: base.subscription?.timeline?.months || 0,
+          subscription_days: base.subscription?.timeline?.days || 0,
           gst_firm: {
             ...(base.gst_firm || {}),
             password: '',
@@ -866,6 +870,10 @@ const UserMaster = () => {
         role_users: buildRoleUsersPayload(currentForm?.role_users),
         gst_firm: buildFirmUpdatePayload(currentForm?.gst_firm),
         nongst_firm: buildFirmUpdatePayload(currentForm?.nongst_firm),
+        subscription_amount: currentForm?.subscription_amount !== undefined ? Number(currentForm.subscription_amount) : undefined,
+        subscription_years: currentForm?.subscription_years !== undefined ? Number(currentForm.subscription_years) : undefined,
+        subscription_months: currentForm?.subscription_months !== undefined ? Number(currentForm.subscription_months) : undefined,
+        subscription_days: currentForm?.subscription_days !== undefined ? Number(currentForm.subscription_days) : undefined,
       };
       console.log('Updating user with data:', JSON.stringify(updatedUser, null, 2));
       console.log('gst_firm.address:', currentForm?.gst_firm?.address);
@@ -2096,6 +2104,18 @@ const UserMaster = () => {
                 <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-gray-700">Email</label>
                   <Input type="email" value={editingForm.email || ''} onChange={(v) => setEditingForm(prev => ({ ...prev, email: v }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Subscription Amount</label>
+                  <Input type="number" min="0" value={editingForm.subscription_amount !== undefined ? editingForm.subscription_amount : ''} onChange={(v) => setEditingForm(prev => ({ ...prev, subscription_amount: v }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Subscription Duration (Y / M / D)</label>
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                    <Input type="number" min="0" placeholder="Years" value={editingForm.subscription_years !== undefined ? editingForm.subscription_years : ''} onChange={(v) => setEditingForm(prev => ({ ...prev, subscription_years: v }))} />
+                    <Input type="number" min="0" placeholder="Months" value={editingForm.subscription_months !== undefined ? editingForm.subscription_months : ''} onChange={(v) => setEditingForm(prev => ({ ...prev, subscription_months: v }))} />
+                    <Input type="number" min="0" placeholder="Days" value={editingForm.subscription_days !== undefined ? editingForm.subscription_days : ''} onChange={(v) => setEditingForm(prev => ({ ...prev, subscription_days: v }))} />
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-gray-700">Signature</label>

@@ -879,7 +879,6 @@ const TransactionMaster = () => {
   };
 
   const handleSettleTransaction = async () => {
-    if (isEditModalOpen) return;
     await submitTransaction({
       contactType: formData.contact_type,
       settleAfterCreate: true,
@@ -1389,15 +1388,13 @@ const TransactionMaster = () => {
             >
               Cancel
             </Button>
-            {!isEditModalOpen && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSettleTransaction}
-              >
-                Settle Transaction
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSettleTransaction}
+            >
+              Settle Transaction
+            </Button>
             <Button type="submit">
               {isEditModalOpen ? "Update" : "Add"} Transaction
             </Button>

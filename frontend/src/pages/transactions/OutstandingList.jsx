@@ -924,7 +924,7 @@ const OutstandingList = () => {
     }
   };
 
-  const generateOutstandingPDF = (data, fileNamePrefix = "Outstanding") => {
+  const generateOutstandingPDF = (data, fileNamePrefix = "Outstanding", action = "download") => {
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
@@ -1113,19 +1113,31 @@ const OutstandingList = () => {
     });
 
     addBrandedReportFooters(doc, { marginLeft: marginX, marginRight: marginX });
-    doc.save(`${fileNamePrefix}_${new Date().toISOString().slice(0, 10)}.pdf`);
-    showToast("PDF downloaded", "success");
+    if (action === "print") {
+      doc.autoPrint();
+      const previewUrl = doc.output("bloburl");
+      const previewWindow = window.open(previewUrl, "_blank");
+      if (!previewWindow) {
+        showToast(
+          "Popup blocked. Please allow popups for print preview.",
+          "error",
+        );
+      }
+    } else {
+      doc.save(`${fileNamePrefix}_${new Date().toISOString().slice(0, 10)}.pdf`);
+      showToast("PDF downloaded", "success");
+    }
   };
 
-  const downloadMultiPartyPDF = () => {
+  const downloadMultiPartyPDF = (action = "download") => {
     if (multiPartyData.length === 0) {
       showToast(
-        "No data available to download. Please select contacts with outstanding balance.",
+        `No data available to ${action === "print" ? "print" : "download"}. Please select contacts with outstanding balance.`,
         "warning",
       );
       return;
     }
-    generateOutstandingPDF(multiPartyData, "Outstanding_Multiple");
+    generateOutstandingPDF(multiPartyData, "Outstanding_Multiple", action);
   };
 
   const toggleContactSelection = (id) => {
@@ -1137,7 +1149,7 @@ const OutstandingList = () => {
     });
   };
 
-  const downloadHistoryPDF = () => {
+  const downloadHistoryPDF = (action = "download") => {
     if (!selectedContactDetails) {
       showToast("Select a party/supplier first", "warning");
       return;
@@ -1209,11 +1221,23 @@ const OutstandingList = () => {
         marginLeft: marginX,
         marginRight: marginX,
       });
-      const safeName = selectedContactDetails.name
-        .replace(/[^\w-]+/g, "_")
-        .slice(0, 40);
-      doc.save(`Payment_History_${safeName}.pdf`);
-      showToast("Payment History PDF downloaded successfully", "success");
+      if (action === "print") {
+        doc.autoPrint();
+        const previewUrl = doc.output("bloburl");
+        const previewWindow = window.open(previewUrl, "_blank");
+        if (!previewWindow) {
+          showToast(
+            "Popup blocked. Please allow popups for print preview.",
+            "error",
+          );
+        }
+      } else {
+        const safeName = selectedContactDetails.name
+          .replace(/[^\w-]+/g, "_")
+          .slice(0, 40);
+        doc.save(`Payment_History_${safeName}.pdf`);
+        showToast("Payment History PDF downloaded successfully", "success");
+      }
     } else {
       const singleContactData = [
         {
@@ -1227,6 +1251,7 @@ const OutstandingList = () => {
       generateOutstandingPDF(
         singleContactData,
         `Outstanding_Report_${safeName}`,
+        action,
       );
     }
   };
@@ -1243,11 +1268,27 @@ const OutstandingList = () => {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={
-              selectedContacts.size > 0 ?
-                downloadMultiPartyPDF
-              : downloadHistoryPDF
-            }
+            onClick={() => {
+              if (selectedContacts.size > 0) {
+                downloadMultiPartyPDF("print");
+              } else {
+                downloadHistoryPDF("print");
+              }
+            }}
+            className="flex items-center gap-1.5"
+          >
+            <FaPrint className="w-3.5 h-3.5" />
+            Print PDF
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (selectedContacts.size > 0) {
+                downloadMultiPartyPDF("download");
+              } else {
+                downloadHistoryPDF("download");
+              }
+            }}
           >
             Download PDF
           </Button>

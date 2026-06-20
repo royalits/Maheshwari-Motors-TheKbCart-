@@ -28,14 +28,33 @@ class OutstandingService {
       ];
     }
 
-    return Pagination.paginate(Contact, filter, {
+    const balanceField = isGst === 1 || isGst === true ? "gst_balance" : "nongst_balance";
+
+    // Handle sorting based on active balance field
+    const resolvedSort = query.sort ? { ...query.sort } : { [balanceField]: 1, name: 1 };
+    if (resolvedSort.balance) {
+      resolvedSort[balanceField] = resolvedSort.balance;
+      delete resolvedSort.balance;
+    }
+
+    const contacts = await Pagination.paginate(Contact, filter, {
       ...query,
-      select: "id name city balance type address state agent_id area_id",
+      select: "id name city balance gst_balance nongst_balance type address state agent_id area_id",
       populate: [
         { path: "agent_id", select: "name" },
       ],
-      sort: { balance: 1, name: 1 },
+      sort: resolvedSort,
     });
+
+    if (contacts && Array.isArray(contacts.data)) {
+      contacts.data = contacts.data.map(c => {
+        const cObj = typeof c.toObject === 'function' ? c.toObject() : c;
+        cObj.balance = isGst === 1 || isGst === true ? (cObj.gst_balance || 0) : (cObj.nongst_balance || 0);
+        return cObj;
+      });
+    }
+
+    return contacts;
   }
 
   async getContactSummary(contactId, userId, isGst, financialYearId = null) {
@@ -48,13 +67,15 @@ class OutstandingService {
       user_id: userId,
       type: { $in: ["party", "supplier"] },
     })
-      .select("id name city balance type address state agent_id area_id")
+      .select("id name city balance gst_balance nongst_balance type address state agent_id area_id")
       .populate([
         { path: "agent_id", select: "name" },
       ])
       .lean();
 
     if (!contact) throw ApiError.notFound("Contact not found");
+
+    contact.balance = isGst === 1 || isGst === true ? (contact.gst_balance || 0) : (contact.nongst_balance || 0);
 
     const [summary] = await Bill.aggregate([
       {

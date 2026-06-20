@@ -488,7 +488,7 @@ const BillForm = () => {
   const [showAllCombinedStock, setShowAllCombinedStock] = useState(false);
   const [showAllFields, setShowAllFields] = useState(false);
   const [hideDiscountColumnsState, setHideDiscountColumnsState] = useState(
-    localStorage.getItem("hide_discount_columns") === "true",
+    localStorage.getItem("hide_discount_columns") !== "false",
   );
   const [suggestedBillNumber, setSuggestedBillNumber] = useState("");
   const itemDropdownRef = useRef(null);
@@ -528,7 +528,7 @@ const BillForm = () => {
     agent: "",
     customerName: "",
     vehicleNo: "",
-    printOption: 1,
+    printOption: 2,
     from_bank: "",
     to_bank: "",
     labelId: "",
@@ -1191,6 +1191,11 @@ const BillForm = () => {
                 itemRef?.barcode_no ||
                 itemRef?.part_no ||
                 "",
+              _manualDiscountFields: {
+                disPercent: true,
+                spDis: true,
+                dis3: true,
+              },
               ...stockData,
             };
           });
@@ -1215,7 +1220,7 @@ const BillForm = () => {
             customerName: billData?.customer_name || "",
             vehicleNo: billData?.vehicle_no || billData?.vehicle_number || "",
             printOption:
-              firstChallan?.print_option || billData?.print_option || 1,
+              firstChallan?.print_option || billData?.print_option || 2,
             from_bank: getEntityId(billData?.from_bank) || "",
             to_bank: getEntityId(billData?.to_bank) || "",
             labelId: getEntityId(firstChallan?.label_id) || "",
@@ -1856,14 +1861,14 @@ const BillForm = () => {
     const afterItemDiscount =
       afterFlatDiscount - (afterFlatDiscount * itemDiscount) / 100;
     const taxableRaw = afterItemDiscount - (afterItemDiscount * itemDis2) / 100;
-    const grossAmount = round2(grossRaw);
-    const discountAmount = round2(grossRaw - afterDiscount);
-    const totalDiscount = round2(grossRaw - taxableRaw);
-    const taxableAmount = round2(taxableRaw);
-    const gstAmount = round2(
+    const grossAmount = Math.round(grossRaw);
+    const discountAmount = Math.round(grossRaw - afterDiscount);
+    const totalDiscount = Math.round(grossRaw - taxableRaw);
+    const taxableAmount = Math.round(taxableRaw);
+    const gstAmount = Math.round(
       itemType === 1 ? (taxableAmount * gstPercent) / 100 : 0,
     );
-    const amount = round2(taxableAmount + gstAmount);
+    const amount = Math.round(taxableAmount + gstAmount);
 
     return {
       grossAmount,
@@ -2410,7 +2415,7 @@ const BillForm = () => {
           sourceBill?.vehicleNo ||
           "",
         printOption:
-          firstChallan?.print_option || sourceBill?.print_option || 1,
+          firstChallan?.print_option || sourceBill?.print_option || 2,
         from_bank:
           getBankSelectionId(sourceBill?.from_bank) ||
           getBankSelectionId(firstChallan?.from_bank) ||
@@ -3073,7 +3078,7 @@ const BillForm = () => {
       "";
 
     const hideDiscountColumns =
-      localStorage.getItem("hide_discount_columns") === "true";
+      localStorage.getItem("hide_discount_columns") !== "false";
 
     const itemRows = bill.items.map((itemId, index) => {
       const item = getLoadedItemByRowId(itemId) || {};
@@ -3168,24 +3173,39 @@ const BillForm = () => {
       doc.setLineWidth(0.25);
       doc.rect(margin, margin, contentWidth, pageHeight - margin * 2);
 
-      // Add footer branding as a clickable link
-      const text = "thekbclick.com / ThekbCart";
+      // Add footer branding as clickable links
+      const link1 = "thekbclick.com";
+      const sep = " / ";
+      const link2 = "thekbcart.com";
       const fontSize = 7;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(fontSize);
-      doc.setTextColor(0, 102, 204);
 
-      const textWidth =
-        (doc.getStringUnitWidth(text) * fontSize) / doc.internal.scaleFactor;
-      const xOffset = margin + (contentWidth - textWidth) / 2;
+      const w1 = doc.getTextWidth(link1);
+      const wSep = doc.getTextWidth(sep);
+      const w2 = doc.getTextWidth(link2);
+      const totalW = w1 + wSep + w2;
+
+      const xOffset = margin + (contentWidth - totalW) / 2;
       const yPos = pageHeight - margin + 3.5;
 
-      doc.textWithLink(text, xOffset, yPos, { url: "https://thekbclick.com" });
+      // Draw first link
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
 
-      // Add underline
+      // Draw separator
+      doc.setTextColor(0, 0, 0);
+      doc.text(sep, xOffset + w1, yPos);
+
+      // Draw second link
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+
+      // Add underlines for links
       doc.setDrawColor(0, 102, 204);
       doc.setLineWidth(0.1);
-      doc.line(xOffset, yPos + 0.5, xOffset + textWidth, yPos + 0.5);
+      doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+      doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
     };
 
     drawPageBorder();
@@ -3336,17 +3356,21 @@ const BillForm = () => {
       cursorY + 12.5,
     );
     doc.text(`City : ${receiverCity}`, leftPartyX, cursorY + 24.5);
-    doc.text(`Pin : ${receiverPin}`, leftPartyX + 32, cursorY + 24.5);
-    doc.text(`Phone : ${receiverPhone}`, leftPartyX, cursorY + 29.2);
-    doc.text(`GSTIN : ${receiverGstin}`, leftPartyX, cursorY + 34);
-    doc.text(`PAN No. : ${receiverPan}`, leftPartyX + 62, cursorY + 34);
-    doc.setFont("times", "bold");
-    doc.text(`State : ${receiverState}`, leftPartyX, cursorY + 41);
-    doc.text(
-      `State Code : ${receiverStateCode}`,
-      leftPartyX + 62,
-      cursorY + 41,
-    );
+    if (effectiveGstType === 1) {
+      doc.text(`Pin : ${receiverPin}`, leftPartyX + 32, cursorY + 24.5);
+      doc.text(`Phone : ${receiverPhone}`, leftPartyX, cursorY + 29.2);
+      doc.text(`GSTIN : ${receiverGstin}`, leftPartyX, cursorY + 34);
+      doc.text(`PAN No. : ${receiverPan}`, leftPartyX + 62, cursorY + 34);
+      doc.setFont("times", "bold");
+      doc.text(`State : ${receiverState}`, leftPartyX, cursorY + 41);
+      doc.text(
+        `State Code : ${receiverStateCode}`,
+        leftPartyX + 62,
+        cursorY + 41,
+      );
+    } else {
+      doc.text(`Phone : ${receiverPhone}`, leftPartyX, cursorY + 29.2);
+    }
 
     doc.setFont("times", "bold");
     doc.text(`Name : ${consigneeName}`, rightPartyX, cursorY + 6.5);
@@ -3357,16 +3381,18 @@ const BillForm = () => {
       cursorY + 12.5,
     );
     doc.text(`City : ${consigneeCity}`, rightPartyX, cursorY + 24.5);
-    doc.text(`Pin : ${consigneePin}`, rightPartyX + 32, cursorY + 24.5);
-    doc.text(`GSTIN : ${consigneeGstin}`, rightPartyX, cursorY + 34);
-    doc.text(`PAN No. : ${consigneePan}`, rightPartyX + 56, cursorY + 34);
-    doc.setFont("times", "bold");
-    doc.text(`State : ${consigneeState}`, rightPartyX, cursorY + 41);
-    doc.text(
-      `State Code : ${consigneeStateCode}`,
-      rightPartyX + 56,
-      cursorY + 41,
-    );
+    if (effectiveGstType === 1) {
+      doc.text(`Pin : ${consigneePin}`, rightPartyX + 32, cursorY + 24.5);
+      doc.text(`GSTIN : ${consigneeGstin}`, rightPartyX, cursorY + 34);
+      doc.text(`PAN No. : ${consigneePan}`, rightPartyX + 56, cursorY + 34);
+      doc.setFont("times", "bold");
+      doc.text(`State : ${consigneeState}`, rightPartyX, cursorY + 41);
+      doc.text(
+        `State Code : ${consigneeStateCode}`,
+        rightPartyX + 56,
+        cursorY + 41,
+      );
+    }
 
     cursorY += partyBoxHeight;
 
@@ -3615,7 +3641,7 @@ const BillForm = () => {
     );
     const amountInWords = numberToWords(printNetAmount) + " Rupees Only";
     const netPreviewAmount = printNetAmount;
-    const ledgerBalance = Math.round(
+    const rawLedgerBalance = Math.round(
       Number(
         party?.balance ??
           party?.ledger_balance ??
@@ -3625,6 +3651,7 @@ const BillForm = () => {
           0,
       ) || 0,
     );
+    const ledgerBalance = rawLedgerBalance < 0 ? Math.abs(rawLedgerBalance) : 0;
 
     if (!isGstBill) {
       const compactDoc = new jsPDF({
@@ -4053,27 +4080,39 @@ const BillForm = () => {
         compactPageHeight - compactMargin - 3.2,
         { align: "right" },
       );
-      // Add footer branding as a clickable link
-      const text = "thekbclick.com / ThekbCart";
+      // Add footer branding as clickable links
+      const link1 = "thekbclick.com";
+      const sep = " / ";
+      const link2 = "thekbcart.com";
       const fontSize = 6.5;
       compactDoc.setFont("helvetica", "normal");
       compactDoc.setFontSize(fontSize);
-      compactDoc.setTextColor(0, 102, 204);
 
-      const textWidth =
-        (compactDoc.getStringUnitWidth(text) * fontSize) /
-        compactDoc.internal.scaleFactor;
-      const xOffset = compactX + (compactContentWidth - textWidth) / 2;
+      const w1 = compactDoc.getTextWidth(link1);
+      const wSep = compactDoc.getTextWidth(sep);
+      const w2 = compactDoc.getTextWidth(link2);
+      const totalW = w1 + wSep + w2;
+
+      const xOffset = compactX + (compactContentWidth - totalW) / 2;
       const yPos = compactPageHeight - compactMargin + 3.5;
 
-      compactDoc.textWithLink(text, xOffset, yPos, {
-        url: "https://thekbclick.com",
-      });
+      // Draw first link
+      compactDoc.setTextColor(0, 102, 204);
+      compactDoc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
 
-      // Add underline
+      // Draw separator
+      compactDoc.setTextColor(0, 0, 0);
+      compactDoc.text(sep, xOffset + w1, yPos);
+
+      // Draw second link
+      compactDoc.setTextColor(0, 102, 204);
+      compactDoc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+
+      // Add underlines for links
       compactDoc.setDrawColor(0, 102, 204);
       compactDoc.setLineWidth(0.1);
-      compactDoc.line(xOffset, yPos + 0.5, xOffset + textWidth, yPos + 0.5);
+      compactDoc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+      compactDoc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
 
       const previewUrl = compactDoc.output("bloburl");
       const previewWindow = window.open(previewUrl, "_blank");
@@ -4090,7 +4129,7 @@ const BillForm = () => {
     const totalRowHeight = 13;
     const midBlockHeight = 32;
     const wordsRowHeight = 8;
-    const termsBlockHeight = 28;
+    const termsBlockHeight = 33;
     // Dynamic breakdown height: title(8) + taxable(5.2) + optional rows + net(8) + padding(4)
     const breakdownRows =
       1 + (isGstBill ? 2 : 0) + (transportCharge > 0 ? 1 : 0);
@@ -4197,36 +4236,36 @@ const BillForm = () => {
       { align: "right" },
     );
     doc.text(
-      formatAmount(totalBeforeTax),
+      String(formatAmount(totalBeforeTax)),
       taxColumnEnds[1] - 0.8,
       midBlockY + 16,
       { align: "right" },
     );
-    doc.text(formatAmount(sgstAmount), taxColumnEnds[2] - 0.8, midBlockY + 16, {
+    doc.text(String(formatAmount(sgstAmount)), taxColumnEnds[2] - 0.8, midBlockY + 16, {
       align: "right",
     });
-    doc.text(formatAmount(cgstAmount), taxColumnEnds[3] - 0.8, midBlockY + 16, {
+    doc.text(String(formatAmount(cgstAmount)), taxColumnEnds[3] - 0.8, midBlockY + 16, {
       align: "right",
     });
-    doc.text(formatAmount(taxTotal), taxColumnEnds[4] - 0.8, midBlockY + 16, {
+    doc.text(String(formatAmount(taxTotal)), taxColumnEnds[4] - 0.8, midBlockY + 16, {
       align: "right",
     });
 
     doc.setFont("times", "bold");
     doc.text("* TOTAL :", taxColumnStarts[0], midBlockY + 24);
     doc.text(
-      formatAmount(totalBeforeTax),
+      String(formatAmount(totalBeforeTax)),
       taxColumnEnds[1] - 0.8,
       midBlockY + 24,
       { align: "right" },
     );
-    doc.text(formatAmount(sgstAmount), taxColumnEnds[2] - 0.8, midBlockY + 24, {
+    doc.text(String(formatAmount(sgstAmount)), taxColumnEnds[2] - 0.8, midBlockY + 24, {
       align: "right",
     });
-    doc.text(formatAmount(cgstAmount), taxColumnEnds[3] - 0.8, midBlockY + 24, {
+    doc.text(String(formatAmount(cgstAmount)), taxColumnEnds[3] - 0.8, midBlockY + 24, {
       align: "right",
     });
-    doc.text(formatAmount(taxTotal), taxColumnEnds[4] - 0.8, midBlockY + 24, {
+    doc.text(String(formatAmount(taxTotal)), taxColumnEnds[4] - 0.8, midBlockY + 24, {
       align: "right",
     });
 
@@ -4237,13 +4276,13 @@ const BillForm = () => {
     doc.setFont("times", "bold");
     doc.setFontSize(8.2);
     doc.text("Total Amount before Tax :", rightLabelX, midBlockY + 8);
-    doc.text(formatAmount(totalBeforeTax), rightAmountRightX, midBlockY + 8, {
+    doc.text(String(formatAmount(totalBeforeTax)), rightAmountRightX, midBlockY + 8, {
       align: "right",
     });
     if (transportCharge > 0) {
       doc.text("Transport Charge :", rightLabelX, midBlockY + 12.5);
       doc.text(
-        formatAmount(transportCharge),
+        String(formatAmount(transportCharge)),
         rightAmountRightX,
         midBlockY + 12.5,
         {
@@ -4258,7 +4297,7 @@ const BillForm = () => {
       midBlockY + 16,
       { align: "right" },
     );
-    doc.text(formatAmount(sgstAmount), rightAmountRightX, midBlockY + 16, {
+    doc.text(String(formatAmount(sgstAmount)), rightAmountRightX, midBlockY + 16, {
       align: "right",
     });
     doc.text(isGstBill ? "+ CGST" : "+ IGST", rightLabelX, midBlockY + 24);
@@ -4269,7 +4308,7 @@ const BillForm = () => {
       { align: "right" },
     );
     doc.text(
-      formatAmount(isGstBill ? cgstAmount : igstAmount),
+      String(formatAmount(isGstBill ? cgstAmount : igstAmount)),
       rightAmountRightX,
       midBlockY + 24,
       { align: "right" },
@@ -4344,19 +4383,70 @@ const BillForm = () => {
       margin + 1.8,
       termsY + 14.7,
     );
-    doc.text("GST Rule Follow.", margin + 1.8, termsY + 19.2);
+    const partyBalance = Number(
+      party?.balance ??
+        party?.ledger_balance ??
+        party?.closing_balance ??
+        party?.outstanding_balance ??
+        party?.due_amount ??
+        0,
+    ) || 0;
+    const ldBalance = partyBalance < 0 ? Math.abs(partyBalance) : 0;
+
+    const drawRupee = (pdfDoc, x, y, size = 8.5) => {
+      const scale = size / 8.5;
+      const topY = y - 1.8 * scale;
+      pdfDoc.setLineWidth(0.18 * scale);
+      pdfDoc.setDrawColor(0, 0, 0);
+      
+      // Top bar
+      pdfDoc.line(x, topY, x + 1.3 * scale, topY);
+      // Mid bar
+      pdfDoc.line(x + 0.1 * scale, topY + 0.5 * scale, x + 1.1 * scale, topY + 0.5 * scale);
+      // Loop
+      pdfDoc.line(x + 0.2 * scale, topY, x + 0.2 * scale, topY + 1.0 * scale);
+      pdfDoc.line(x + 0.2 * scale, topY + 1.0 * scale, x + 0.9 * scale, topY + 1.0 * scale);
+      pdfDoc.line(x + 0.9 * scale, topY, x + 0.9 * scale, topY + 1.0 * scale);
+      // Diagonal leg
+      pdfDoc.line(x + 0.4 * scale, topY + 1.0 * scale, x + 1.1 * scale, y);
+    };
+
+    const labelX = margin + 1.8;
+    const valueX = margin + 34;
+
+    doc.text("GST Rule Follow.", margin + 1.8, termsY + 17.5);
     doc.setFont("times", "bold");
     doc.setFontSize(8.5);
-    doc.text(
-      `Last Payment Date: ${lastPaymentDate === "--" ? "N/A" : lastPaymentDate}`,
-      margin + 1.8,
-      termsY + 23.7,
+
+    const isBook = party && (
+      String(party.type || "").toLowerCase() === "book" ||
+      ["CASHBOOK", "BANKBOOK"].includes(String(party.name || "").trim().toUpperCase())
     );
-    doc.text(
-      `Last Payment Amount: ${lastPaymentDate === "N/A" || lastPaymentDate === "--" ? "N/A" : formatAmount(lastPaymentAmount)}`,
-      margin + 1.8,
-      termsY + 28.2,
-    );
+
+    let currentY = termsY + 21.7;
+    if (!isBook) {
+      // LD Balance
+      doc.text("LD Balance", labelX, currentY);
+      doc.text(":", valueX, currentY);
+      drawRupee(doc, valueX + 1.8, currentY);
+      doc.text(String(formatAmount(ldBalance)), valueX + 3.5, currentY);
+      currentY += 4.0;
+    }
+
+    // Last Payment Date
+    doc.text("Last Payment Date", labelX, currentY);
+    doc.text(`: ${lastPaymentDate === "--" ? "N/A" : lastPaymentDate}`, valueX, currentY);
+    currentY += 4.0;
+
+    // Last Payment Amount
+    doc.text("Last Payment Amount", labelX, currentY);
+    doc.text(":", valueX, currentY);
+    if (lastPaymentDate === "N/A" || lastPaymentDate === "--") {
+      doc.text("N/A", valueX + 1.8, currentY);
+    } else {
+      drawRupee(doc, valueX + 1.8, currentY);
+      doc.text(String(formatAmount(lastPaymentAmount)), valueX + 3.5, currentY);
+    }
 
     // Right top: Electronic Reference + Certified line
     doc.setFont("times", "bold");
@@ -5834,20 +5924,20 @@ const BillForm = () => {
                                     {Number(row?.quantity || 0)}
                                   </td>
                                   <td className="px-2 py-2 border">
-                                    {Number(row?.amount || 0).toFixed(2)}
+                                    {Math.round(Number(row?.amount || 0))}
                                   </td>
                                   <td className="px-2 py-2 border">
-                                    {Number(
-                                      row?.net_amount ?? row?.amount ?? 0,
-                                    ).toFixed(2)}
+                                    {Math.round(
+                                      Number(row?.net_amount ?? row?.amount ?? 0),
+                                    )}
                                   </td>
                                   <td className="px-2 py-2 border">
-                                    {Number(
+                                    {Math.round(
                                       Number(row?.quantity || 0) ?
                                         Number(row?.amount || 0) /
                                           Number(row?.quantity || 0)
                                       : 0,
-                                    ).toFixed(2)}
+                                    )}
                                   </td>
                                   <td className="px-2 py-2 border">
                                     {Number(row?.discount || 0).toFixed(2)}

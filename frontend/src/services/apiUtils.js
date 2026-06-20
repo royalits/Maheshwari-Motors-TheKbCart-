@@ -134,7 +134,7 @@ export const normalizeChallan = (challan = {}) => ({
   gstType: toNumber(challan?.is_gst, 0) === 1 ? 1 : 0,
   converted_to_bill: Boolean(challan?.converted_to_bill),
   payment_status: challan?.payment_status || "",
-  printOption: challan?.print_option || 1,
+  printOption: challan?.print_option || 2,
   raw: challan,
 });
 

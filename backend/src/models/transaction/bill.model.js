@@ -130,7 +130,7 @@ const billSchema = new mongoose.Schema(
 );
 
 billSchema.virtual("balance").get(function () {
-  return this.amount - this.paid_amount - (this.settlement_discount || 0);
+  return this.amount - this.paid_amount - (this.return_amount || 0) - (this.settlement_discount || 0);
 });
 
 billSchema.set("toJSON", { virtuals: true });

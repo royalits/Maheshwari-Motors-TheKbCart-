@@ -79,22 +79,24 @@ const TransactionHistory = () => {
       try {
         setLoading(true);
 
-        const [billRes0, billRes1] = await Promise.all([
-          api.get("/bills", { params: { page: 1, limit: 500, is_gst: 0 }, signal: controller.signal }),
-          api.get("/bills", { params: { page: 1, limit: 500, is_gst: 1 }, signal: controller.signal }),
+        const [billRes, returnRes, txnRes] = await Promise.all([
+          api.get("/bills", { params: { page: 1, limit: 500 }, signal: controller.signal }),
+          api.get("/returns", { params: { page: 1, limit: 500 }, signal: controller.signal }),
+          api.get("/transactions", { params: { page: 1, limit: 500 }, signal: controller.signal }),
         ]);
 
-        const allBills = [
-          ...getResponseList(billRes0),
-          ...getResponseList(billRes1),
-        ];
+        const allBills = getResponseList(billRes);
+        const allReturns = getResponseList(returnRes);
+        const allTxns = getResponseList(txnRes);
 
         const billTxns = allBills.map((bill) => {
           const normalized = normalizeBill(bill);
+          const billSource = bill.contact_type === "party" ? "Sale Bill" : "Purchase Bill";
           return {
             id: normalized.id,
             transactionId: normalized.billNo || normalized.id,
-            type: "Bill",
+            source: billSource,
+            type: billSource,
             amount: Number(normalized.amount || 0),
             date: normalized.date,
             party: normalized.party,
@@ -103,7 +105,35 @@ const TransactionHistory = () => {
           };
         });
 
-        const merged = billTxns.filter((t) => t.id);
+        const returnTxns = allReturns.map((ret) => ({
+          id: ret.id || ret._id,
+          transactionId: ret.return_no || String(ret.id || ret._id),
+          source: "Returned",
+          type: "Returned",
+          amount: Number(ret.total_amount || 0),
+          date: ret.date,
+          party: ret.contact_id?.name || "-",
+          gstType: Number(ret.is_gst ?? 0),
+          status: "Completed",
+        }));
+
+        const transactionTxns = allTxns.map((txn) => ({
+          id: txn.id || txn._id,
+          transactionId: txn.transaction_no || String(txn.id || txn._id),
+          source: "Transaction",
+          type: "Transaction",
+          amount: Number(txn.amount || 0),
+          date: txn.date,
+          party: txn.contact_id?.name || "-",
+          gstType: Number(txn.is_gst ?? 0),
+          status: txn.settlement_status || "Pending",
+        }));
+
+        const merged = [
+          ...billTxns.filter((t) => t.id),
+          ...returnTxns,
+          ...transactionTxns,
+        ];
         merged.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         setTransactions(merged);
@@ -157,8 +187,10 @@ const TransactionHistory = () => {
         0,
       ),
       byType: {
-        Bill: filteredTransactions.filter((t) => t.type === "Bill").length,
-        Due: filteredTransactions.filter((t) => t.status === "due").length,
+        SaleBill: filteredTransactions.filter((t) => t.source === "Sale Bill").length,
+        PurchaseBill: filteredTransactions.filter((t) => t.source === "Purchase Bill").length,
+        Returned: filteredTransactions.filter((t) => t.source === "Returned").length,
+        Transaction: filteredTransactions.filter((t) => t.source === "Transaction").length,
       },
     }),
     [filteredTransactions],
@@ -166,16 +198,38 @@ const TransactionHistory = () => {
 
   const columns = [
     {
-      key: "transactionId",
-      label: "Transaction ID",
-      render: (val, row, index) => <span className="text-xs">{index + 1}</span>,
+      key: "index",
+      label: "S.No.",
+      render: (val, row, index) => <span className="text-xs font-medium text-gray-500">{index + 1}</span>,
     },
-
+    {
+      key: "transactionId",
+      label: "Document No",
+      render: (val) => <span className="font-mono text-xs font-semibold text-gray-700">{val}</span>,
+    },
+    {
+      key: "source",
+      label: "Source",
+      render: (value) => (
+        <span className={`px-2 py-1 text-xs font-semibold rounded-md ${
+          value === "Sale Bill" ? "bg-purple-50 text-purple-700 border border-purple-200" :
+          value === "Purchase Bill" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+          value === "Returned" ? "bg-red-50 text-red-700 border border-red-200" :
+          "bg-blue-50 text-blue-700 border border-blue-200"
+        }`}>
+          {value || "-"}
+        </span>
+      ),
+    },
     {
       key: "status",
       label: "Status",
       render: (value) => (
-        <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+        <span className={`px-2 py-1 text-xs rounded-full ${
+          value === "Completed" || value === "paid" ? "bg-green-100 text-green-800" :
+          value === "due" || value === "Pending" ? "bg-orange-100 text-orange-800" :
+          "bg-gray-100 text-gray-800"
+        }`}>
           {value || "-"}
         </span>
       ),
@@ -430,14 +484,14 @@ const TransactionHistory = () => {
           <h1 className="text-2xl font-bold text-gray-900">
             Transaction History
           </h1>
-          <p className="text-gray-600">Bill history</p>
+          <p className="text-gray-600">Complete ledger document history</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-l-blue-500">
           <h3 className="text-sm font-medium text-blue-800">
-            Total Bills
+            Total Transactions
           </h3>
           <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
         </div>
@@ -453,23 +507,41 @@ const TransactionHistory = () => {
         <h3 className="font-medium text-gray-900 mb-3">
           Transaction Breakdown
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
             <div className="flex items-center gap-2">
-              <FaReceipt className="text-green-600" />
-              <span className="text-sm font-medium">Bills</span>
+              <FaReceipt className="text-purple-600" />
+              <span className="text-sm font-medium">Sale Bills</span>
             </div>
-            <span className="text-lg font-bold text-green-600">
-              {stats.byType.Bill}
+            <span className="text-lg font-bold text-purple-600">
+              {stats.byType.SaleBill}
             </span>
           </div>
-          <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
             <div className="flex items-center gap-2">
-              <FaMoneyBillWave className="text-orange-600" />
-              <span className="text-sm font-medium">Due</span>
+              <FaReceipt className="text-amber-600" />
+              <span className="text-sm font-medium">Purchase Bills</span>
             </div>
-            <span className="text-lg font-bold text-orange-600">
-              {stats.byType.Due}
+            <span className="text-lg font-bold text-amber-600">
+              {stats.byType.PurchaseBill}
+            </span>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <FaReceipt className="text-red-600" />
+              <span className="text-sm font-medium">Returns</span>
+            </div>
+            <span className="text-lg font-bold text-red-600">
+              {stats.byType.Returned}
+            </span>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <FaMoneyBillWave className="text-blue-600" />
+              <span className="text-sm font-medium">Transactions</span>
+            </div>
+            <span className="text-lg font-bold text-blue-600">
+              {stats.byType.Transaction}
             </span>
           </div>
         </div>
