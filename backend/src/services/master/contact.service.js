@@ -149,7 +149,7 @@ class ContactService {
     }
   }
 
-  async getContacts(userId, query) {
+  async getContacts(userId, query, isGst) {
     await this._ensureSystemBookContacts(userId);
 
     // Convert query parameters with _id to ObjectIds to prevent CastError
@@ -184,8 +184,9 @@ class ContactService {
       ];
     }
 
-    if (convertedQuery.balance_status === "due") filter.balance = { $lt: 0 };
-    if (convertedQuery.balance_status === "overpaid") filter.balance = { $gt: 0 };
+    const balanceField = isGst === 1 || isGst === true ? "gst_balance" : "nongst_balance";
+    if (convertedQuery.balance_status === "due") filter[balanceField] = { $lt: 0 };
+    if (convertedQuery.balance_status === "overpaid") filter[balanceField] = { $gt: 0 };
 
     const contacts = await Pagination.paginate(Contact, filter, {
       ...convertedQuery,
@@ -199,10 +200,15 @@ class ContactService {
       ],
     });
 
+    contacts.data = contacts.data.map((c) => ({
+      ...c,
+      balance: isGst === 1 || isGst === true ? (c.gst_balance || 0) : (c.nongst_balance || 0),
+    }));
+
     return contacts;
   }
 
-  async getContactById(contactId, userId) {
+  async getContactById(contactId, userId, isGst) {
     const contact = await Contact.findOne({
       _id: contactId,
       user_id: userId,
@@ -215,7 +221,9 @@ class ContactService {
     ]);
     if (!contact) throw ApiError.notFound("Contact not found");
 
-    return contact;
+    const contactObj = contact.toObject();
+    contactObj.balance = isGst === 1 || isGst === true ? (contactObj.gst_balance || 0) : (contactObj.nongst_balance || 0);
+    return contactObj;
   }
 
   async createContact(contactData, userId) {
@@ -598,16 +606,17 @@ class ContactService {
     return updatedContact;
   }
 
-  async getContactBalance(contactId, userId) {
+  async getContactBalance(contactId, userId, isGst) {
+    const balanceField = isGst === 1 || isGst === true ? "gst_balance" : "nongst_balance";
     const contact = await Contact.findOne({ _id: contactId, user_id: userId })
-      .select("balance")
+      .select(balanceField)
       .lean();
 
     if (!contact) throw ApiError.notFound("Contact not found");
-    return contact.balance || 0;
+    return contact[balanceField] || 0;
   }
 
-  async updateBalance(contactId, userId, amount, operation) {
+  async updateBalance(contactId, userId, amount, operation, isGst) {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) {
       throw ApiError.badRequest("amount must be a positive number");
@@ -618,17 +627,18 @@ class ContactService {
     }
 
     const increment = operation === "add" ? value : -value;
+    const balanceField = isGst === 1 || isGst === true ? "gst_balance" : "nongst_balance";
 
     const updated = await Contact.findOneAndUpdate(
       { _id: contactId, user_id: userId },
-      { $inc: { balance: increment } },
+      { $inc: { [balanceField]: increment } },
       { returnDocument: "after" },
     )
-      .select("balance")
+      .select(`balance gst_balance nongst_balance`)
       .lean();
 
     if (!updated) throw ApiError.notFound("Contact not found");
-    return updated.balance || 0;
+    return updated[balanceField] || 0;
   }
 
   async deleteContact(contactId, userId) {

@@ -767,7 +767,7 @@ class AdminService {
     const hasRoleCredentialUpdates =
       Object.keys(roleCredentialUpdates).length > 0;
 
-    const { name, email, phone, is_active, gst_firm, nongst_firm } = updateData;
+    const { name, email, phone, is_active, gst_firm, nongst_firm, subscription_amount } = updateData;
 
     if (
       !name &&
@@ -776,7 +776,8 @@ class AdminService {
       is_active === undefined &&
       !gst_firm &&
       !nongst_firm &&
-      !hasRoleCredentialUpdates
+      !hasRoleCredentialUpdates &&
+      subscription_amount === undefined
     ) {
       throw ApiError.badRequest("No fields provided to update");
     }
@@ -977,7 +978,84 @@ class AdminService {
     }
 
     await user.save();
-    return this._toSafeUserObject(user.toSafeObject());
+
+    if (
+      subscription_amount !== undefined ||
+      updateData.subscription_years !== undefined ||
+      updateData.subscription_months !== undefined ||
+      updateData.subscription_days !== undefined
+    ) {
+      const subscription = await Subscription.findOne({ user_id: userId });
+      if (subscription) {
+        if (subscription_amount !== undefined) {
+          const amount = Number(subscription_amount);
+          if (!Number.isFinite(amount) || amount < 0) {
+            throw ApiError.badRequest("Subscription amount must be a non-negative number");
+          }
+          subscription.amount = amount;
+        }
+
+        let durationChanged = false;
+        const timeline = {
+          years: subscription.timeline?.years || 0,
+          months: subscription.timeline?.months || 0,
+          days: subscription.timeline?.days || 0,
+        };
+
+        if (updateData.subscription_years !== undefined) {
+          timeline.years = Number(updateData.subscription_years);
+          durationChanged = true;
+        }
+        if (updateData.subscription_months !== undefined) {
+          timeline.months = Number(updateData.subscription_months);
+          durationChanged = true;
+        }
+        if (updateData.subscription_days !== undefined) {
+          timeline.days = Number(updateData.subscription_days);
+          durationChanged = true;
+        }
+
+        if (durationChanged) {
+          if (
+            !Number.isFinite(timeline.years) ||
+            !Number.isFinite(timeline.months) ||
+            !Number.isFinite(timeline.days)
+          ) {
+            throw ApiError.badRequest("Subscription duration values must be numeric");
+          }
+          if (timeline.years < 0 || timeline.months < 0 || timeline.days < 0) {
+            throw ApiError.badRequest("Subscription duration values cannot be negative");
+          }
+          if (timeline.years === 0 && timeline.months === 0 && timeline.days === 0) {
+            throw ApiError.badRequest("At least one duration field must be greater than 0");
+          }
+          subscription.timeline = timeline;
+
+          // Recalculate expiry date from start_date
+          const baseDate = subscription.start_date || new Date();
+          const expiryDate = new Date(baseDate);
+          expiryDate.setFullYear(expiryDate.getFullYear() + timeline.years);
+          expiryDate.setMonth(expiryDate.getMonth() + timeline.months);
+          expiryDate.setDate(expiryDate.getDate() + timeline.days);
+          subscription.expiry_date = expiryDate;
+
+          // Update status based on new expiry date
+          if (expiryDate > new Date()) {
+            subscription.status = "active";
+          } else {
+            subscription.status = "expired";
+          }
+        }
+
+        await subscription.save();
+      }
+    }
+
+    const safeUser = this._toSafeUserObject(user.toSafeObject());
+    const [withSubscription] = await this._attachSubscriptionSummary([
+      safeUser,
+    ]);
+    return withSubscription;
   }
 
   async deactivateSecondaryUser(userId) {

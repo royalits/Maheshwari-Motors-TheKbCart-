@@ -3,7 +3,7 @@ import { asyncHandler, ApiResponse } from "../../utils/index.js";
 
 class ContactController {
   getContacts = asyncHandler(async (req, res) => {
-    const result = await contactService.getContacts(req.user._id, req.query);
+    const result = await contactService.getContacts(req.user._id, req.query, req.isGst);
     res
       .status(200)
       .json(new ApiResponse(200, result, "Contacts fetched successfully"));
@@ -14,7 +14,7 @@ class ContactController {
       ...req.query,
       type: "party",
       include_books: true,
-    });
+    }, req.isGst);
     res
       .status(200)
       .json(new ApiResponse(200, result, "Parties fetched successfully"));
@@ -25,7 +25,7 @@ class ContactController {
       ...req.query,
       type: "supplier",
       include_books: true,
-    });
+    }, req.isGst);
     res
       .status(200)
       .json(new ApiResponse(200, result, "Suppliers fetched successfully"));
@@ -35,7 +35,7 @@ class ContactController {
     const result = await contactService.getContacts(req.user._id, {
       ...req.query,
       type: "book",
-    });
+    }, req.isGst);
     res
       .status(200)
       .json(new ApiResponse(200, result, "Book contacts fetched successfully"));
@@ -45,6 +45,7 @@ class ContactController {
     const contact = await contactService.getContactById(
       req.params.contactId,
       req.user._id,
+      req.isGst,
     );
     res
       .status(200)
@@ -80,6 +81,7 @@ class ContactController {
     const balance = await contactService.getContactBalance(
       req.params.contactId,
       req.user._id,
+      req.isGst,
     );
     res
       .status(200)
@@ -99,6 +101,7 @@ class ContactController {
       req.user._id,
       amount,
       operation,
+      req.isGst,
     );
     res
       .status(200)
@@ -115,7 +118,7 @@ class ContactController {
     const result = await contactService.getContacts(req.user._id, {
       ...req.query,
       balance_status: "due",
-    });
+    }, req.isGst);
     res
       .status(200)
       .json(
@@ -131,7 +134,7 @@ class ContactController {
     const result = await contactService.getContacts(req.user._id, {
       ...req.query,
       balance_status: "overpaid",
-    });
+    }, req.isGst);
     res
       .status(200)
       .json(

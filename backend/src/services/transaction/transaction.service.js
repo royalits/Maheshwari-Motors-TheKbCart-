@@ -7,7 +7,7 @@ import { ApiError, Pagination } from "../../utils/index.js";
 import { getNextId } from "../../helpers/counter.js";
 
 const TRANSACTION_POPULATE = [
-  { path: "contact_id", select: "name phone type balance" },
+  { path: "contact_id", select: "name phone type balance gst_balance nongst_balance" },
   { path: "bank_id", select: "bank_name account_number ifsc_code" },
 ];
 
@@ -40,38 +40,40 @@ class TransactionService {
     return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
   }
 
-  async _getBalanceContact(contactId, userId) {
+  async _getBalanceContact(contactId, userId, isGst) {
     if (!contactId) return null;
     return Contact.findOne({
       _id: contactId,
       user_id: userId,
       type: { $in: ["party", "supplier"] },
-    }).select("_id balance type");
+    }).select(`_id balance gst_balance nongst_balance type`);
   }
 
-  async _adjustContactBalance(contactId, userId, amount) {
+  async _adjustContactBalance(contactId, userId, amount, isGst) {
     const delta = this._round(amount);
     if (!contactId || Math.abs(delta) <= 0.009) return null;
 
+    const balanceField = isGst === 1 || isGst === true ? "gst_balance" : "nongst_balance";
     return Contact.findOneAndUpdate(
       {
         _id: contactId,
         user_id: userId,
         type: { $in: ["party", "supplier"] },
       },
-      { $inc: { balance: delta } },
+      { $inc: { [balanceField]: delta } },
       { returnDocument: "after" },
-    ).select("_id balance type");
+    ).select(`_id balance gst_balance nongst_balance type`);
   }
 
-  async _assertContactBalanceCanDecrease(contactId, userId, amount, message) {
+  async _assertContactBalanceCanDecrease(contactId, userId, amount, message, isGst) {
     const decreaseAmount = this._round(amount);
     if (!contactId || decreaseAmount <= 0.009) return;
 
-    const contact = await this._getBalanceContact(contactId, userId);
+    const contact = await this._getBalanceContact(contactId, userId, isGst);
     if (!contact) return;
 
-    if (this._round(contact.balance || 0) + 0.009 < decreaseAmount) {
+    const balanceVal = isGst === 1 || isGst === true ? (contact.gst_balance || 0) : (contact.nongst_balance || 0);
+    if (this._round(balanceVal) + 0.009 < decreaseAmount) {
       throw ApiError.badRequest(message);
     }
   }
@@ -94,11 +96,15 @@ class TransactionService {
       if (query.to_date) filter.date.$lte = new Date(query.to_date);
     }
 
-    return Pagination.paginate(Transaction, filter, {
+    const result = await Pagination.paginate(Transaction, filter, {
       ...query,
       populate: TRANSACTION_POPULATE,
       sort: { date: -1, createdAt: -1 },
     });
+    if (result && Array.isArray(result.data)) {
+      result.data = result.data.map(txn => this._mapTxnContactBalance(txn, isGst));
+    }
+    return result;
   }
 
   async getTransactionById(transactionId, userId, isGst, financialYearId = null) {
@@ -114,7 +120,7 @@ class TransactionService {
       .lean();
 
     if (!doc) throw ApiError.notFound("Transaction not found");
-    return doc;
+    return this._mapTxnContactBalance(doc, isGst);
   }
 
   async createTransaction(data, userId, isGst) {
@@ -183,9 +189,10 @@ class TransactionService {
       user_id: userId,
     });
 
-    await this._adjustContactBalance(contact_id, userId, doc.amount);
+    await this._adjustContactBalance(contact_id, userId, doc.amount, doc.is_gst);
 
-    return Transaction.findById(doc._id).populate(TRANSACTION_POPULATE).lean();
+    const populated = await Transaction.findById(doc._id).populate(TRANSACTION_POPULATE).lean();
+    return this._mapTxnContactBalance(populated, isGst);
   }
 
   async updateTransaction(transactionId, data, userId, isGst) {
@@ -237,6 +244,7 @@ class TransactionService {
       userId,
       balanceDecrease,
       "Cannot reduce this transaction because its amount is already used in settlement",
+      doc.is_gst,
     );
 
     if (type) {
@@ -310,17 +318,19 @@ class TransactionService {
     const nextAmount = this._round(doc.amount || 0);
 
     if (previousContactId && previousContactId !== nextContactId) {
-      await this._adjustContactBalance(previousContactId, userId, -previousAmount);
-      await this._adjustContactBalance(nextContactId, userId, nextAmount);
+      await this._adjustContactBalance(previousContactId, userId, -previousAmount, doc.is_gst);
+      await this._adjustContactBalance(nextContactId, userId, nextAmount, doc.is_gst);
     } else if (nextContactId) {
       await this._adjustContactBalance(
         nextContactId,
         userId,
         this._round(nextAmount - previousAmount),
+        doc.is_gst,
       );
     }
 
-    return Transaction.findById(doc._id).populate(TRANSACTION_POPULATE).lean();
+    const populated = await Transaction.findById(doc._id).populate(TRANSACTION_POPULATE).lean();
+    return this._mapTxnContactBalance(populated, isGst);
   }
 
   async deleteTransaction(transactionId, userId, isGst, financialYearId = null) {
@@ -358,10 +368,11 @@ class TransactionService {
       userId,
       doc.amount || 0,
       "Cannot delete transaction because its amount is already used in settlement",
+      doc.is_gst,
     );
 
     await Transaction.deleteOne({ _id: doc._id });
-    await this._adjustContactBalance(doc.contact_id, userId, -(doc.amount || 0));
+    await this._adjustContactBalance(doc.contact_id, userId, -(doc.amount || 0), doc.is_gst);
     return doc;
   }
 
@@ -554,6 +565,21 @@ class TransactionService {
           Number(finalAmount)
         : null,
     };
+  }
+
+  _mapTxnContactBalance(txn, isGst) {
+    if (!txn) return txn;
+    const isGstVal = isGst === 1 || isGst === true;
+    
+    // Support both mongoose document and lean object
+    const txnObj = typeof txn.toObject === "function" ? txn.toObject() : txn;
+    
+    if (txnObj.contact_id) {
+      txnObj.contact_id.balance = isGstVal
+        ? (txnObj.contact_id.gst_balance ?? txnObj.contact_id.balance ?? 0)
+        : (txnObj.contact_id.nongst_balance ?? txnObj.contact_id.balance ?? 0);
+    }
+    return txnObj;
   }
 }
 

@@ -444,12 +444,20 @@ class BillService {
   _applyAutoBillSnapshotToBill(bill) {
     if (!bill) return bill;
 
-    const autoItems =
-      Array.isArray(bill.auto_bill_items) ? bill.auto_bill_items : [];
-    if (!bill.is_auto_bill && autoItems.length === 0) return bill;
-
     const normalized =
       typeof bill.toObject === "function" ? bill.toObject() : { ...bill };
+
+    if (normalized.contact_id) {
+      const isGst = normalized.is_gst === 1 || normalized.is_gst === true;
+      normalized.contact_id.balance = isGst
+        ? (normalized.contact_id.gst_balance ?? normalized.contact_id.balance ?? 0)
+        : (normalized.contact_id.nongst_balance ?? normalized.contact_id.balance ?? 0);
+    }
+
+    const autoItems =
+      Array.isArray(normalized.auto_bill_items) ? normalized.auto_bill_items : [];
+    if (!normalized.is_auto_bill && autoItems.length === 0) return normalized;
+
     normalized.challan_ids = this._buildSyntheticAutoBillChallans(normalized);
     return normalized;
   }
@@ -1301,7 +1309,7 @@ class BillService {
       transport_charge: resolvedTransportCharge,
       date: billData.date ? new Date(billData.date) : new Date(),
       amount: billAmount,
-      return_amount: partialReturnAmount,
+      return_amount: 0,
       challan_ids,
       user_id: userId,
       is_gst: resolvedIsGst,
@@ -1311,12 +1319,6 @@ class BillService {
       skip_stock_calculation:
         resolvedChallanType === "sale" && requestedDeductFromStock === 0,
     });
-
-    if (partialReturnAmount > 0) {
-      await Contact.findByIdAndUpdate(contact_id, {
-        $inc: { balance: partialReturnAmount },
-      });
-    }
 
     try {
       await this._applyChallanConversionStock(
@@ -1329,11 +1331,6 @@ class BillService {
         },
       );
     } catch (error) {
-      if (partialReturnAmount > 0) {
-        await Contact.findByIdAndUpdate(contact_id, {
-          $inc: { balance: -partialReturnAmount },
-        });
-      }
       await Bill.findByIdAndDelete(bill._id);
       throw error;
     }
@@ -1351,7 +1348,7 @@ class BillService {
     const stockCompensation = null;
 
     const populatedBill = await Bill.findById(bill._id)
-      .populate("contact_id", "name type balance transport_charge")
+      .populate("contact_id", "name type balance gst_balance nongst_balance transport_charge")
       .populate("transport_id", "name phone")
       .populate({
         path: "challan_ids",
@@ -1359,7 +1356,7 @@ class BillService {
       });
 
     return {
-      bill: populatedBill,
+      bill: this._applyAutoBillSnapshotToBill(populatedBill),
       balance_applied: 0,
       partial_return: partialReturnAmount,
       deduct_from_stock: requestedDeductFromStock,
@@ -1524,7 +1521,7 @@ class BillService {
     const populatedBills = await Bill.find({
       _id: { $in: createdBills.map((b) => b._id) },
     })
-      .populate("contact_id", "name type balance transport_charge")
+      .populate("contact_id", "name type balance gst_balance nongst_balance transport_charge")
       .populate("transport_id", "name phone")
       .populate({
         path: "challan_ids",
@@ -1573,7 +1570,12 @@ class BillService {
     if (!contact) {
       throw ApiError.notFound("Contact not found");
     }
-    const contactBalance = Math.max(0, this._round(contact.balance || 0));
+    const contactBalance = Math.max(
+      0,
+      this._round(
+        (isGst === 1 || isGst === true ? contact.gst_balance : contact.nongst_balance) || 0
+      )
+    );
 
     if (!Array.isArray(allocations) || allocations.length === 0) {
       throw ApiError.badRequest("allocations is required");
@@ -1700,17 +1702,18 @@ class BillService {
     let latestContact = null;
 
     if (allocatedAmount > 0.009) {
+      const balanceField = isGst === 1 || isGst === true ? "gst_balance" : "nongst_balance";
       latestContact = await Contact.findOneAndUpdate(
         {
           _id: contact_id,
           user_id: userId,
           type: { $in: ["party", "supplier"] },
-          balance: { $gte: allocatedAmount - 0.009 },
+          [balanceField]: { $gte: allocatedAmount - 0.009 },
         },
-        { $inc: { balance: -allocatedAmount } },
+        { $inc: { [balanceField]: -allocatedAmount } },
         { returnDocument: "after" },
       )
-        .select("_id name balance")
+        .select(`_id name balance gst_balance nongst_balance`)
         .lean();
 
       if (!latestContact) {
@@ -1788,8 +1791,15 @@ class BillService {
 
     if (!latestContact) {
       latestContact = await Contact.findById(contact_id)
-        .select("_id name balance")
+        .select("_id name balance gst_balance nongst_balance")
         .lean();
+    }
+
+    if (latestContact) {
+      const isGstVal = isGst === 1 || isGst === true;
+      latestContact.balance = isGstVal
+        ? (latestContact.gst_balance ?? latestContact.balance ?? 0)
+        : (latestContact.nongst_balance ?? latestContact.balance ?? 0);
     }
 
     return {
@@ -1854,15 +1864,16 @@ class BillService {
         $push: { payment_entries: entry },
       },
       { returnDocument: "after" },
-    ).populate("contact_id", "name type balance");
+    ).populate("contact_id", "name type balance gst_balance nongst_balance");
 
     if (excessAmount > 0) {
+      const balanceField = bill.is_gst === 1 || bill.is_gst === true ? "gst_balance" : "nongst_balance";
       await Contact.findByIdAndUpdate(bill.contact_id, {
-        $inc: { balance: excessAmount },
+        $inc: { [balanceField]: excessAmount },
       });
     }
 
-    return updatedBill;
+    return this._applyAutoBillSnapshotToBill(updatedBill);
   }
 
   async handleReturn(billId, userId, isGst, payload, financialYearId = null) {
@@ -1918,13 +1929,35 @@ class BillService {
         $push: { payment_entries: entry },
       },
       { returnDocument: "after" },
-    ).populate("contact_id", "name type balance");
+    ).populate("contact_id", "name type balance gst_balance nongst_balance");
 
-    await Contact.findByIdAndUpdate(bill.contact_id, {
-      $inc: { balance: returnAmount },
-    });
+    const prevOverpaid = Math.max(
+      0,
+      (bill.paid_amount || 0) -
+        Math.max(0, bill.amount - (bill.settlement_discount || 0) - (bill.return_amount || 0)),
+    );
 
-    return updatedBill;
+    const newOverpaid = Math.max(
+      0,
+      (bill.paid_amount || 0) -
+        Math.max(
+          0,
+          bill.amount -
+            (bill.settlement_discount || 0) -
+            ((bill.return_amount || 0) + returnAmount),
+        ),
+    );
+
+    const contactBalanceDelta = Math.round((newOverpaid - prevOverpaid) * 100) / 100;
+
+    const balanceField = bill.is_gst === 1 || bill.is_gst === true ? "gst_balance" : "nongst_balance";
+    if (Math.abs(contactBalanceDelta) > 0.009) {
+      await Contact.findByIdAndUpdate(bill.contact_id, {
+        $inc: { [balanceField]: contactBalanceDelta },
+      });
+    }
+
+    return this._applyAutoBillSnapshotToBill(updatedBill);
   }
 
   async updateBill(billId, userId, isGst, payload) {
@@ -2054,16 +2087,23 @@ class BillService {
       );
     }
 
+    const balanceField = bill.is_gst === 1 || bill.is_gst === true ? "gst_balance" : "nongst_balance";
+
     if (bill.paid_amount > bill.amount) {
       const excessAmount = bill.paid_amount - bill.amount;
       await Contact.findByIdAndUpdate(bill.contact_id, {
-        $inc: { balance: -excessAmount },
+        $inc: { [balanceField]: -excessAmount },
       });
     }
 
-    if (bill.return_amount > 0) {
+    const prevOverpaid = Math.max(
+      0,
+      (bill.paid_amount || 0) -
+        Math.max(0, bill.amount - (bill.settlement_discount || 0) - (bill.return_amount || 0)),
+    );
+    if (prevOverpaid > 0) {
       await Contact.findByIdAndUpdate(bill.contact_id, {
-        $inc: { balance: -bill.return_amount },
+        $inc: { [balanceField]: -prevOverpaid },
       });
     }
 
@@ -2145,13 +2185,21 @@ class BillService {
 
     await bill.save();
 
+    const balanceField = bill.is_gst === 1 || bill.is_gst === true ? "gst_balance" : "nongst_balance";
+
     const contact = await Contact.findOneAndUpdate(
       { _id: bill.contact_id, user_id: userId },
-      { $inc: { balance: refundAmount } },
+      { $inc: { [balanceField]: refundAmount } },
       { returnDocument: "after" },
     )
-      .select("_id name balance")
+      .select("_id name balance gst_balance nongst_balance")
       .lean();
+
+    if (contact) {
+      contact.balance = bill.is_gst === 1 || bill.is_gst === true
+        ? (contact.gst_balance || 0)
+        : (contact.nongst_balance || 0);
+    }
 
     return {
       bill,

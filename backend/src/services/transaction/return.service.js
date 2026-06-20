@@ -396,9 +396,31 @@ class ReturnService {
       $inc: { return_amount: totalAmount },
     });
 
-    await Contact.findByIdAndUpdate(bill.contact_id, {
-      $inc: { balance: totalAmount },
-    });
+    const prevOverpaid = Math.max(
+      0,
+      (bill.paid_amount || 0) -
+        Math.max(0, bill.amount - (bill.settlement_discount || 0) - (bill.return_amount || 0)),
+    );
+
+    const newOverpaid = Math.max(
+      0,
+      (bill.paid_amount || 0) -
+        Math.max(
+          0,
+          bill.amount -
+            (bill.settlement_discount || 0) -
+            ((bill.return_amount || 0) + totalAmount),
+        ),
+    );
+
+    const contactBalanceDelta = Math.round((newOverpaid - prevOverpaid) * 100) / 100;
+
+    if (Math.abs(contactBalanceDelta) > 0.009) {
+      const balanceField = isGst === 1 || isGst === true ? "gst_balance" : "nongst_balance";
+      await Contact.findByIdAndUpdate(bill.contact_id, {
+        $inc: { [balanceField]: contactBalanceDelta },
+      });
+    }
 
     const seqKey = `ReturnNo_${isGst === 1 ? "GST" : "NONGST"}`;
     const returnNoSeq = await getNextId(seqKey, userId);
@@ -703,11 +725,34 @@ class ReturnService {
             payment_status: paymentStatus,
             $inc: { return_amount: -doc.total_amount },
           });
-        }
 
-        await Contact.findByIdAndUpdate(doc.contact_id, {
-          $inc: { balance: -doc.total_amount },
-        });
+          // Calculate contact balance change based on overpayment difference
+          const prevOverpaid = Math.max(
+            0,
+            (bill.paid_amount || 0) -
+              Math.max(0, bill.amount - (bill.settlement_discount || 0) - (bill.return_amount || 0)),
+          );
+
+          const newOverpaid = Math.max(
+            0,
+            (bill.paid_amount || 0) -
+              Math.max(
+                0,
+                bill.amount -
+                  (bill.settlement_discount || 0) -
+                  Math.max(0, (bill.return_amount || 0) - doc.total_amount),
+              ),
+          );
+
+          const contactBalanceDelta = Math.round((newOverpaid - prevOverpaid) * 100) / 100;
+
+          if (Math.abs(contactBalanceDelta) > 0.009) {
+            const balanceField = isGst === 1 || isGst === true ? "gst_balance" : "nongst_balance";
+            await Contact.findByIdAndUpdate(doc.contact_id, {
+              $inc: { [balanceField]: contactBalanceDelta },
+            });
+          }
+        }
       }
     } else if (doc.return_type === "purchase_return") {
       await stockService.addStock(doc.items, userId, isGst);

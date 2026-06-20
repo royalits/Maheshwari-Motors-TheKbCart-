@@ -7,6 +7,7 @@ import {
   FaEdit,
   FaTrash,
   FaDownload,
+  FaPrint,
 } from "react-icons/fa";
 import { DataTable, Modal, DeleteConfirmDialog } from "../../components/common";
 import { Button } from "../../components/ui";
@@ -553,7 +554,7 @@ const ChallanList = () => {
     );
   };
 
-  const generateChallanPDF = async (challan) => {
+  const generateChallanPDF = async (challan, action = "download") => {
     if (!challan?.id) {
       showToast("Invalid challan selected", "error");
       return;
@@ -570,7 +571,7 @@ const ChallanList = () => {
     }
 
     const doc = new jsPDF({
-      orientation: "landscape",
+      orientation: "portrait",
       unit: "mm",
       format: "a4",
     });
@@ -643,7 +644,7 @@ const ChallanList = () => {
           if (idVal) itemDetailsMap[idVal] = d;
         });
       } catch (err) {
-        console.warn("Failed to fetch some item details for PDF:", err);
+         console.warn("Failed to fetch some item details for PDF:", err);
       }
     }
 
@@ -677,8 +678,6 @@ const ChallanList = () => {
             "";
           const description =
             String(itemName).trim() || String(barcode).trim() || "-";
-
-
 
           const quantity =
             Number(item?.quantity ?? item?.pcs ?? item?.qty ?? 0) || 0;
@@ -732,16 +731,18 @@ const ChallanList = () => {
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 8;
-    const hGap = 5;
+    const margin = 4;
+    const hGap = 0;
+    const vGap = 0;
     const cols = 2;
+    const rows = 2;
     const challanWidth = (pageWidth - margin * 2 - hGap) / cols;
-    const challanHeight = pageHeight - margin * 2;
+    const challanHeight = (pageHeight - margin * 2 - vGap) / rows;
 
-    const drawChallanCopy = (originX, originY) => {
+    const drawChallanCopy = (originX, originY, label, isEmpty = false) => {
       const pad = 0.5;
-      const headerHeight = 28;
-      const detailsHeight = 57;
+      const headerHeight = 22;
+      const detailsHeight = 35;
       const innerX = originX + pad;
       const innerWidth = challanWidth - pad * 2;
       const headerY = originY + pad;
@@ -752,20 +753,26 @@ const ChallanList = () => {
       doc.setLineWidth(0.3);
       doc.rect(originX, originY, challanWidth, challanHeight);
 
+      if (isEmpty) return;
+
       doc.rect(innerX, headerY, innerWidth, headerHeight);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(13.5);
+      doc.setFontSize(10);
       doc.setTextColor(...blue);
       doc.text(
         `* ${firmName.toUpperCase()} *`,
         innerX + innerWidth / 2,
-        headerY + 8,
+        headerY + 6,
         { align: "center" },
       );
-      doc.setFontSize(6);
-      doc.text(firmAddress, innerX + innerWidth / 2, headerY + 14.5, {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text(firmAddress, innerX + innerWidth / 2, headerY + 11, {
         align: "center",
       });
+
+
 
       doc.setTextColor(0, 0, 0);
       doc.rect(innerX, detailsY, innerWidth, detailsHeight);
@@ -778,23 +785,23 @@ const ChallanList = () => {
       );
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setTextColor(...blue);
       const partyDisplay = String(partyName).toUpperCase().substring(0, 22);
       doc.text(`M/s. : ${partyDisplay}`, innerX + 2.5, detailsY + 5);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
+      doc.setFontSize(6.5);
       doc.setTextColor(0, 0, 0);
       const contactLine = [
         partyCity ? `City ${partyCity}.` : "",
         `Contact No.,${partyContact ? ` ${partyContact}` : ""}`,
       ].filter(Boolean).join(" ");
-      doc.text(contactLine, innerX + 2.5, detailsY + 17);
-      doc.text(`AREA${partyArea ? `-${partyArea}` : "--"}`, innerX + 2.5, detailsY + 29);
+      doc.text(contactLine, innerX + 2.5, detailsY + 15);
+      doc.text(`AREA${partyArea ? `-${partyArea}` : "--"}`, innerX + 2.5, detailsY + 25);
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.text(
         `Challan No.  :  ${challanNo}`,
         innerX + leftBoxWidth + 2,
@@ -803,7 +810,7 @@ const ChallanList = () => {
       doc.text(
         `Date          :  ${challanDate}`,
         innerX + leftBoxWidth + 2,
-        detailsY + 17,
+        detailsY + 15,
       );
 
       const head = [[
@@ -817,24 +824,34 @@ const ChallanList = () => {
       ]];
       const body = rowsFromItems.length ? rowsFromItems : [["", "", "", "", "", "", ""]];
 
-      const srW = 5;
+      const bottomPadding = 12;
+      const availableHeight = challanHeight - bottomPadding - 59;
+      const estimatedRowHeight = 4.8;
+      const estimatedHeadHeight = 6;
+      const estimatedBodyHeight = rowsFromItems.length * estimatedRowHeight;
+      const fillerHeight = Math.max(
+        4,
+        availableHeight - estimatedHeadHeight - estimatedBodyHeight,
+      );
+
+      const srW = 6;
       const qtyW = 8;
-      const rateW = 13;
-      const discW = 9;
-      const spDiscW = 9;
-      const dis2W = 9;
+      const rateW = 12;
+      const discW = 8;
+      const spDiscW = 8;
+      const dis2W = 8;
       const descW = innerWidth - (srW + qtyW + rateW + discW + spDiscW + dis2W);
 
       autoTable(doc, {
         head,
         body,
         startY: tableY,
-        margin: { left: innerX },
+        margin: { left: innerX, top: 2, bottom: 2 },
         tableWidth: innerWidth,
         theme: "grid",
         styles: {
           font: "helvetica",
-          fontSize: 6.5,
+          fontSize: 6,
           textColor: [0, 0, 0],
           cellPadding: { top: 0.6, right: 0.6, bottom: 0.6, left: 0.6 },
           lineColor: [0, 0, 0],
@@ -852,17 +869,24 @@ const ChallanList = () => {
         },
         columnStyles: {
           0: { cellWidth: srW, halign: "left" },
-          1: { cellWidth: descW, halign: "left", fontSize: 6.5, overflow: "linebreak" },
+          1: { cellWidth: descW, halign: "left", fontSize: 6, overflow: "linebreak" },
           2: { cellWidth: qtyW, halign: "right" },
           3: { cellWidth: rateW, halign: "right" },
           4: { cellWidth: discW, halign: "right" },
           5: { cellWidth: spDiscW, halign: "right" },
           6: { cellWidth: dis2W, halign: "right" },
         },
+        didParseCell: (data) => {
+          if (data.section !== "body") return;
+          const fillerIndex = rowsFromItems.length ? rowsFromItems.length - 1 : 0;
+          if (data.row.index === fillerIndex) {
+            data.cell.styles.minCellHeight = fillerHeight;
+          }
+        },
       });
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
+      doc.setFontSize(8);
       doc.setTextColor(0, 0, 0);
       doc.text(
         `Qty: ${formattedTotalQuantity}  |  Total Amount: Rs. ${Math.round(totalAmount)}`,
@@ -871,38 +895,67 @@ const ChallanList = () => {
         { align: "right" },
       );
 
-      // Add footer branding as a clickable link
-      const brandingText = "thekbclick.com / ThekbCart";
+      // Add footer branding as clickable links
+      const link1 = "thekbclick.com";
+      const sep = " / ";
+      const link2 = "thekbcart.com";
       const brandingFontSize = 6.5;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(brandingFontSize);
+
+      const w1 = doc.getTextWidth(link1);
+      const wSep = doc.getTextWidth(sep);
+      const w2 = doc.getTextWidth(link2);
+      const totalW = w1 + wSep + w2;
+
+      const xOffset = originX + (challanWidth - totalW) / 2;
+      const yPos = originY + challanHeight - 2;
+
+      // Draw first link
       doc.setTextColor(0, 102, 204);
-      
-      const textWidth = (doc.getStringUnitWidth(brandingText) * brandingFontSize) / doc.internal.scaleFactor;
-      const xOffset = originX + (challanWidth - textWidth) / 2;
-      const yPos = originY + challanHeight + 3.5;
-      
-      doc.textWithLink(brandingText, xOffset, yPos, { url: "https://thekbclick.com" });
-      
-      // Add underline
+      doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
+
+      // Draw separator
+      doc.setTextColor(0, 0, 0);
+      doc.text(sep, xOffset + w1, yPos);
+
+      // Draw second link
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+
+      // Add underlines for links
       doc.setDrawColor(0, 102, 204);
       doc.setLineWidth(0.1);
-      doc.line(xOffset, yPos + 0.5, xOffset + textWidth, yPos + 0.5);
+      doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+      doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
     };
 
-    for (let c = 0; c < cols; c++) {
-      const originX = margin + c * (challanWidth + hGap);
-      const originY = margin;
-      drawChallanCopy(originX, originY);
+    const copyLabels = ["Client Copy", "Office Copy", "", ""];
+    let labelIdx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const originX = margin + c * (challanWidth + hGap);
+        const originY = margin + r * (challanHeight + vGap);
+        const label = copyLabels[labelIdx++];
+        const isEmpty = r === 1;
+        drawChallanCopy(originX, originY, label, isEmpty);
+      }
     }
 
-    const previewUrl = doc.output("bloburl");
-    const previewWindow = window.open(previewUrl, "_blank");
-    if (!previewWindow) {
-      showToast(
-        "Popup blocked. Please allow popups for print preview.",
-        "error",
-      );
+    const outputFileName = `${firmName.replace(/\s+/g, "_")}_Challan_${challanNo || "00022"}_${new Date().toISOString().split("T")[0]}.pdf`;
+
+    if (action === "download") {
+      doc.save(outputFileName);
+    } else {
+      doc.autoPrint();
+      const previewUrl = doc.output("bloburl");
+      const previewWindow = window.open(previewUrl, "_blank");
+      if (!previewWindow) {
+        showToast(
+          "Popup blocked. Please allow popups for print preview.",
+          "error",
+        );
+      }
     }
   };
 
@@ -997,9 +1050,15 @@ const ChallanList = () => {
     },
     {
       label: <FaDownload size={10} className="sm:size-3 md:size-4" />,
-      onClick: (challan) => generateChallanPDF(challan),
+      onClick: (challan) => generateChallanPDF(challan, "download"),
       className:
         "bg-green-600 text-white hover:bg-green-700 p-1 sm:p-1.5 md:p-2 text-xs",
+    },
+    {
+      label: <FaPrint size={10} className="sm:size-3 md:size-4" />,
+      onClick: (challan) => generateChallanPDF(challan, "print"),
+      className:
+        "bg-cyan-600 text-white hover:bg-cyan-700 p-1 sm:p-1.5 md:p-2 text-xs",
     },
   ];
 

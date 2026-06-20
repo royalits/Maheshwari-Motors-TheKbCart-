@@ -295,7 +295,7 @@ const ChallanForm = () => {
     date: getTodayDate(),
     itemDetails: {},
     discount: 0,
-    printOption: 1,
+    printOption: 2,
     from_bank: "",
     area_id: "",
     transport_id: "",
@@ -635,7 +635,7 @@ const ChallanForm = () => {
             date: dateValue,
             itemDetails,
             discount: challanData?.discount ?? 0,
-            printOption: challanData?.print_option || 1,
+            printOption: challanData?.print_option || 2,
             from_bank: challanData?.from_bank || "",
             to_bank: challanData?.to_bank || "",
             area_id:
@@ -1737,14 +1737,14 @@ const ChallanForm = () => {
     const afterItemDiscount =
       afterFlatDiscount - (afterFlatDiscount * itemDiscount) / 100;
     const taxableRaw = afterItemDiscount - (afterItemDiscount * itemDis2) / 100;
-    const grossAmount = round2(grossRaw);
-    const discountAmount = round2(grossRaw - afterDiscount);
-    const totalDiscount = round2(grossRaw - taxableRaw);
-    const taxableAmount = round2(taxableRaw);
-    const gstAmount = round2(
+    const grossAmount = Math.round(grossRaw);
+    const discountAmount = Math.round(grossRaw - afterDiscount);
+    const totalDiscount = Math.round(grossRaw - taxableRaw);
+    const taxableAmount = Math.round(taxableRaw);
+    const gstAmount = Math.round(
       itemType === 1 ? (taxableAmount * gstPercent) / 100 : 0,
     );
-    const amount = round2(taxableAmount + gstAmount);
+    const amount = Math.round(taxableAmount + gstAmount);
 
     return {
       grossAmount,
@@ -2214,23 +2214,25 @@ const ChallanForm = () => {
     const totalAmount = Number(calculateNetAmount() || 0) || totalFromItems;
 
     const doc = new jsPDF({
-      orientation: "landscape",
+      orientation: "portrait",
       unit: "mm",
       format: "a4",
     });
     const blue = [0, 0, 255];
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 8;
-    const hGap = 5;
+    const margin = 4;
+    const hGap = 0;
+    const vGap = 0;
     const cols = 2;
+    const rows = 2;
     const challanWidth = (pageWidth - margin * 2 - hGap) / cols;
-    const challanHeight = pageHeight - margin * 2;
+    const challanHeight = (pageHeight - margin * 2 - vGap) / rows;
 
-    const drawChallanCopy = (originX, originY) => {
+    const drawChallanCopy = (originX, originY, label, isEmpty = false) => {
       const pad = 0.5;
-      const headerHeight = 28;
-      const detailsHeight = 57;
+      const headerHeight = 22;
+      const detailsHeight = 35;
       const innerX = originX + pad;
       const innerWidth = challanWidth - pad * 2;
       const headerY = originY + pad;
@@ -2241,20 +2243,26 @@ const ChallanForm = () => {
       doc.setLineWidth(0.3);
       doc.rect(originX, originY, challanWidth, challanHeight);
 
+      if (isEmpty) return;
+
       doc.rect(innerX, headerY, innerWidth, headerHeight);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(13.5);
+      doc.setFontSize(10);
       doc.setTextColor(...blue);
       doc.text(
         `* ${firmName.toUpperCase()} *`,
         innerX + innerWidth / 2,
-        headerY + 8,
+        headerY + 6,
         { align: "center" },
       );
-      doc.setFontSize(6);
-      doc.text(firmAddress, innerX + innerWidth / 2, headerY + 14.5, {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text(firmAddress, innerX + innerWidth / 2, headerY + 11, {
         align: "center",
       });
+
+
 
       doc.setTextColor(0, 0, 0);
       doc.rect(innerX, detailsY, innerWidth, detailsHeight);
@@ -2267,13 +2275,13 @@ const ChallanForm = () => {
       );
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setTextColor(...blue);
       const partyDisplay = String(partyName).toUpperCase().substring(0, 22);
       doc.text(`M/s. : ${partyDisplay}`, innerX + 2.5, detailsY + 5);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
+      doc.setFontSize(6.5);
       doc.setTextColor(0, 0, 0);
       const contactLine = [
         partyCity ? `City ${partyCity}.` : "",
@@ -2281,15 +2289,15 @@ const ChallanForm = () => {
       ]
         .filter(Boolean)
         .join(" ");
-      doc.text(contactLine, innerX + 2.5, detailsY + 17);
+      doc.text(contactLine, innerX + 2.5, detailsY + 15);
       doc.text(
         `AREA${partyArea ? `-${partyArea}` : "--"}`,
         innerX + 2.5,
-        detailsY + 29,
+        detailsY + 25,
       );
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.text(
         `Challan No.  :  ${challanNo}`,
         innerX + leftBoxWidth + 2,
@@ -2298,7 +2306,7 @@ const ChallanForm = () => {
       doc.text(
         `Date          :  ${challanDate}`,
         innerX + leftBoxWidth + 2,
-        detailsY + 17,
+        detailsY + 15,
       );
 
       const head = [
@@ -2316,33 +2324,33 @@ const ChallanForm = () => {
         rowsFromItems.length ? rowsFromItems : [["", "", "", "", "", "", ""]];
 
       const bottomPadding = 12;
-      const availableHeight = originY + challanHeight - bottomPadding - tableY;
-      const estimatedRowHeight = 5.2;
-      const estimatedHeadHeight = 7;
+      const availableHeight = challanHeight - bottomPadding - 59;
+      const estimatedRowHeight = 4.8;
+      const estimatedHeadHeight = 6;
       const estimatedBodyHeight = rowsFromItems.length * estimatedRowHeight;
       const fillerHeight = Math.max(
         4,
         availableHeight - estimatedHeadHeight - estimatedBodyHeight,
       );
 
-      const srW = 5;
+      const srW = 6;
       const qtyW = 8;
-      const rateW = 13;
-      const discW = 9;
-      const spDiscW = 9;
-      const dis2W = 9;
+      const rateW = 12;
+      const discW = 8;
+      const spDiscW = 8;
+      const dis2W = 8;
       const descW = innerWidth - (srW + qtyW + rateW + discW + spDiscW + dis2W);
 
       autoTable(doc, {
         head,
         body,
         startY: tableY,
-        margin: { left: innerX },
+        margin: { left: innerX, top: 2, bottom: 2 },
         tableWidth: innerWidth,
         theme: "grid",
         styles: {
           font: "helvetica",
-          fontSize: 6.5,
+          fontSize: 6,
           textColor: [0, 0, 0],
           cellPadding: { top: 0.6, right: 0.6, bottom: 0.6, left: 0.6 },
           lineColor: [0, 0, 0],
@@ -2363,7 +2371,7 @@ const ChallanForm = () => {
           1: {
             cellWidth: descW,
             halign: "left",
-            fontSize: 6.5,
+            fontSize: 6,
             overflow: "linebreak",
           },
           2: { cellWidth: qtyW, halign: "right" },
@@ -2374,7 +2382,7 @@ const ChallanForm = () => {
         },
         didParseCell: (data) => {
           if (data.section !== "body") return;
-          const fillerIndex = rowsFromItems.length ? rowsFromItems.length : 1;
+          const fillerIndex = rowsFromItems.length ? rowsFromItems.length - 1 : 0;
           if (data.row.index === fillerIndex) {
             data.cell.styles.minCellHeight = fillerHeight;
           }
@@ -2382,7 +2390,7 @@ const ChallanForm = () => {
       });
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
+      doc.setFontSize(8);
       doc.setTextColor(0, 0, 0);
       doc.text(
         `Qty: ${formattedTotalQuantity}  |  Total Amount: Rs. ${roundNetAmount(totalAmount)}`,
@@ -2391,29 +2399,51 @@ const ChallanForm = () => {
         { align: "right" },
       );
 
-      // Add footer branding as a clickable link
-      const brandingText = "thekbclick.com / ThekbCart";
+      // Add footer branding as clickable links
+      const link1 = "thekbclick.com";
+      const sep = " / ";
+      const link2 = "thekbcart.com";
       const brandingFontSize = 6.5;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(brandingFontSize);
+
+      const w1 = doc.getTextWidth(link1);
+      const wSep = doc.getTextWidth(sep);
+      const w2 = doc.getTextWidth(link2);
+      const totalW = w1 + wSep + w2;
+
+      const xOffset = originX + (challanWidth - totalW) / 2;
+      const yPos = originY + challanHeight - 2;
+
+      // Draw first link
       doc.setTextColor(0, 102, 204);
-      
-      const textWidth = (doc.getStringUnitWidth(brandingText) * brandingFontSize) / doc.internal.scaleFactor;
-      const xOffset = originX + (challanWidth - textWidth) / 2;
-      const yPos = originY + challanHeight + 3.5;
-      
-      doc.textWithLink(brandingText, xOffset, yPos, { url: "https://thekbclick.com" });
-      
-      // Add underline
+      doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
+
+      // Draw separator
+      doc.setTextColor(0, 0, 0);
+      doc.text(sep, xOffset + w1, yPos);
+
+      // Draw second link
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+
+      // Add underlines for links
       doc.setDrawColor(0, 102, 204);
       doc.setLineWidth(0.1);
-      doc.line(xOffset, yPos + 0.5, xOffset + textWidth, yPos + 0.5);
+      doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+      doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
     };
 
-    for (let c = 0; c < cols; c++) {
-      const originX = margin + c * (challanWidth + hGap);
-      const originY = margin;
-      drawChallanCopy(originX, originY);
+    const copyLabels = ["Client Copy", "Office Copy", "", ""];
+    let labelIdx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const originX = margin + c * (challanWidth + hGap);
+        const originY = margin + r * (challanHeight + vGap);
+        const label = copyLabels[labelIdx++];
+        const isEmpty = r === 1;
+        drawChallanCopy(originX, originY, label, isEmpty);
+      }
     }
 
     const previewUrl = doc.output("bloburl");
@@ -3693,15 +3723,15 @@ const ChallanForm = () => {
                                     {Number(row?.quantity || 0)}
                                   </td>
                                   <td className="px-2 py-2 border">
-                                    {Number(row?.amount || 0).toFixed(2)}
+                                    {Math.round(Number(row?.amount || 0))}
                                   </td>
                                   <td className="px-2 py-2 border">
-                                    {Number(
+                                    {Math.round(
                                       Number(row?.quantity || 0) ?
                                         Number(row?.amount || 0) /
                                           Number(row?.quantity || 0)
                                       : 0,
-                                    ).toFixed(2)}
+                                    )}
                                   </td>
                                   <td className="px-2 py-2 border">
                                     {Number(row?.discount || 0).toFixed(2)}

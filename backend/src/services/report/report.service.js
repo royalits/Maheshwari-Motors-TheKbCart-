@@ -484,14 +484,19 @@ class ReportService {
     const dr = this._dateRange(query.from_date, query.to_date);
 
     let cq = Contact.find(contactFilter)
-      .select("name city phone balance")
+      .select("name city phone balance gst_balance nongst_balance")
       .sort({ name: 1 });
     if (!all) cq = cq.skip(skip).limit(limit);
 
-    const [contacts, totalContacts] = await Promise.all([
+    const [rawContacts, totalContacts] = await Promise.all([
       cq.lean(),
       Contact.countDocuments(contactFilter),
     ]);
+
+    const contacts = rawContacts.map(c => {
+      c.balance = isGst === 1 || isGst === true ? (c.gst_balance || 0) : (c.nongst_balance || 0);
+      return c;
+    });
 
     const contactIds = contacts.map((c) => c._id);
     if (!contactIds.length) {
