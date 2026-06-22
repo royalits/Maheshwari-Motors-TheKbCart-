@@ -344,12 +344,6 @@ class TransactionService {
     const doc = await Transaction.findOne(filter);
     if (!doc) throw ApiError.notFound("Transaction not found");
 
-    if (doc.settlement_status === "settled") {
-      throw ApiError.badRequest(
-        "Cannot delete transaction because it is participating in settlement",
-      );
-    }
-
     const linkedBill = await Bill.exists({
       user_id: userId,
       is_gst: isGst,

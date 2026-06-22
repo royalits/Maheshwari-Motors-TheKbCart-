@@ -236,6 +236,28 @@ const loadImageDataUrl = async (src, firmType) => {
   });
 };
 
+const resolveLdBalanceAmount = async ({
+  apiClient,
+  contactId,
+  currentAmount,
+  currentBillId,
+  contactBalance,
+}) => {
+  const amount = Number(currentAmount) || 0;
+  const availableBalance = Math.max(0, Number(contactBalance) || 0);
+  try {
+    if (!contactId) return Math.max(0, Math.round(amount - availableBalance));
+    const response = await apiClient.get(`/outstanding/${contactId}/summary`);
+    const summary = getResponseData(response) || {};
+    const existingDue = Math.max(0, Number(summary.total_due) || 0);
+    const totalDue = currentBillId ? existingDue : existingDue + amount;
+    return Math.max(0, Math.round(totalDue - availableBalance));
+  } catch (error) {
+    console.error("Failed to resolve LD balance:", error);
+    return Math.max(0, Math.round(amount - availableBalance));
+  }
+};
+
 const resolveFirmPrintData = (selectedFirm, user) => {
   const selectedKey = normalizeSelectedFirmKey(
     selectedFirm?.id ||
@@ -3641,7 +3663,7 @@ const BillForm = () => {
     );
     const amountInWords = numberToWords(printNetAmount) + " Rupees Only";
     const netPreviewAmount = printNetAmount;
-    const rawLedgerBalance = Math.round(
+    const rawPartyBalance =
       Number(
         party?.balance ??
           party?.ledger_balance ??
@@ -3649,9 +3671,14 @@ const BillForm = () => {
           party?.outstanding_balance ??
           party?.due_amount ??
           0,
-      ) || 0,
-    );
-    const ledgerBalance = rawLedgerBalance < 0 ? Math.abs(rawLedgerBalance) : 0;
+      ) || 0;
+    const ledgerBalance = await resolveLdBalanceAmount({
+      apiClient: api,
+      contactId,
+      currentAmount: printNetAmount,
+      currentBillId: isEditMode ? id : "",
+      contactBalance: rawPartyBalance,
+    });
 
     if (!isGstBill) {
       const compactDoc = new jsPDF({
@@ -4383,15 +4410,7 @@ const BillForm = () => {
       margin + 1.8,
       termsY + 14.7,
     );
-    const partyBalance = Number(
-      party?.balance ??
-        party?.ledger_balance ??
-        party?.closing_balance ??
-        party?.outstanding_balance ??
-        party?.due_amount ??
-        0,
-    ) || 0;
-    const ldBalance = partyBalance < 0 ? Math.abs(partyBalance) : 0;
+    const ldBalance = ledgerBalance;
 
     const drawRupee = (pdfDoc, x, y, size = 8.5) => {
       const scale = size / 8.5;
