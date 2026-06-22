@@ -65,6 +65,47 @@ class TransactionService {
     ).select(`_id balance gst_balance nongst_balance type`);
   }
 
+  async recalculateContactBalance(contactId, userId, isGst) {
+    if (!contactId) return;
+    const isGstVal = isGst === 1 || isGst === true;
+    const balanceField = isGstVal ? "gst_balance" : "nongst_balance";
+
+    const txns = await Transaction.find({
+      contact_id: contactId,
+      user_id: userId,
+      is_gst: isGstVal ? 1 : 0,
+    }).lean();
+
+    const bills = await Bill.find({
+      contact_id: contactId,
+      user_id: userId,
+      is_gst: isGstVal ? 1 : 0,
+    }).lean();
+
+    let balance = 0;
+    for (const txn of txns) {
+      const settled = txn.settlement_summary?.settled_amount || 0;
+      const unsettled = Number(txn.amount || 0) - settled;
+      balance += Math.max(0, unsettled);
+    }
+    for (const bill of bills) {
+      const netAmount = Math.max(
+        0,
+        Number(bill.amount || 0) -
+          Number(bill.settlement_discount || 0) -
+          Number(bill.return_amount || 0),
+      );
+      const overpaid = Math.max(0, Number(bill.paid_amount || 0) - netAmount);
+      balance += overpaid;
+    }
+    balance = Math.round(balance * 100) / 100;
+
+    await Contact.updateOne(
+      { _id: contactId, user_id: userId },
+      { $set: { [balanceField]: balance } },
+    );
+  }
+
   async _assertContactBalanceCanDecrease(contactId, userId, amount, message, isGst) {
     const decreaseAmount = this._round(amount);
     if (!contactId || decreaseAmount <= 0.009) return;
@@ -189,7 +230,7 @@ class TransactionService {
       user_id: userId,
     });
 
-    await this._adjustContactBalance(contact_id, userId, doc.amount, doc.is_gst);
+    await this.recalculateContactBalance(contact_id, userId, doc.is_gst);
 
     const populated = await Transaction.findById(doc._id).populate(TRANSACTION_POPULATE).lean();
     return this._mapTxnContactBalance(populated, isGst);
@@ -239,13 +280,12 @@ class TransactionService {
       );
     }
 
-    await this._assertContactBalanceCanDecrease(
-      previousContactId,
-      userId,
-      balanceDecrease,
-      "Cannot reduce this transaction because its amount is already used in settlement",
-      doc.is_gst,
-    );
+    const settledAmount = doc.settlement_summary?.settled_amount || 0;
+    if (nextAmountInput < settledAmount - 0.009) {
+      throw ApiError.badRequest(
+        `Cannot reduce transaction amount below the already settled amount of ₹${settledAmount}`,
+      );
+    }
 
     if (type) {
       if (!ALL_TYPES.includes(type))
@@ -318,15 +358,10 @@ class TransactionService {
     const nextAmount = this._round(doc.amount || 0);
 
     if (previousContactId && previousContactId !== nextContactId) {
-      await this._adjustContactBalance(previousContactId, userId, -previousAmount, doc.is_gst);
-      await this._adjustContactBalance(nextContactId, userId, nextAmount, doc.is_gst);
+      await this.recalculateContactBalance(previousContactId, userId, doc.is_gst);
+      await this.recalculateContactBalance(nextContactId, userId, doc.is_gst);
     } else if (nextContactId) {
-      await this._adjustContactBalance(
-        nextContactId,
-        userId,
-        this._round(nextAmount - previousAmount),
-        doc.is_gst,
-      );
+      await this.recalculateContactBalance(nextContactId, userId, doc.is_gst);
     }
 
     const populated = await Transaction.findById(doc._id).populate(TRANSACTION_POPULATE).lean();
@@ -357,16 +392,15 @@ class TransactionService {
       );
     }
 
-    await this._assertContactBalanceCanDecrease(
-      doc.contact_id,
-      userId,
-      doc.amount || 0,
-      "Cannot delete transaction because its amount is already used in settlement",
-      doc.is_gst,
-    );
+    const settledAmount = doc.settlement_summary?.settled_amount || 0;
+    if (settledAmount > 0.009) {
+      throw ApiError.badRequest(
+        `Cannot delete transaction because ₹${settledAmount} of its amount is still participating in settlement`,
+      );
+    }
 
     await Transaction.deleteOne({ _id: doc._id });
-    await this._adjustContactBalance(doc.contact_id, userId, -(doc.amount || 0), doc.is_gst);
+    await this.recalculateContactBalance(doc.contact_id, userId, doc.is_gst);
     return doc;
   }
 
