@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Bill from "../../models/transaction/bill.model.js";
 import Challan from "../../models/transaction/challan.model.js";
+import Transaction from "../../models/transaction/transaction.model.js";
 import Contact from "../../models/master/contact.model.js";
 import Transport from "../../models/master/transport.model.js";
 import Bank from "../../models/master/bank.model.js";
@@ -2176,6 +2177,14 @@ class BillService {
       throw ApiError.badRequest("Bill does not have settlement to undo");
     }
 
+    const settlementTransactionIds = [
+      ...new Set(
+        (bill.payment_entries || [])
+          .filter((entry) => entry?.settled_to === "bill" && entry?.transaction_id)
+          .map((entry) => String(entry.transaction_id)),
+      ),
+    ];
+
     bill.paid_amount = 0;
     bill.settlement_discount = 0;
     bill.payment_status = this._resolvePaymentStatus(bill.amount, 0, 0);
@@ -2184,6 +2193,38 @@ class BillService {
     );
 
     await bill.save();
+
+    if (settlementTransactionIds.length) {
+      await Promise.all(
+        settlementTransactionIds.map(async (transactionId) => {
+          const stillLinked = await Bill.exists({
+            _id: { $ne: bill._id },
+            user_id: userId,
+            is_gst: isGst,
+            "payment_entries.transaction_id": transactionId,
+            ...(financialYearId ? { financial_year_id: financialYearId } : {}),
+          });
+
+          if (!stillLinked) {
+            await Transaction.updateOne(
+              { _id: transactionId, user_id: userId, is_gst: isGst },
+              {
+                $set: {
+                  settlement_status: "none",
+                  settlement_summary: {
+                    settled_amount: 0,
+                    settlement_discount_amount: 0,
+                    unsettled_amount: 0,
+                    bill_ids: [],
+                    settled_at: null,
+                  },
+                },
+              },
+            );
+          }
+        }),
+      );
+    }
 
     const balanceField = bill.is_gst === 1 || bill.is_gst === true ? "gst_balance" : "nongst_balance";
 

@@ -376,6 +376,26 @@ const loadImageDataUrl = async (src, firmType) => {
   });
 };
 
+const resolveLdBalanceAmount = async ({
+  apiClient,
+  contactId,
+  currentAmount,
+  contactBalance,
+}) => {
+  const amount = Number(currentAmount) || 0;
+  const availableBalance = Math.max(0, Number(contactBalance) || 0);
+  try {
+    if (!contactId) return Math.max(0, Math.round(amount - availableBalance));
+    const response = await apiClient.get(`/outstanding/${contactId}/summary`);
+    const summary = getResponseData(response) || {};
+    const totalDue = Math.max(0, Number(summary.total_due) || amount);
+    return Math.max(0, Math.round(totalDue - availableBalance));
+  } catch (error) {
+    console.error("Failed to resolve LD balance:", error);
+    return Math.max(0, Math.round(amount - availableBalance));
+  }
+};
+
 const resolveFirmPrintData = (selectedFirm, user) => {
   const selectedKey = normalizeSelectedFirmKey(
     selectedFirm?.id ||
@@ -1424,19 +1444,22 @@ const BillList = () => {
       }
       return `${rupeesText} ONLY`;
     })();
-    const rawLedgerBalance = Math.round(
-      toNumberValue(
-        contact?.balance ??
-          contact?.ledger_balance ??
-          contact?.closing_balance ??
-          contact?.outstanding_balance ??
-          contact?.due_amount ??
-          billData?.closing_balance ??
-          billData?.outstanding_balance,
-        0,
-      ),
+    const rawPartyBalance = toNumberValue(
+      contact?.balance ??
+        contact?.ledger_balance ??
+        contact?.closing_balance ??
+        contact?.outstanding_balance ??
+        contact?.due_amount ??
+        billData?.closing_balance ??
+        billData?.outstanding_balance,
+      0,
     );
-    const ledgerBalance = rawLedgerBalance < 0 ? Math.abs(rawLedgerBalance) : 0;
+    const ledgerBalance = await resolveLdBalanceAmount({
+      apiClient: api,
+      contactId,
+      currentAmount: netTotal,
+      contactBalance: rawPartyBalance,
+    });
 
     const safeBillNo = String(billNo || bill?.billNo || bill?.id).replace(
       /[^\w-]+/g,
@@ -2576,15 +2599,7 @@ const BillList = () => {
       margin + 1.8,
       termsY + 14.7,
     );
-    const partyBalance = Number(
-      contact?.balance ??
-        contact?.ledger_balance ??
-        contact?.closing_balance ??
-        contact?.outstanding_balance ??
-        contact?.due_amount ??
-        0,
-    ) || 0;
-    const ldBalance = partyBalance < 0 ? Math.abs(partyBalance) : 0;
+    const ldBalance = ledgerBalance;
 
     const drawRupee = (pdfDoc, x, y, size = 8.5) => {
       const scale = size / 8.5;
