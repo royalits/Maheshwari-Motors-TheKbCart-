@@ -929,7 +929,7 @@ class ReportService {
       : ["bank_received", "bank_payment"];
 
     const txnFilter = { user_id: uid, type: { $in: types } };
-    this._applyFinancialYear(txnFilter, query);
+    this._applyFinancialYear(txnFilter, opts);
     if (Object.keys(dateFilter).length) txnFilter.date = dateFilter;
     if (account_type === "bank" && bank_id) {
       txnFilter.bank_id = new mongoose.Types.ObjectId(bank_id);

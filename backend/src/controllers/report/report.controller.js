@@ -66,9 +66,13 @@ export const getCollectionReport = asyncHandler(async (req, res) => {
 });
 
 export const getAccountLedger = asyncHandler(async (req, res) => {
+  const query = withFinancialYear(req.query, req);
+  if (query.firm === undefined || query.firm === null) {
+    query.firm = req.isGst === 1 ? "gst" : "nongst";
+  }
   const result = await reportService.getAccountLedger(
     req.user._id,
-    withFinancialYear(req.query, req),
+    query,
   );
   res
     .status(200)

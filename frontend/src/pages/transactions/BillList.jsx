@@ -1483,17 +1483,12 @@ const BillList = () => {
       const compactHeaderFill = [247, 247, 247];
 
       const compactRows = parsedItems.map((item) => {
-        const resolvedD3 =
-          item.dis3 > 0 ? item.dis3
-          : item.itemDis2 > 0 ? item.itemDis2
-          : item.itemDiscount;
-
         return [
           item.description || "--",
+          String(item.quantity || 0),
           formatAmount(item.rate),
           formatAmount(item.discount),
           formatAmount(item.specialDiscount),
-          formatAmount(resolvedD3),
           formatAmount(item.netRate),
           formatAmount(item.amount),
         ];
@@ -1511,7 +1506,7 @@ const BillList = () => {
       let compactY = compactMargin + 4;
 
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(13.5);
+      compactDoc.setFontSize(14.5);
       compactDoc.setTextColor(...compactBlue);
       compactDoc.text(
         String(firmName || "Firm").toUpperCase(),
@@ -1521,11 +1516,11 @@ const BillList = () => {
       );
 
       compactDoc.setFont("times", "normal");
-      compactDoc.setFontSize(6.6);
+      compactDoc.setFontSize(8.0);
       compactDoc.text(
         "DELIVERY CHALLAN",
         compactX + compactContentWidth / 2,
-        compactY + 3.9,
+        compactY + 4.2,
         { align: "center" },
       );
       compactDoc.setTextColor(0, 0, 0);
@@ -1537,39 +1532,39 @@ const BillList = () => {
         compactDoc.text(
           compactFirmAddress.slice(0, 1),
           compactX + compactContentWidth / 2,
-          compactY + 7.1,
+          compactY + 7.6,
           {
             align: "center",
           },
         );
       }
-      compactDoc.setFontSize(6.4);
+      compactDoc.setFontSize(7.5);
       compactDoc.text(
         `Ph., ${toMandatoryText(firmPhone, "--")}`,
         compactX + compactContentWidth / 2,
-        compactY + 10.4,
+        compactY + 11.0,
         { align: "center" },
       );
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(9.3);
+      compactDoc.setFontSize(10.0);
       compactDoc.text(
         `GSTIN : ${firmGstin === "--" ? "APPLY FOR REGISTRATION" : firmGstin}`,
         compactX + compactContentWidth / 2,
-        compactY + 14.9,
+        compactY + 15.5,
         { align: "center" },
       );
 
-      compactY += 16.5;
+      compactY += 17.5;
 
       compactDoc.setFillColor(...compactHeaderFill);
       compactDoc.rect(compactX, compactY, compactContentWidth, 6.5, "FD");
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(10);
+      compactDoc.setFontSize(11);
       compactDoc.setTextColor(...compactBlue);
       compactDoc.text(
         "* INVOICE *",
         compactX + compactContentWidth / 2,
-        compactY + 4.35,
+        compactY + 4.5,
         {
           align: "center",
         },
@@ -1583,12 +1578,12 @@ const BillList = () => {
       compactDoc.line(detailsSplitX, compactY, detailsSplitX, compactY + 25);
 
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(8.4);
+      compactDoc.setFontSize(9.5);
       compactDoc.setTextColor(0, 0, 0);
       compactDoc.setTextColor(...compactBlue);
       compactDoc.text(`M/s. : ${receiverName}`, compactX + 2, compactY + 5);
       compactDoc.setFont("times", "normal");
-      compactDoc.setFontSize(7.6);
+      compactDoc.setFontSize(8.5);
       compactDoc.setTextColor(0, 0, 0);
       compactDoc.text(
         compactDoc
@@ -1598,16 +1593,16 @@ const BillList = () => {
           )
           .slice(0, 2),
         compactX + 9,
-        compactY + 9.2,
+        compactY + 9.5,
       );
       compactDoc.text(
         `City --${receiverCity === "--" ? "" : receiverCity}--  Contact No.${receiverPhone === "--" ? "" : receiverPhone}`,
         compactX + 9,
-        compactY + 17,
+        compactY + 18,
       );
 
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(8.6);
+      compactDoc.setFontSize(9.5);
       compactDoc.setTextColor(0, 0, 0);
       compactDoc.text(
         `Invoice No.: ${billNo}`,
@@ -1641,13 +1636,13 @@ const BillList = () => {
       const tableHeight = tableBottomY - startTableY;
       const bodyHeight = tableHeight - headerHeight;
       const columnDefs = [
-        { label: "Item Name", width: 60, align: "left" },
-        { label: "Rate", width: 12, align: "right" },
-        { label: "D1%", width: 9, align: "right" },
-        { label: "D2%", width: 9, align: "right" },
-        { label: "D3Rs", width: 9, align: "right" },
-        { label: "Net Rate", width: 12, align: "right" },
-        { label: "Net Amount", width: 22, align: "right" },
+        { label: "Item Name", width: 44, align: "left" },
+        { label: "Qty", width: 10, align: "right" },
+        { label: "Rate", width: 13, align: "right" },
+        { label: "D1", width: 10, align: "right" },
+        { label: "D2", width: 10, align: "right" },
+        { label: "Net Rate", width: 16, align: "right" },
+        { label: "Amount", width: 30, align: "right" },
       ];
       const minRows = Math.max(compactRows.length, 12);
       const rowHeight = bodyHeight / minRows;
@@ -1685,38 +1680,39 @@ const BillList = () => {
       });
 
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(7.9);
+      compactDoc.setFontSize(9.5);
       compactDoc.setTextColor(...compactBlue);
       columnDefs.forEach((column, index) => {
         const startX = columnStarts[index];
-        if (index === 0) {
+        if (column.align === "left") {
           compactDoc.text(column.label, startX + 1.2, startTableY + 4.7);
         } else {
           compactDoc.text(
             column.label,
-            startX + column.width / 2,
+            startX + column.width - 1.2,
             startTableY + 4.7,
-            { align: "center" },
+            { align: "right" },
           );
         }
       });
 
-      compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(7.75);
+      compactDoc.setFont("times", "normal");
+      compactDoc.setFontSize(9.5);
       compactDoc.setTextColor(0, 0, 0);
       visibleRows.forEach((row, rowIndex) => {
-        const rowY = startTableY + headerHeight + rowIndex * rowHeight + 5.1;
+        const rowY = startTableY + headerHeight + rowIndex * rowHeight + (rowHeight * 0.72);
         row.forEach((cell, cellIndex) => {
           const value = String(cell ?? "");
           const startX = columnStarts[cellIndex];
           const width = columnDefs[cellIndex].width;
-          if (cellIndex === 0) {
+          const align = columnDefs[cellIndex].align;
+          if (align === "left") {
             const clipped = compactDoc
               .splitTextToSize(value, width - 2)
               .slice(0, 1);
             compactDoc.text(clipped, startX + 1.2, rowY);
           } else {
-            compactDoc.text(value, startX + width - 0.9, rowY, {
+            compactDoc.text(value, startX + width - 1.2, rowY, {
               align: "right",
             });
           }
@@ -1743,13 +1739,13 @@ const BillList = () => {
         }
       });
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(8.2);
+      compactDoc.setFontSize(9.5);
       compactDoc.setTextColor(0, 0, 0);
-      compactDoc.text("Total :", compactX + 73, compactSummaryY + 5.5);
+      compactDoc.text("Total :", columnStarts[1] - 1.2, compactSummaryY + 5.5, { align: "right" });
       compactDoc.setFont("times", "bold");
       compactDoc.text(
         String(Math.round(totalQty)),
-        compactX + 84,
+        columnStarts[2] - 1.2,
         compactSummaryY + 5.5,
         {
           align: "right",
@@ -1757,7 +1753,7 @@ const BillList = () => {
       );
       compactDoc.text(
         String(formatAmount(netTotal)),
-        compactX + compactContentWidth - 1.5,
+        compactX + compactContentWidth - 1.2,
         compactSummaryY + 5.5,
         {
           align: "right",
@@ -1774,11 +1770,11 @@ const BillList = () => {
         compactFooterHeight,
       );
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(7.3);
+      compactDoc.setFontSize(8.5);
       compactDoc.text("Remarks :", compactX + 1.5, compactFooterY + 4.5);
       compactDoc.setFont("times", "bold");
       compactDoc.setTextColor(...compactBlue);
-      compactDoc.setFontSize(7.8);
+      compactDoc.setFontSize(9.0);
       compactDoc.text(
         `LD BAL. : ${formatAmount(ledgerBalance)}`,
         compactX + 1.5,
@@ -1797,7 +1793,7 @@ const BillList = () => {
 
       compactDoc.setTextColor(0, 0, 0);
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(8.2);
+      compactDoc.setFontSize(9.5);
       compactDoc.text(
         compactDoc
           .splitTextToSize(
@@ -1809,16 +1805,16 @@ const BillList = () => {
         compactFooterY + 28,
       );
       compactDoc.setTextColor(...compactBlue);
-      compactDoc.setFontSize(8.8);
+      compactDoc.setFontSize(10.0);
       compactDoc.text(
         "Net Amount",
         compactX + compactContentWidth - 31,
         compactFooterY + 28,
       );
-      compactDoc.setFontSize(9.6);
+      compactDoc.setFontSize(11.0);
       compactDoc.text(
         String(formatAmount(netTotal)),
-        compactX + compactContentWidth - 1.5,
+        compactX + compactContentWidth - 1.2,
         compactFooterY + 28,
         { align: "right" },
       );
@@ -1832,7 +1828,7 @@ const BillList = () => {
       );
       compactDoc.setTextColor(0, 0, 0);
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(7.3);
+      compactDoc.setFontSize(8.5);
       compactDoc.text(
         "SUBJECT TO SURAT JURISDICTION",
         compactX + 1.5,
@@ -1840,7 +1836,7 @@ const BillList = () => {
       );
 
       compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(8.8);
+      compactDoc.setFontSize(10.0);
       compactDoc.setTextColor(...compactBlue);
       compactDoc.text(
         "Receiver's Signature",
