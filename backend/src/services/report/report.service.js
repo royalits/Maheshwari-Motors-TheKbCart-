@@ -745,7 +745,12 @@ class ReportService {
       return true;
     };
 
-    const typeWanted = (t) => !type || type === "all" || type === t;
+    const normalizedType = String(type || "all")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "_");
+    const typeWanted = (t) =>
+      !type || normalizedType === "all" || normalizedType === t;
 
     const user = await User.findById(uid).lean();
     const firmName = (isGst) =>
@@ -753,12 +758,22 @@ class ReportService {
         user?.gst_firm?.name || "GST"
       : user?.nongst_firm?.name || "Non-GST";
 
-    const challanFilter = { user_id: uid, contact_id: cid };
-    this._applyFinancialYear(challanFilter, query);
-    if (Object.keys(dateFilter).length) challanFilter.date = dateFilter;
+    const billFilter = { user_id: uid, contact_id: cid };
+    this._applyFinancialYear(billFilter, query);
+    if (Object.keys(dateFilter).length) billFilter.date = dateFilter;
 
-    const challans = await Challan.find(challanFilter)
-      .select("id challan_no challan_type date amount is_gst")
+    const bills = await Bill.find(billFilter)
+      .select("id bill_no contact_type date amount is_gst")
+      .sort({ date: 1 })
+      .lean();
+
+    const returnFilter = { user_id: uid, contact_id: cid };
+    this._applyFinancialYear(returnFilter, query);
+    if (Object.keys(dateFilter).length) returnFilter.date = dateFilter;
+
+    const returns = await Return.find(returnFilter)
+      .populate({ path: "bill_id", select: "bill_no contact_type" })
+      .select("id return_no return_type date total_amount is_gst bill_id")
       .sort({ date: 1 })
       .lean();
 
@@ -776,6 +791,8 @@ class ReportService {
     const TYPE_MAP = {
       sale: "Sale",
       purchase: "Purchase",
+      sale_return: "Sale Return",
+      purchase_return: "Purchase Return",
       bank_received: "Bank Rec",
       cash_received: "Cash Rec",
       bank_payment: "Bank Pay",
@@ -787,32 +804,66 @@ class ReportService {
       sale_0: "SALE BOOK (NON-GST)",
       purchase_1: "PURCHASE BOOK (GST)",
       purchase_0: "PURCHASE BOOK (NON-GST)",
+      sale_return_1: "SALE RETURN (GST)",
+      sale_return_0: "SALE RETURN (NON-GST)",
+      purchase_return_1: "PURCHASE RETURN (GST)",
+      purchase_return_0: "PURCHASE RETURN (NON-GST)",
       bank_received: "AC BOOK",
       cash_received: "CASH BOOK",
       bank_payment: "AC BOOK",
       cash_payment: "CASH BOOK",
     };
 
-    for (const ch of challans) {
-      if (!firmFilter(ch.is_gst)) continue;
+    for (const bill of bills) {
+      if (!firmFilter(bill.is_gst)) continue;
 
-      const isSale = ch.challan_type === "sale";
+      const isSale = bill.contact_type !== "supplier";
       const entryType = isSale ? "sale" : "purchase";
       if (!typeWanted(entryType)) continue;
 
-      const bookKey = `${ch.challan_type}_${ch.is_gst}`;
+      const bookKey = `${entryType}_${bill.is_gst}`;
 
       entries.push({
-        date: ch.date,
-        v_no: String(ch.id).padStart(5, "0"),
-        type: TYPE_MAP[ch.challan_type],
-        doc_no: BOOK_MAP[bookKey] || ch.challan_no,
-        narration: BOOK_MAP[bookKey] || ch.challan_no,
-        debit_amount: isSale ? ch.amount : 0,
-        credit_amount: isSale ? 0 : ch.amount,
-        is_gst: ch.is_gst,
-        firm: firmName(ch.is_gst),
-        _sort: new Date(ch.date).getTime(),
+        date: bill.date,
+        v_no: bill.bill_no || String(bill.id).padStart(5, "0"),
+        type: TYPE_MAP[entryType],
+        doc_no: bill.bill_no || "",
+        narration: BOOK_MAP[bookKey] || bill.bill_no || "",
+        debit_amount: isSale ? bill.amount : 0,
+        credit_amount: isSale ? 0 : bill.amount,
+        is_gst: bill.is_gst,
+        firm: firmName(bill.is_gst),
+        _sort: new Date(bill.date).getTime(),
+      });
+    }
+
+    for (const returnDoc of returns) {
+      if (!firmFilter(returnDoc.is_gst)) continue;
+
+      const entryType = returnDoc.return_type;
+      if (!typeWanted(entryType)) continue;
+
+      const isSaleReturn = entryType === "sale_return";
+      const bookKey = `${entryType}_${returnDoc.is_gst}`;
+      const linkedBillNo = returnDoc.bill_id?.bill_no || "";
+      const returnNo =
+        returnDoc.return_no || String(returnDoc.id).padStart(5, "0");
+      const amount = Number(returnDoc.total_amount) || 0;
+
+      entries.push({
+        date: returnDoc.date,
+        v_no: returnNo,
+        type: TYPE_MAP[entryType],
+        doc_no: linkedBillNo || returnNo,
+        narration:
+          linkedBillNo ?
+            `${BOOK_MAP[bookKey] || TYPE_MAP[entryType]} - Bill ${linkedBillNo}`
+          : BOOK_MAP[bookKey] || TYPE_MAP[entryType],
+        debit_amount: isSaleReturn ? 0 : amount,
+        credit_amount: isSaleReturn ? amount : 0,
+        is_gst: returnDoc.is_gst,
+        firm: firmName(returnDoc.is_gst),
+        _sort: new Date(returnDoc.date).getTime(),
       });
     }
 

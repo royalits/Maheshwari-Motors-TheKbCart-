@@ -623,31 +623,49 @@ const BillForm = () => {
     return `${label}: ${currency ? `Rs ${formattedValue}` : formattedValue}`;
   };
 
-  const getItemStock = (item) => {
-    const physical = Number(
-      item?.physicalStock ??
-        item?.physical_stock ??
-        item?.stock ??
-        item?.stockCount ??
-        item?.qty ??
-        0,
+  const toStockNumber = (value, fallback = 0) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+
+  const resolvePhysicalStock = (item = {}) => {
+    const hasSplitStock =
+      item?.opening_physical_stock !== undefined ||
+      item?.physical_stock !== undefined;
+    if (hasSplitStock) {
+      return (
+        toStockNumber(item.opening_physical_stock) +
+        toStockNumber(item.physical_stock)
+      );
+    }
+    return toStockNumber(
+      item?.physicalStock ?? item?.stock ?? item?.stockCount ?? item?.qty,
     );
-    const logical = Number(item?.logicalStock ?? item?.logical_stock ?? 0);
-    const value =
-      showAllCombinedStock ?
-        (Number.isFinite(physical) ? physical : 0) +
-        (Number.isFinite(logical) ? logical : 0)
-      : physical;
+  };
+
+  const resolveLogicalStock = (item = {}) => {
+    const hasSplitStock =
+      item?.opening_logical_stock !== undefined ||
+      item?.logical_stock !== undefined;
+    if (hasSplitStock) {
+      return (
+        toStockNumber(item.opening_logical_stock) +
+        toStockNumber(item.logical_stock)
+      );
+    }
+    return toStockNumber(item?.logicalStock);
+  };
+
+  const getItemStock = (item) => {
+    const physical = resolvePhysicalStock(item);
+    const logical = resolveLogicalStock(item);
+    const value = showAllCombinedStock ? logical : physical;
     return Number.isFinite(value) ? value : 0;
   };
 
   const getStockColumnValue = (details = {}) => {
-    const physical = Number(
-      details?.physicalStock ?? details?.physical_stock ?? details?.stock ?? 0,
-    );
-    const logical = Number(
-      details?.logicalStock ?? details?.logical_stock ?? 0,
-    );
+    const physical = resolvePhysicalStock(details);
+    const logical = resolveLogicalStock(details);
     const value = showAllCombinedStock ? logical : physical;
     const safeValue = Number.isFinite(value) ? value : 0;
     return Number.isInteger(safeValue) ?
@@ -662,19 +680,8 @@ const BillForm = () => {
       prev.items.forEach((rowId) => {
         const current = itemDetails[rowId] || {};
         const item = getLoadedItemByRowId(rowId, itemDetails);
-        const physicalStock =
-          item?.physicalStock ??
-          item?.physical_stock ??
-          current.physicalStock ??
-          current.physical_stock ??
-          current.stock ??
-          0;
-        const logicalStock =
-          item?.logicalStock ??
-          item?.logical_stock ??
-          current.logicalStock ??
-          current.logical_stock ??
-          0;
+        const physicalStock = resolvePhysicalStock({ ...current, ...item });
+        const logicalStock = resolveLogicalStock({ ...current, ...item });
         itemDetails[rowId] = {
           ...current,
           stock: physicalStock,
@@ -691,16 +698,18 @@ const BillForm = () => {
       const stock = event.detail || {};
       const updatedId = String(stock.item_id || stock.id || "");
       if (!updatedId) return;
+      const physicalStock = resolvePhysicalStock(stock);
+      const logicalStock = resolveLogicalStock(stock);
 
       setLoadedItems((prev) =>
         prev.map((item) => {
           if (String(item.id) !== updatedId) return item;
           return {
             ...item,
-            stock: stock.physical_stock,
-            physicalStock: stock.physical_stock,
+            stock: physicalStock,
+            physicalStock,
             physical_stock: stock.physical_stock,
-            logicalStock: stock.logical_stock,
+            logicalStock,
             logical_stock: stock.logical_stock,
             opening_physical_stock: stock.opening_physical_stock,
             opening_logical_stock: stock.opening_logical_stock,
@@ -722,9 +731,9 @@ const BillForm = () => {
           changed = true;
           itemDetails[rowId] = {
             ...details,
-            stock: stock.physical_stock,
-            physicalStock: stock.physical_stock,
-            logicalStock: stock.logical_stock,
+            stock: physicalStock,
+            physicalStock,
+            logicalStock,
           };
         });
 
@@ -754,25 +763,9 @@ const BillForm = () => {
       barcode: normalized.barcode || item?.barcode || "",
       type: normalized.type,
       gst_percent: normalized.gst_percent,
-      stock:
-        item?.physicalStock ??
-        source?.physical_stock ??
-        source?.physicalStock ??
-        item?.stock ??
-        source?.stock ??
-        normalized.stockCount ??
-        0,
-      physicalStock:
-        item?.physicalStock ??
-        source?.physical_stock ??
-        source?.physicalStock ??
-        normalized.stockCount ??
-        0,
-      logicalStock:
-        item?.logicalStock ??
-        source?.logical_stock ??
-        source?.logicalStock ??
-        0,
+      stock: resolvePhysicalStock({ ...source, ...item, ...normalized }),
+      physicalStock: resolvePhysicalStock({ ...source, ...item, ...normalized }),
+      logicalStock: resolveLogicalStock({ ...source, ...item, ...normalized }),
       qrCodeValue:
         normalized.qrCodeValue ||
         item?.qrCodeValue ||
@@ -1161,22 +1154,18 @@ const BillForm = () => {
                 const res = await api.get(`/items/${itemId}`);
                 const itemData = getResponseData(res);
                 if (itemData) {
-                  const normalized = normalizeItem(itemData);
-                  stockMap[itemId] = {
-                    stock:
-                      itemData?.physical_stock ??
-                      itemData?.physicalStock ??
-                      itemData?.stock ??
-                      normalized.stockCount ??
-                      0,
-                    physicalStock:
-                      itemData?.physical_stock ??
-                      itemData?.physicalStock ??
-                      normalized.stockCount ??
-                      0,
-                    logicalStock:
-                      itemData?.logical_stock ?? itemData?.logicalStock ?? 0,
-                  };
+	                  const normalized = normalizeItem(itemData);
+	                  stockMap[itemId] = {
+	                    stock: resolvePhysicalStock({ ...itemData, ...normalized }),
+	                    physicalStock: resolvePhysicalStock({
+	                      ...itemData,
+	                      ...normalized,
+	                    }),
+	                    logicalStock: resolveLogicalStock({
+	                      ...itemData,
+	                      ...normalized,
+	                    }),
+	                  };
                 }
               } catch {}
             }),
@@ -1791,9 +1780,9 @@ const BillForm = () => {
       itemDiscount: Number(item?.discount || 0),
       itemDis2: 0,
       dis3: itemSpecificDiscount,
-      stock: item?.physicalStock ?? item?.physical_stock ?? item?.stock ?? 0,
-      physicalStock: item?.physicalStock ?? item?.physical_stock ?? 0,
-      logicalStock: item?.logicalStock ?? item?.logical_stock ?? 0,
+      stock: resolvePhysicalStock(item),
+      physicalStock: resolvePhysicalStock(item),
+      logicalStock: resolveLogicalStock(item),
       type: effectiveGstType,
       remark: item?.name || "",
       itemName: item?.name || "",
@@ -2021,11 +2010,15 @@ const BillForm = () => {
           ...prev,
           itemDetails: {
             ...prev.itemDetails,
-            [existingRowId]: {
-              ...existingDetails,
-              pcs: currentQty + 1,
-              stock: nextItem?.stock ?? existingDetails.stock ?? 0,
-            },
+	            [existingRowId]: {
+	              ...existingDetails,
+	              pcs: currentQty + 1,
+	              stock: resolvePhysicalStock(nextItem || existingDetails),
+	              physicalStock: resolvePhysicalStock(
+	                nextItem || existingDetails,
+	              ),
+	              logicalStock: resolveLogicalStock(nextItem || existingDetails),
+	            },
           },
         };
       }
@@ -2401,9 +2394,9 @@ const BillForm = () => {
             itemRef?.part_no ||
             loadedItem?.barcode ||
             "",
-          stock: loadedItem?.stock ?? 0,
-          physicalStock: loadedItem?.physicalStock ?? 0,
-          logicalStock: loadedItem?.logicalStock ?? 0,
+          stock: resolvePhysicalStock(loadedItem),
+          physicalStock: resolvePhysicalStock(loadedItem),
+          logicalStock: resolveLogicalStock(loadedItem),
           _manualDiscountFields: {
             disPercent: true,
             spDis: true,
@@ -2535,9 +2528,9 @@ const BillForm = () => {
         remark: scanItem?.source_item_name || loadedItem?.name || "",
         itemName: loadedItem?.name || scanItem?.source_item_name || "",
         barcode: loadedItem?.barcode || scanItem?.source_barcode || "",
-        stock: loadedItem?.stock ?? 0,
-        physicalStock: loadedItem?.physicalStock ?? 0,
-        logicalStock: loadedItem?.logicalStock ?? 0,
+        stock: resolvePhysicalStock(loadedItem),
+        physicalStock: resolvePhysicalStock(loadedItem),
+        logicalStock: resolveLogicalStock(loadedItem),
         _manualDiscountFields: {
           disPercent: true,
           spDis: true,

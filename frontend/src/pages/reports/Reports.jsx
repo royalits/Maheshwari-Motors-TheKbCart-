@@ -12,7 +12,17 @@ import { FaPrint, FaSyncAlt } from "react-icons/fa";
 import { getResolvedFirmMeta } from "../../utils/reportPdf";
 import { getFinancialYearStartDate, getTodayDate } from "../../utils/dateHelpers";
 
-const REPORT_TYPES = ["All", "Sale", "Purchase", "Cash Rec", "Cash Pay", "Bank Rec", "Bank Pay"];
+const REPORT_TYPES = [
+  "All",
+  "Sale",
+  "Purchase",
+  "Sale Return",
+  "Purchase Return",
+  "Cash Rec",
+  "Cash Pay",
+  "Bank Rec",
+  "Bank Pay",
+];
 
 const INIT_FILTERS = {
   ledgerScope: "party",
@@ -150,6 +160,10 @@ const Reports = () => {
     const entityName = getEntityName();
     const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN") : "-");
     const fmtAmt = (v) => toNumber(v, 0).toLocaleString("en-IN");
+    const numberHeader =
+      filters.ledgerScope === "cash" || filters.ledgerScope === "bank" ?
+        "Voucher No."
+      : "Bill / Return No.";
 
     printWindow.document.write(`<!DOCTYPE html>
 <html>
@@ -193,7 +207,7 @@ const Reports = () => {
     <thead>
       <tr>
         <th style="width:70px">Date</th>
-        <th>Voucher No.</th>
+	        <th>${numberHeader}</th>
         <th>Type</th>
         <th class="r">Debit (Rs.)</th>
         <th class="r">Credit (Rs.)</th>
@@ -241,6 +255,10 @@ const Reports = () => {
   }, [filters.ledgerScope, filters.partyId, filters.bankId, filters.dateFrom, filters.dateTo]);
 
   const contactList = filters.ledgerScope === "supplier" ? suppliers : parties;
+  const numberHeader =
+    filters.ledgerScope === "cash" || filters.ledgerScope === "bank" ?
+      "V. No"
+    : "Bill / Return No";
 
   return (
     <div className="space-y-6">
@@ -332,7 +350,7 @@ const Reports = () => {
             <thead className="bg-gray-50 text-gray-600">
               <tr>
                 <th className="px-3 py-2 text-left">Date</th>
-                <th className="px-3 py-2 text-left">V. No</th>
+	                <th className="px-3 py-2 text-left">{numberHeader}</th>
                 <th className="px-3 py-2 text-left">Type</th>
                 <th className="px-3 py-2 text-right">Debit Amount</th>
                 <th className="px-3 py-2 text-right">Credit Amount</th>

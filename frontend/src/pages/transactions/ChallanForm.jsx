@@ -99,12 +99,7 @@ const ChallanForm = () => {
 
   const mapApiItemToLoadedItem = (item) => {
     const normalized = normalizeItem(item);
-    const physicalStock =
-      item?.physical_stock ??
-      item?.physicalStock ??
-      normalized.stockCount ??
-      item?.stock ??
-      0;
+    const physicalStock = resolvePhysicalStock({ ...item, ...normalized });
     return {
       ...item,
       id: normalized.id,
@@ -115,7 +110,7 @@ const ChallanForm = () => {
       qty: physicalStock,
       stockCount: physicalStock,
       physicalStock,
-      logicalStock: item?.logical_stock ?? item?.logicalStock ?? 0,
+      logicalStock: resolveLogicalStock({ ...item, ...normalized }),
       barcode: normalized.barcode,
       is_gst: normalized.type,
     };
@@ -129,31 +124,49 @@ const ChallanForm = () => {
     return `${label}: ${currency ? `Rs ${formattedValue}` : formattedValue}`;
   };
 
-  const getItemStock = (item) => {
-    const physical = Number(
-      item?.physicalStock ??
-        item?.physical_stock ??
-        item?.stockCount ??
-        item?.qty ??
-        item?.stock ??
-        0,
+  const toStockNumber = (value, fallback = 0) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+
+  const resolvePhysicalStock = (item = {}) => {
+    const hasSplitStock =
+      item?.opening_physical_stock !== undefined ||
+      item?.physical_stock !== undefined;
+    if (hasSplitStock) {
+      return (
+        toStockNumber(item.opening_physical_stock) +
+        toStockNumber(item.physical_stock)
+      );
+    }
+    return toStockNumber(
+      item?.physicalStock ?? item?.stockCount ?? item?.qty ?? item?.stock,
     );
-    const logical = Number(item?.logicalStock ?? item?.logical_stock ?? 0);
-    const value =
-      showAllCombinedStock ?
-        (Number.isFinite(physical) ? physical : 0) +
-        (Number.isFinite(logical) ? logical : 0)
-      : physical;
+  };
+
+  const resolveLogicalStock = (item = {}) => {
+    const hasSplitStock =
+      item?.opening_logical_stock !== undefined ||
+      item?.logical_stock !== undefined;
+    if (hasSplitStock) {
+      return (
+        toStockNumber(item.opening_logical_stock) +
+        toStockNumber(item.logical_stock)
+      );
+    }
+    return toStockNumber(item?.logicalStock);
+  };
+
+  const getItemStock = (item) => {
+    const physical = resolvePhysicalStock(item);
+    const logical = resolveLogicalStock(item);
+    const value = showAllCombinedStock ? logical : physical;
     return Number.isFinite(value) ? value : 0;
   };
 
   const getStockColumnValue = (details = {}) => {
-    const physical = Number(
-      details?.physicalStock ?? details?.physical_stock ?? details?.stock ?? 0,
-    );
-    const logical = Number(
-      details?.logicalStock ?? details?.logical_stock ?? 0,
-    );
+    const physical = resolvePhysicalStock(details);
+    const logical = resolveLogicalStock(details);
     const value = showAllCombinedStock ? logical : physical;
     const safeValue = Number.isFinite(value) ? value : 0;
     return Number.isInteger(safeValue) ?
@@ -168,19 +181,8 @@ const ChallanForm = () => {
       prev.items.forEach((rowId) => {
         const current = itemDetails[rowId] || {};
         const item = getLoadedItemByRowId(rowId, itemDetails);
-        const physicalStock =
-          item?.physicalStock ??
-          item?.physical_stock ??
-          current.physicalStock ??
-          current.physical_stock ??
-          current.stock ??
-          0;
-        const logicalStock =
-          item?.logicalStock ??
-          item?.logical_stock ??
-          current.logicalStock ??
-          current.logical_stock ??
-          0;
+        const physicalStock = resolvePhysicalStock({ ...current, ...item });
+        const logicalStock = resolveLogicalStock({ ...current, ...item });
         itemDetails[rowId] = {
           ...current,
           stock: physicalStock,
@@ -197,16 +199,18 @@ const ChallanForm = () => {
       const stock = event.detail || {};
       const updatedId = String(stock.item_id || stock.id || "");
       if (!updatedId) return;
+      const physicalStock = resolvePhysicalStock(stock);
+      const logicalStock = resolveLogicalStock(stock);
 
       setLoadedItems((prev) =>
         prev.map((item) => {
           if (String(item.id) !== updatedId) return item;
           return {
             ...item,
-            stock: stock.physical_stock,
-            physicalStock: stock.physical_stock,
+            stock: physicalStock,
+            physicalStock,
             physical_stock: stock.physical_stock,
-            logicalStock: stock.logical_stock,
+            logicalStock,
             logical_stock: stock.logical_stock,
             opening_physical_stock: stock.opening_physical_stock,
             opening_logical_stock: stock.opening_logical_stock,
@@ -228,9 +232,9 @@ const ChallanForm = () => {
           changed = true;
           itemDetails[rowId] = {
             ...details,
-            stock: stock.physical_stock,
-            physicalStock: stock.physical_stock,
-            logicalStock: stock.logical_stock,
+            stock: physicalStock,
+            physicalStock,
+            logicalStock,
           };
         });
 
@@ -531,22 +535,18 @@ const ChallanForm = () => {
                 const res = await api.get(`/items/${itemId}`);
                 const itemData = getResponseData(res);
                 if (itemData) {
-                  const normalized = normalizeItem(itemData);
-                  stockMap[itemId] = {
-                    stock:
-                      itemData?.physical_stock ??
-                      itemData?.physicalStock ??
-                      itemData?.stock ??
-                      normalized.stockCount ??
-                      0,
-                    physicalStock:
-                      itemData?.physical_stock ??
-                      itemData?.physicalStock ??
-                      normalized.stockCount ??
-                      0,
-                    logicalStock:
-                      itemData?.logical_stock ?? itemData?.logicalStock ?? 0,
-                  };
+	                  const normalized = normalizeItem(itemData);
+	                  stockMap[itemId] = {
+	                    stock: resolvePhysicalStock({ ...itemData, ...normalized }),
+	                    physicalStock: resolvePhysicalStock({
+	                      ...itemData,
+	                      ...normalized,
+	                    }),
+	                    logicalStock: resolveLogicalStock({
+	                      ...itemData,
+	                      ...normalized,
+	                    }),
+	                  };
                 }
               } catch {}
             }),
@@ -1653,20 +1653,9 @@ const ChallanForm = () => {
           itemDiscount: Number(item?.discount || 0),
           itemDis2: 0,
           dis3: itemSpecificDiscount || useDisc3.normal || 0,
-          stock:
-            item?.physicalStock ??
-            item?.physical_stock ??
-            item?.stockCount ??
-            item?.qty ??
-            item?.stock ??
-            0,
-          logicalStock: item?.logical_stock ?? item?.logicalStock ?? 0,
-          physicalStock:
-            item?.physical_stock ??
-            item?.physicalStock ??
-            item?.stockCount ??
-            item?.qty ??
-            0,
+          stock: resolvePhysicalStock(item),
+          logicalStock: resolveLogicalStock(item),
+          physicalStock: resolvePhysicalStock(item),
           type: resolveEffectiveItemType({}, masterIsGst, partyGstType),
           remark: item?.name || "",
           itemName: item?.name || "",
