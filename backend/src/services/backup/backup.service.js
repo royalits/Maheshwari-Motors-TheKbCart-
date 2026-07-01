@@ -10,6 +10,7 @@ const storageRoot = path.resolve(process.cwd(), "storage");
 const backupDir = path.join(storageRoot, "backups");
 const logsFile = path.join(storageRoot, "backup-logs.json");
 const DOWNLOAD_URL_EXPIRY_SECONDS = 60 * 60 * 24 * 7; // 7 days
+const BACKUP_EXCEL_FORMAT = "Maheshwari Backup Excel v2";
 
 const normalizeFirmScope = (isGst) => {
   if (Number(isGst) === 1) return 1;
@@ -607,18 +608,17 @@ const sanitizeExportDocument = (doc, lookups, collectionName = "") => {
   }, {});
 };
 
-const addCollectionSheet = (workbook, sheetName, docs = [], lookups = {}) => {
+const addCollectionSheet = (workbook, sheetName, docs = []) => {
   const worksheet = workbook.addWorksheet(sanitizeWorksheetName(sheetName));
   worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
   if (!docs.length) {
-    worksheet.columns = [{ header: "message", key: "message", width: 30 }];
-    worksheet.addRow({ message: "No records found in this collection." });
+    worksheet.columns = [{ header: "_empty", key: "_empty", width: 12 }];
     return;
   }
 
   const flatRows = docs.map((doc) =>
-    flattenDocument(sanitizeExportDocument(doc, lookups, sheetName)),
+    flattenDocument(normalizeForExport(doc)),
   );
   const allKeys = sortColumnKeys(
     Array.from(new Set(flatRows.flatMap((row) => Object.keys(row)))),
@@ -668,7 +668,7 @@ const addSummarySheet = (workbook, summary) => {
     value: summary.total_collections,
   });
   worksheet.addRow({ field: "Total Records", value: summary.total_records });
-  worksheet.addRow({ field: "Format", value: "Excel (.xlsx)" });
+  worksheet.addRow({ field: "Format", value: BACKUP_EXCEL_FORMAT });
   worksheet.addRow({ field: "", value: "" });
 
   const markerRow = worksheet.lastRow.number + 1;
@@ -801,8 +801,6 @@ const createWorkbookBackup = async (userId, isGst = null) => {
   workbook.creator = `Maheshwari Motors ${firmLabel(isGst)} Backup`;
   workbook.created = new Date();
   workbook.modified = new Date();
-  const lookups = await buildReferenceLookups(db, userId);
-
   const collectionCounts = [];
   let totalRecords = 0;
 
@@ -813,7 +811,7 @@ const createWorkbookBackup = async (userId, isGst = null) => {
       records: docs.length,
     });
     totalRecords += docs.length;
-    addCollectionSheet(workbook, collectionName, docs, lookups);
+    addCollectionSheet(workbook, collectionName, docs);
   }
 
   const summary = {

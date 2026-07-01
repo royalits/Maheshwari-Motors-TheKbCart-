@@ -20,6 +20,7 @@ const storageRoot = path.resolve(process.cwd(), "storage");
 const importsDir = path.join(storageRoot, "imports");
 const reportsDir = path.join(storageRoot, "import-reports");
 const restoresDir = path.join(storageRoot, "restores");
+const BACKUP_EXCEL_FORMAT = "Maheshwari Backup Excel v2";
 
 const importJobs = new Map();
 
@@ -123,13 +124,36 @@ const normalizeImportedCellValue = (rawValue) => {
   return rawValue;
 };
 
+const isNormalizedBackupWorkbook = (workbook) => {
+  const summarySheet = workbook.getWorksheet("backup_summary");
+  if (!summarySheet) return false;
+
+  let format = "";
+  summarySheet.eachRow((row) => {
+    const field = String(normalizeImportedCellValue(row.getCell(1).value) || "")
+      .trim()
+      .toLowerCase();
+    if (field === "format") {
+      format = String(normalizeImportedCellValue(row.getCell(2).value) || "")
+        .trim();
+    }
+  });
+
+  return format === BACKUP_EXCEL_FORMAT;
+};
+
 const reviveImportedValue = (
   key,
   value,
   userId,
   { remapUserId = true } = {},
 ) => {
-  if (key === "user_id" && remapUserId) return userId;
+  if (key === "user_id" && remapUserId) {
+    if (isObjectIdString(String(userId))) {
+      return new mongoose.Types.ObjectId(String(userId));
+    }
+    return userId;
+  }
   if (value === undefined) return undefined;
   if (value === null) return null;
 
@@ -657,6 +681,7 @@ const importFromBackup = async (file, userId) => {
     const errors = [];
     let totalCollections = 0;
     let totalRecords = 0;
+    const isNormalizedBackup = isNormalizedBackupWorkbook(workbook);
     const preserveUserOwnershipCollections = new Set(["users", "sessions"]);
 
     // Skip summary sheet, process data sheets
@@ -681,7 +706,7 @@ const importFromBackup = async (file, userId) => {
           !preserveUserOwnershipCollections.has(normalizedSheetName);
 
         // Special handling for items collection - use model validation
-        if (normalizedSheetName === "items") {
+        if (!isNormalizedBackup && normalizedSheetName === "items") {
           const excelRows = [];
 
           // Get headers
@@ -1448,6 +1473,10 @@ const isBackupFile = async (file) => {
   try {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(file.path);
+
+    if (workbook.getWorksheet("backup_summary")) {
+      return true;
+    }
 
     // Backup files typically have 10+ sheets with collection names
     // Stock import files typically have 1-2 sheets
