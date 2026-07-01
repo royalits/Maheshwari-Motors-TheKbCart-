@@ -397,7 +397,7 @@ const OutStandings = ({
       try {
         setLoadingBills(true);
         const response = await api.get(`/bills/contact/${selectedContact}`, {
-          params: { page: 1, limit: 200, payment_status: "due" },
+          params: { page: 1, limit: 200, payment_status: "due,paid" },
           skipCache: true,
         });
 
@@ -679,6 +679,7 @@ const OutStandings = ({
       date: normalizedPaymentDate,
       allocations: allocationsPayload,
       apply_remaining_to_balance: false,
+      transaction_id: settlementState?.transaction_id || undefined,
     };
 
     try {
@@ -774,7 +775,7 @@ const OutStandings = ({
       }));
       if (selectedContact) {
         const refreshed = await api.get(`/bills/contact/${selectedContact}`, {
-          params: { page: 1, limit: 200, payment_status: "due" },
+          params: { page: 1, limit: 200, payment_status: "due,paid" },
         });
         const list = getResponseList(refreshed).map((bill) => {
           const amount = toNumber(bill.amount ?? bill.total_amount, 0);

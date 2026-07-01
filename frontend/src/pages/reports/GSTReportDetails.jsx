@@ -678,6 +678,106 @@ const GSTReportDetails = () => {
                     Loading GST report...
                   </td>
                 </tr>
+              ) : filters.type === "all" ? (
+                (() => {
+                  const sections = [
+                    { title: "Purchase Return", key: "Purchase Return" },
+                    { title: "Purchase", key: "Purchase" },
+                    { title: "Sale Return", key: "Sale Return" },
+                    { title: "Sale", key: "Sale" },
+                  ];
+                  return sections.map((sec) => {
+                    const sectionRows = filteredRows.filter((r) => r.type === sec.key);
+                    if (sectionRows.length === 0) return null;
+
+                    const secTaxable = sectionRows.reduce((sum, r) => sum + toNumber(r.taxableAmount, 0), 0);
+                    const secGst = sectionRows.reduce((sum, r) => sum + toNumber(r.gstAmount, 0), 0);
+                    const secSgst = sectionRows.reduce((sum, r) => sum + toNumber(r.sgstAmount, 0), 0);
+                    const secCgst = sectionRows.reduce((sum, r) => sum + toNumber(r.cgstAmount, 0), 0);
+                    const secIgst = sectionRows.reduce((sum, r) => sum + toNumber(r.igstAmount, 0), 0);
+                    const secNet = sectionRows.reduce((sum, r) => sum + toNumber(r.net, 0), 0);
+
+                    return (
+                      <React.Fragment key={sec.key}>
+                        <tr className="bg-slate-100 border-t border-b border-slate-200">
+                          <td colSpan={21} className="px-3 py-1.5 font-bold text-slate-700 text-xs">
+                            {sec.title.toUpperCase()} ({sectionRows.length} items)
+                          </td>
+                        </tr>
+                        {sectionRows.map((row, idx) => (
+                          <tr
+                            key={`${row.vno}-${idx}`}
+                            className="border-b last:border-b-0"
+                          >
+                            <td className="px-2 py-1 gst-col-date">{formatDate(row.date)}</td>
+                            <td className="px-2 py-1 gst-col-text">{row.vno}</td>
+                            <td className="px-2 py-1 gst-col-text gst-col-medium font-semibold">{row.acName}</td>
+                            <td className="px-2 py-1 gst-col-text gst-col-gstin">{row.gstin}</td>
+                            <td className="px-2 py-1 gst-col-text gst-col-wide">{row.itemName}</td>
+                            <td className="px-2 py-1 gst-col-text gst-col-hsn">{row.hsnCode}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.pcs, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.rate, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.dis, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.spDis, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.itemDiscount, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.itemDis2, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.dis3, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.taxableAmount, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.gstPercent, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.gstAmount, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.sgstAmount, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.cgstAmount, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.igstAmount, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 gst-col-num">{toNumber(row.net, 0).toLocaleString()}</td>
+                            <td className="px-2 py-1 text-center gst-print-hide">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleIndividualPrint(row)}
+                                  className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                                  title="Print Individual Report"
+                                >
+                                  <FaPrint size={12} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-slate-50 border-b font-bold text-slate-800 border-slate-200">
+                          <td colSpan={6} className="px-3 py-1.5 text-center text-xs">
+                            SUBTOTAL ({sec.title.toUpperCase()})
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs"></td>
+                          <td className="px-2 py-1.5 text-right text-xs"></td>
+                          <td className="px-2 py-1.5 text-right text-xs"></td>
+                          <td className="px-2 py-1.5 text-right text-xs"></td>
+                          <td className="px-2 py-1.5 text-right text-xs"></td>
+                          <td className="px-2 py-1.5 text-right text-xs"></td>
+                          <td className="px-2 py-1.5 text-right text-xs"></td>
+                          <td className="px-2 py-1.5 text-right text-xs font-bold text-slate-900">
+                            ₹{secTaxable.toLocaleString()}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs"></td>
+                          <td className="px-2 py-1.5 text-right text-xs font-bold text-slate-900">
+                            ₹{secGst.toLocaleString()}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs font-bold text-slate-900">
+                            ₹{secSgst.toLocaleString()}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs font-bold text-slate-900">
+                            ₹{secCgst.toLocaleString()}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs font-bold text-slate-900">
+                            ₹{secIgst.toLocaleString()}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs font-bold text-slate-900">
+                            ₹{secNet.toLocaleString()}
+                          </td>
+                          <td className="px-2 py-1.5 gst-print-hide"></td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  });
+                })()
               ) : (
                 filteredRows.map((row, idx) => (
                   <tr
@@ -686,7 +786,7 @@ const GSTReportDetails = () => {
                   >
                     <td className="px-2 py-1 gst-col-date">{formatDate(row.date)}</td>
                     <td className="px-2 py-1 gst-col-text">{row.vno}</td>
-                    <td className="px-2 py-1 gst-col-text gst-col-medium">{row.acName}</td>
+                    <td className="px-2 py-1 gst-col-text gst-col-medium font-semibold">{row.acName}</td>
                     <td className="px-2 py-1 gst-col-text gst-col-gstin">{row.gstin}</td>
                     <td className="px-2 py-1 gst-col-text gst-col-wide">{row.itemName}</td>
                     <td className="px-2 py-1 gst-col-text gst-col-hsn">{row.hsnCode}</td>
@@ -741,7 +841,6 @@ const GSTReportDetails = () => {
                         >
                           <FaPrint size={12} />
                         </button>
-
                       </div>
                     </td>
                   </tr>
@@ -751,7 +850,7 @@ const GSTReportDetails = () => {
                 <tr>
                   <td
                     className="px-3 py-6 text-center text-gray-500"
-                    colSpan={19}
+                    colSpan={21}
                   >
                     No GST report entries found
                   </td>

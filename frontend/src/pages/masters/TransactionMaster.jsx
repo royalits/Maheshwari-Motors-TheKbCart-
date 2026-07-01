@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaEye, FaEdit, FaTrash, FaPrint } from "react-icons/fa";
+import { FaPlus, FaEye, FaEdit, FaTrash, FaPrint, FaDownload } from "react-icons/fa";
 import { DataTable, Modal, DeleteConfirmDialog } from "../../components/common";
 import { Button, Input, SearchableSelect } from "../../components/ui";
+import jsPDF from "jspdf";
 import useStore from "../../store";
 import api from "../../services/axiosInstance";
 import { getEntityId } from "../../services/apiUtils";
@@ -703,6 +704,153 @@ const TransactionMaster = () => {
     pdf.save(`${fileBankName}-${transaction?.transaction_no || "cheque"}.pdf`);
   };
 
+  const handleReceiptPrint = (transaction, action = "print") => {
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a5",
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 8;
+    const contentWidth = pageWidth - margin * 2;
+
+    const firmMeta = getResolvedFirmMeta();
+    const firmName = firmMeta?.firmName || "MAHESHWARI MOTORS";
+    const firmAddress = firmMeta?.address || "";
+    const firmPhone = firmMeta?.phone || "";
+    const firmGstin = firmMeta?.gstin || "";
+
+    const txnType = transaction.type || "";
+    const isReceived = txnType.includes("received");
+    const title = isReceived ? "RECEIPT SLIP" : "PAYMENT SLIP";
+
+    doc.setDrawColor(30, 41, 59);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, margin, contentWidth, pageHeight - margin * 2);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text(firmName.toUpperCase(), pageWidth / 2, margin + 8, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    let currentY = margin + 12;
+    if (firmAddress) {
+      const splitAddress = doc.splitTextToSize(firmAddress, contentWidth - 10);
+      splitAddress.forEach((line) => {
+        doc.text(line, pageWidth / 2, currentY, { align: "center" });
+        currentY += 3.5;
+      });
+    }
+
+    const contactInfo = [
+      firmPhone ? `Ph: ${firmPhone}` : "",
+      firmGstin ? `GSTIN: ${firmGstin}` : "",
+    ].filter(Boolean).join(" | ");
+
+    if (contactInfo) {
+      doc.text(contactInfo, pageWidth / 2, currentY, { align: "center" });
+      currentY += 4.5;
+    }
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin + 2, currentY, margin + contentWidth - 2, currentY);
+    currentY += 6;
+
+    const bannerColor = isReceived ? [21, 128, 61] : [153, 27, 27];
+    doc.setFillColor(...bannerColor);
+    doc.rect(pageWidth / 2 - 25, currentY - 4, 50, 6.5, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(title, pageWidth / 2, currentY + 0.5, { align: "center" });
+    currentY += 8;
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(8.5);
+
+    const leftX = margin + 6;
+    const valueX = margin + 42;
+    const rowHeight = 6.5;
+
+    const details = [
+      ["Receipt No / Voucher No", transaction.transaction_no || "-"],
+      ["Date", formatDate(transaction.date) || "-"],
+      ["Transaction Mode", txnType.includes("bank") ? "Bank" : "Cash"],
+      [isReceived ? "Received From" : "Paid To", transaction.partyName || "-"],
+      ["Remarks / Narration", transaction.remarks || "-"],
+    ];
+
+    details.forEach(([label, value]) => {
+      doc.setFont("helvetica", "bold");
+      doc.text(`${label} :`, leftX, currentY);
+      doc.setFont("helvetica", "normal");
+
+      const maxWidth = contentWidth - 46;
+      const splitVal = doc.splitTextToSize(String(value), maxWidth);
+
+      splitVal.forEach((valLine, valIdx) => {
+        doc.text(valLine, valueX, currentY + (valIdx * 4));
+      });
+
+      currentY += rowHeight + (Math.max(0, splitVal.length - 1) * 4);
+    });
+
+    currentY += 2;
+
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin + 6, currentY, contentWidth - 12, 11, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Amount Received :", margin + 10, currentY + 7);
+
+    doc.setFontSize(12);
+    doc.setTextColor(...bannerColor);
+    doc.text(`Rs. ${Number(transaction.amount || 0).toLocaleString("en-IN")}/-`, margin + contentWidth - 10, currentY + 7.2, { align: "right" });
+
+    currentY += 16;
+
+    const words = numberToWords(Number(transaction.amount || 0)) + " Only";
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    const splitWords = doc.splitTextToSize(`In Words: Rs. ${words}`, contentWidth - 12);
+    splitWords.forEach((wordLine) => {
+      doc.text(wordLine, margin + 6, currentY);
+      currentY += 4;
+    });
+
+    currentY += 8;
+
+    const sigY = pageHeight - margin - 12;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Prepared By", margin + 12, sigY);
+    doc.text("Authorized Signatory", margin + contentWidth - 12, sigY, { align: "right" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.line(margin + 6, sigY - 4, margin + 38, sigY - 4);
+    doc.line(margin + contentWidth - 38, sigY - 4, margin + contentWidth - 6, sigY - 4);
+
+    if (action === "print") {
+      doc.autoPrint();
+      window.open(doc.output("bloburl"), "_blank");
+    } else {
+      doc.save(`receipt-${transaction.transaction_no || "slip"}.pdf`);
+    }
+  };
+
   const actions = [
     {
       label: <FaEye size={12} />,
@@ -751,11 +899,25 @@ const TransactionMaster = () => {
       onClick: handleChequePrint,
       show: isSupplierBankPaymentTransaction,
       className: "bg-purple-600 text-white hover:bg-purple-700 p-2",
+      title: "Print Cheque",
+    },
+    {
+      label: <FaPrint size={12} className="text-white" />,
+      onClick: (t) => handleReceiptPrint(t, "print"),
+      className: "bg-indigo-600 text-white hover:bg-indigo-700 p-2",
+      title: "Print Slip",
+    },
+    {
+      label: <FaDownload size={12} className="text-white" />,
+      onClick: (t) => handleReceiptPrint(t, "download"),
+      className: "bg-teal-600 text-white hover:bg-teal-700 p-2",
+      title: "Download Slip",
     },
     {
       label: <FaTrash size={12} />,
       onClick: (t) => setDeleteDialog({ isOpen: true, transaction: t }),
       className: "bg-red-600 text-white hover:bg-red-700 p-2",
+      title: "Delete",
     },
   ];
 

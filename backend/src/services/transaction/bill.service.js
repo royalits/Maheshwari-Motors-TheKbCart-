@@ -1561,7 +1561,13 @@ class BillService {
       note,
       date,
       allocations,
+      transaction_id,
     } = payload || {};
+
+    let txnId = null;
+    if (transaction_id && mongoose.Types.ObjectId.isValid(transaction_id)) {
+      txnId = new mongoose.Types.ObjectId(transaction_id);
+    }
 
     if (!contact_id) {
       throw ApiError.badRequest("contact_id is required");
@@ -1764,7 +1770,7 @@ class BillService {
             note,
             settledTo: "bill",
             date: paymentDate,
-            transactionId: null,
+            transactionId: txnId || null,
           }),
         };
       }
@@ -1796,6 +1802,39 @@ class BillService {
         .lean();
     }
 
+    if (latestContact) {
+      const isGstVal = isGst === 1 || isGst === true;
+      latestContact.balance = isGstVal
+        ? (latestContact.gst_balance ?? latestContact.balance ?? 0)
+        : (latestContact.nongst_balance ?? latestContact.balance ?? 0);
+    }
+
+    if (txnId) {
+      await Transaction.updateOne(
+        { _id: txnId, user_id: userId },
+        {
+          $set: {
+            settlement_status: "settled",
+            settlement_summary: {
+              settled_amount: allocatedAmount,
+              settlement_discount_amount: settlementDiscountAmount,
+              settle_date: paymentDate,
+              allocations: normalizedAllocations.map((a) => ({
+                bill_id: a.bill_id,
+                amount: a.amount,
+                settlement_discount: a.settlement_discount,
+              })),
+            },
+          },
+        }
+      );
+    }
+
+    await this._recalculateContactBalance(contact_id, userId, isGst);
+
+    latestContact = await Contact.findById(contact_id)
+      .select("_id name balance gst_balance nongst_balance")
+      .lean();
     if (latestContact) {
       const isGstVal = isGst === 1 || isGst === true;
       latestContact.balance = isGstVal
@@ -1873,6 +1912,8 @@ class BillService {
         $inc: { [balanceField]: excessAmount },
       });
     }
+
+    await this._recalculateContactBalance(bill.contact_id, userId, isGst);
 
     return this._applyAutoBillSnapshotToBill(updatedBill);
   }
@@ -2228,11 +2269,14 @@ class BillService {
 
     const balanceField = bill.is_gst === 1 || bill.is_gst === true ? "gst_balance" : "nongst_balance";
 
-    const contact = await Contact.findOneAndUpdate(
+    await Contact.findOneAndUpdate(
       { _id: bill.contact_id, user_id: userId },
       { $inc: { [balanceField]: refundAmount } },
-      { returnDocument: "after" },
-    )
+    );
+
+    await this._recalculateContactBalance(bill.contact_id, userId, isGst);
+
+    const contact = await Contact.findById(bill.contact_id)
       .select("_id name balance gst_balance nongst_balance")
       .lean();
 
@@ -2565,6 +2609,48 @@ class BillService {
     });
 
     return bill;
+  }
+
+  async _recalculateContactBalance(contactId, userId, isGst) {
+    if (!contactId) return;
+    const isGstVal = isGst === 1 || isGst === true;
+    const balanceField = isGstVal ? "gst_balance" : "nongst_balance";
+
+    const [txns, bills] = await Promise.all([
+      Transaction.find({
+        contact_id: contactId,
+        user_id: userId,
+        is_gst: isGstVal ? 1 : 0,
+      }).lean(),
+      Bill.find({
+        contact_id: contactId,
+        user_id: userId,
+        is_gst: isGstVal ? 1 : 0,
+      }).lean(),
+    ]);
+
+    let balance = 0;
+    for (const txn of txns) {
+      const settled = txn.settlement_summary?.settled_amount || 0;
+      const unsettled = Number(txn.amount || 0) - settled;
+      balance += Math.max(0, unsettled);
+    }
+    for (const bill of bills) {
+      const netAmount = Math.max(
+        0,
+        Number(bill.amount || 0) -
+          Number(bill.settlement_discount || 0) -
+          Number(bill.return_amount || 0),
+      );
+      const overpaid = Math.max(0, Number(bill.paid_amount || 0) - netAmount);
+      balance += overpaid;
+    }
+    balance = Math.round(balance * 100) / 100;
+
+    await Contact.updateOne(
+      { _id: contactId, user_id: userId },
+      { $set: { [balanceField]: balance } },
+    );
   }
 }
 

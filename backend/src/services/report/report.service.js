@@ -763,7 +763,7 @@ class ReportService {
     if (Object.keys(dateFilter).length) billFilter.date = dateFilter;
 
     const bills = await Bill.find(billFilter)
-      .select("id bill_no contact_type date amount is_gst")
+      .select("id bill_no contact_type date amount is_gst settlement_discount")
       .sort({ date: 1 })
       .lean();
 
@@ -782,7 +782,7 @@ class ReportService {
     if (Object.keys(dateFilter).length) txnFilter.date = dateFilter;
 
     const transactions = await Transaction.find(txnFilter)
-      .select("id transaction_no type date amount is_gst remarks")
+      .select("id transaction_no type date amount is_gst remarks settlement_summary")
       .sort({ date: 1 })
       .lean();
 
@@ -831,6 +831,7 @@ class ReportService {
         narration: BOOK_MAP[bookKey] || bill.bill_no || "",
         debit_amount: isSale ? bill.amount : 0,
         credit_amount: isSale ? 0 : bill.amount,
+        discount: bill.settlement_discount || 0,
         is_gst: bill.is_gst,
         firm: firmName(bill.is_gst),
         _sort: new Date(bill.date).getTime(),
@@ -861,6 +862,7 @@ class ReportService {
           : BOOK_MAP[bookKey] || TYPE_MAP[entryType],
         debit_amount: isSaleReturn ? 0 : amount,
         credit_amount: isSaleReturn ? amount : 0,
+        discount: 0,
         is_gst: returnDoc.is_gst,
         firm: firmName(returnDoc.is_gst),
         _sort: new Date(returnDoc.date).getTime(),
@@ -889,6 +891,7 @@ class ReportService {
         narration: txn.remarks || BOOK_MAP[txn.type] || txn.transaction_no,
         debit_amount: isReceived ? 0 : txn.amount,
         credit_amount: isReceived ? txn.amount : 0,
+        discount: txn.settlement_summary?.settlement_discount_amount || 0,
         is_gst: txn.is_gst,
         firm: firmName(txn.is_gst),
         _sort: new Date(txn.date).getTime(),

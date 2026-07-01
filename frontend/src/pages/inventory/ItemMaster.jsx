@@ -133,7 +133,7 @@ const ItemMaster = () => {
         key: "id",
         label: "ID",
         render: (val, row, index) => (
-          <span className="text-xs sm:text-sm">{index + 1}</span>
+          <span className="text-xs sm:text-sm">{filteredItems.length - index}</span>
         ),
       },
       {
@@ -247,7 +247,7 @@ const ItemMaster = () => {
         ),
       },
     ],
-    [],
+    [filteredItems.length],
   );
 
   const actions = [

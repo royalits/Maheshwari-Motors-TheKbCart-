@@ -6,6 +6,7 @@ import {
   FaPlus,
   FaTrash,
   FaTimes,
+  FaPrint,
 } from "react-icons/fa";
 import { DataTable, DeleteConfirmDialog, Modal } from "../../components/common";
 import { Button } from "../../components/ui";
@@ -620,131 +621,590 @@ const ReturnMaster = () => {
     setReferenceItems([]);
   };
 
-  const generateReturnPDF = async (entry) => {
+  const generateReturnPDF = async (entry, action = "download") => {
     try {
       const response = await api.get(`/returns/${entry.id}`);
       const data = getResponseData(response);
-
-      const doc = new jsPDF();
-      const firmName = firmBranding.name || selectedFirm?.name || "Firm";
-      const returnType =
-        data?.return_type === "sale_return" ? "Sale Return" : "Purchase Return";
-      const refNo =
-        data?.bill_id?.bill_no || data?.challan_id?.challan_no || "-";
       const items = Array.isArray(data?.items) ? data.items : [];
 
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.text(firmName, 105, 15, { align: "center" });
+      const isGstBill = !!firmBranding.isGst;
+      const doc = new jsPDF(isGstBill ? {
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      } : {
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
 
-      doc.setFontSize(14);
-      doc.text(returnType, 105, 25, { align: "center" });
+      const firmName = firmBranding.name || selectedFirm?.name || "Firm";
+      const firmAddress = firmBranding.address || selectedFirm?.address || "--";
+      const firmPhone = firmBranding.phone || selectedFirm?.phone || "--";
+      const firmEmail = firmBranding.email || selectedFirm?.email || "--";
+      const firmGstin = firmBranding.gstin || selectedFirm?.gstin || "--";
 
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Return No: ${data?.return_no || "-"}`, 20, 40);
-      doc.text(`Date: ${formatDate(data?.date)}`, 20, 47);
-      doc.text(`Contact: ${data?.contact_id?.name || "-"}`, 20, 54);
-      doc.text(`Reference: ${refNo}`, 20, 61);
+      const contact = data?.contact_id || {};
+      const receiverName = contact?.name || "N/A";
+      const receiverAddress = contact?.address || "--";
+      const receiverCity = contact?.city || "--";
+      const receiverState = contact?.state || "--";
+      const receiverGstin = contact?.gstin || "--";
+      const receiverPhone = contact?.phone || "--";
 
-      const tableData = items.map((item, index) => {
+      const extractStateCode = (gstinValue) => {
+        const gstin = String(gstinValue || "").trim();
+        const code = gstin.slice(0, 2);
+        return /^\d{2}$/.test(code) ? code : "--";
+      };
+
+      const receiverStateCode = contact?.state_code || extractStateCode(receiverGstin);
+
+      const resolvePan = (...values) => {
+        for (const value of values) {
+          const text = String(value || "").trim().toUpperCase();
+          if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(text)) return text;
+        }
+        return "--";
+      };
+      const receiverPan = resolvePan(contact?.pan, contact?.pan_number, contact?.pan, contact?.reg_number);
+
+      const returnTypeLabel = data?.return_type === "sale_return" ? "SALE RETURN" : "PURCHASE RETURN";
+      const returnNo = data?.return_no || "-";
+      const returnDate = data?.date ? formatDate(data.date) : "-";
+
+      const parsedItems = items.map((item) => {
         const itemRef = item?.item_id || {};
-        const itemName = itemRef?.item_name || itemRef?.name || "-";
-        return [
-          index + 1,
-          itemName,
-          toNumber(item?.quantity, 0),
-          toNumber(item?.rate, 0).toFixed(2),
-          toNumber(item?.discount, 0).toFixed(2),
-          toNumber(item?.special_discount, 0).toFixed(2),
-          toNumber(item?.gst_percent, 0).toFixed(2),
-          toNumber(item?.taxable_amount, 0).toFixed(2),
-          toNumber(item?.gst_amount, 0).toFixed(2),
-          toNumber(item?.amount, 0).toFixed(2),
+        const itemName = itemRef?.item_name || itemRef?.name || item?.item_name || "";
+        const hsn = itemRef?.hsn_id?.hsn_code || itemRef?.hsn_code || "";
+        const quantity = Number(item?.quantity || 0);
+        const rate = Number(item?.rate || 0);
+        const discount = Number(item?.discount || 0);
+        const specialDiscount = Number(item?.special_discount || 0);
+        const taxable = Number(item?.taxable_amount || 0);
+        const taxPercent = Number(item?.gst_percent || 0);
+        const taxAmount = Number(item?.gst_amount || 0);
+        const amount = Number(item?.amount || 0);
+        const netRate = quantity !== 0 ? amount / quantity : 0;
+
+        return {
+          description: itemName,
+          hsn,
+          quantity,
+          rate,
+          discount,
+          specialDiscount,
+          taxable,
+          taxPercent,
+          taxAmount,
+          amount,
+          netRate,
+        };
+      });
+
+      const totalQty = parsedItems.reduce((sum, item) => sum + item.quantity, 0);
+      const taxableTotal = parsedItems.reduce((sum, item) => sum + item.taxable, 0);
+      const taxTotal = parsedItems.reduce((sum, item) => sum + item.taxAmount, 0);
+      const netTotal = Math.round(data.total_amount || 0);
+      const sgstAmount = taxTotal / 2;
+      const cgstAmount = taxTotal / 2;
+      const igstAmount = taxTotal;
+
+      const toWordsIndian = (num) => {
+        const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
+        const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
+        const convertTwoDigits = (n) => {
+          if (n < 20) return ones[n];
+          return `${tens[Math.floor(n / 10)]}${n % 10 ? ` ${ones[n % 10]}` : ""}`;
+        };
+        const convertThreeDigits = (n) => {
+          const hundred = Math.floor(n / 100);
+          const rest = n % 100;
+          if (!hundred) return convertTwoDigits(rest);
+          return `${ones[hundred]} HUNDRED${rest ? ` ${convertTwoDigits(rest)}` : ""}`;
+        };
+        if (num === 0) return "ZERO";
+        const crore = Math.floor(num / 10000000);
+        const lakh = Math.floor((num % 10000000) / 100000);
+        const thousand = Math.floor((num % 100000) / 1000);
+        const hundred = num % 1000;
+        const parts = [];
+        if (crore) parts.push(`${convertTwoDigits(crore)} CRORE`);
+        if (lakh) parts.push(`${convertTwoDigits(lakh)} LAKH`);
+        if (thousand) parts.push(`${convertTwoDigits(thousand)} THOUSAND`);
+        if (hundred) parts.push(convertThreeDigits(hundred));
+        return parts.join(" ").trim();
+      };
+      
+      const amountInWords = `${toWordsIndian(Math.floor(netTotal))} ONLY`;
+
+      const resolvedFirm = {
+        ...selectedFirm,
+        ...firmBranding,
+      };
+
+      if (isGstBill) {
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 6;
+        const contentWidth = pageWidth - margin * 2;
+        const blue = [0, 0, 190];
+        const headerFill = [203, 239, 243];
+
+        const drawPageBorder = () => {
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.25);
+          doc.rect(margin, margin, contentWidth, pageHeight - margin * 2);
+
+          const link1 = "thekbclick.com";
+          const sep = " / ";
+          const link2 = "thekbcart.com";
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          const w1 = doc.getTextWidth(link1);
+          const wSep = doc.getTextWidth(sep);
+          const w2 = doc.getTextWidth(link2);
+          const totalW = w1 + wSep + w2;
+          const xOffset = margin + (contentWidth - totalW) / 2;
+          const yPos = pageHeight - margin + 3.5;
+
+          doc.setTextColor(0, 102, 204);
+          doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
+          doc.setTextColor(0, 0, 0);
+          doc.text(sep, xOffset + w1, yPos);
+          doc.setTextColor(0, 102, 204);
+          doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
+          doc.setDrawColor(0, 102, 204);
+          doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
+          doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
+        };
+
+        drawPageBorder();
+
+        let cursorY = margin + 2;
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(12.5);
+        doc.setTextColor(...blue);
+        doc.text(firmName.toUpperCase(), margin + contentWidth / 2, cursorY + 4, { align: "center" });
+
+        doc.setFont("times", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text(doc.splitTextToSize(firmAddress, contentWidth - 16), margin + contentWidth / 2, cursorY + 9, { align: "center" });
+        doc.text(`Ph.${firmPhone}`, margin + contentWidth / 2, cursorY + 18, { align: "center" });
+        doc.text(`Email : ${firmEmail}`, margin + contentWidth / 2, cursorY + 23, { align: "center" });
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(10.5);
+        doc.text(`GSTIN : ${firmGstin}`, margin + contentWidth / 2, cursorY + 28, { align: "center" });
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...blue);
+        doc.text("Original For Recipient [ ]", margin + contentWidth - 2, cursorY + 12, { align: "right" });
+        doc.text("Duplicate For Transporter [ ]", margin + contentWidth - 2, cursorY + 18, { align: "right" });
+
+        cursorY += 31;
+
+        doc.setFillColor(...headerFill);
+        doc.rect(margin, cursorY, contentWidth, 7.5, "FD");
+        doc.setFont("times", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(...blue);
+        doc.text(returnTypeLabel, margin + contentWidth / 2, cursorY + 5.2, { align: "center" });
+        cursorY += 7.5;
+
+        const detailSectionHeight = 24;
+        const splitX = margin + contentWidth * 0.53;
+        doc.setTextColor(0, 0, 0);
+        doc.rect(margin, cursorY, contentWidth, detailSectionHeight);
+        doc.line(splitX, cursorY, splitX, cursorY + detailSectionHeight);
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(9.5);
+        const leftDetailsX = margin + 1.8;
+        const rightDetailsX = splitX + 1.8;
+        const baseLineY = cursorY + 6;
+        const rowGap = 6;
+
+        doc.text(`Return No : ${returnNo}`, leftDetailsX, baseLineY);
+        doc.text(`Return Date : ${returnDate}`, leftDetailsX, baseLineY + rowGap);
+        doc.text(`State : ${receiverState}`, leftDetailsX, baseLineY + rowGap * 2);
+
+        doc.text(`Ref. Bill No : ${data.bill_id?.bill_no || "-"}`, rightDetailsX, baseLineY);
+        doc.text(`Place Of Supply : ${receiverCity}`, rightDetailsX, baseLineY + rowGap);
+        cursorY += detailSectionHeight;
+
+        doc.setFillColor(...headerFill);
+        doc.rect(margin, cursorY, contentWidth, 7.5, "FD");
+        doc.line(splitX, cursorY, splitX, cursorY + 7.5);
+        doc.setFont("times", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(...blue);
+        doc.text("Details of Customer", margin + 1.8, cursorY + 5.2);
+        doc.text("Details of Consignee", splitX + 1.8, cursorY + 5.2);
+        cursorY += 7.5;
+
+        const partyBoxHeight = 36;
+        doc.setTextColor(0, 0, 0);
+        doc.rect(margin, cursorY, contentWidth, partyBoxHeight);
+        doc.line(splitX, cursorY, splitX, cursorY + partyBoxHeight);
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(9.5);
+        doc.text(`Name : ${receiverName}`, leftDetailsX, cursorY + 6.5);
+        doc.setFont("times", "normal");
+        doc.text(doc.splitTextToSize(receiverAddress, contentWidth * 0.48).slice(0, 1), leftDetailsX, cursorY + 12.5);
+        doc.text(`City : ${receiverCity} | GSTIN : ${receiverGstin}`, leftDetailsX, cursorY + 18.5);
+        doc.text(`Phone : ${receiverPhone}`, leftDetailsX, cursorY + 24.5);
+
+        doc.setFont("times", "bold");
+        doc.text(`Name : ${receiverName}`, rightDetailsX, cursorY + 6.5);
+        doc.setFont("times", "normal");
+        doc.text(doc.splitTextToSize(receiverAddress, contentWidth * 0.48).slice(0, 1), rightDetailsX, cursorY + 12.5);
+        doc.text(`City : ${receiverCity} | GSTIN : ${receiverGstin}`, rightDetailsX, cursorY + 18.5);
+        cursorY += partyBoxHeight;
+
+        const cellPad = 1.5;
+        const fs = 7.5;
+        const headFs = 7.8;
+        const headPad = 3;
+
+        const COL_W = [8, 48, 14, 10, 14, 9, 9, 14, 16, 10, 14, 18];
+        const headers = ["Sr.", "Item Description", "HSN", "Qty.", "Rate", "D1%", "D2%", "Net Rate", "Taxable", "Tax%", "TaxAmt", "Amount"];
+        const fallbackRow = ["1", "--", "--", "0", "0", "0", "0", "0", "0", "0", "0", "0"];
+
+        const itemRows = parsedItems.map((item, index) => [
+          String(index + 1),
+          item.description,
+          item.hsn,
+          String(item.quantity),
+          item.rate.toFixed(2),
+          item.discount.toFixed(2),
+          item.specialDiscount.toFixed(2),
+          item.netRate.toFixed(2),
+          item.taxable.toFixed(2),
+          String(item.taxPercent),
+          item.taxAmount.toFixed(2),
+          item.amount.toFixed(2),
+        ]);
+
+        const colStyles = {};
+        COL_W.forEach((w, idx) => {
+          colStyles[idx] = {
+            cellWidth: w,
+            halign: idx === 0 ? "center" : idx === 1 || idx === 2 ? "left" : "right",
+          };
+        });
+
+        autoTable(doc, {
+          head: [headers],
+          body: itemRows.length ? itemRows : [fallbackRow],
+          startY: cursorY,
+          margin: { left: margin, right: margin },
+          tableWidth: contentWidth,
+          theme: "grid",
+          styles: {
+            font: "times",
+            fontSize: fs,
+            lineColor: [0, 0, 0],
+            lineWidth: 0.25,
+            minCellHeight: 6,
+            cellPadding: { top: cellPad, right: 1.2, bottom: cellPad, left: 1.2 },
+          },
+          headStyles: {
+            fillColor: headerFill,
+            textColor: blue,
+            fontStyle: "bold",
+            fontSize: headFs,
+            halign: "center",
+            valign: "middle",
+            cellPadding: { top: headPad, right: 1.2, bottom: headPad, left: 1.2 },
+          },
+          showHead: "everyPage",
+          columnStyles: colStyles,
+          didDrawPage: () => drawPageBorder(),
+        });
+
+        cursorY = doc.lastAutoTable.finalY;
+
+        const leftSummaryWidth = contentWidth * 0.58;
+        const rightSummaryWidth = contentWidth - leftSummaryWidth;
+        const summaryHeight = 42;
+
+        doc.setDrawColor(0, 0, 0);
+        doc.setFillColor(255, 255, 255);
+        doc.rect(margin, cursorY, leftSummaryWidth, summaryHeight);
+        doc.rect(margin + leftSummaryWidth, cursorY, rightSummaryWidth, summaryHeight);
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(8.0);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Terms & Conditions:", margin + 2, cursorY + 4);
+        doc.setFont("times", "normal");
+        doc.setFontSize(7.0);
+        doc.text("1. Goods once sold will not be taken back or exchanged.", margin + 2, cursorY + 7.5);
+        doc.text("2. Subject to local jurisdiction only.", margin + 2, cursorY + 11);
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(8.0);
+        doc.text(`Bank Name : ${resolvedFirm.bank_name || "PRIME CO OP BANK LTD"}`, margin + 2, cursorY + 16);
+        doc.text(`IFS Code  : ${resolvedFirm.ifsc_code || "PMEC0000010"}`, margin + 2, cursorY + 19.5);
+        doc.text(`A/c No.   : ${resolvedFirm.account_number || "10032001002995"}`, margin + 2, cursorY + 23);
+
+        doc.text(`Total Qty : ${totalQty}`, margin + 2, cursorY + 28);
+        doc.text(doc.splitTextToSize(`Amount In Words: ${amountInWords}`, leftSummaryWidth - 4).slice(0, 2), margin + 2, cursorY + 32);
+
+        const rowLeftX = margin + leftSummaryWidth + 2;
+        const rowValueX = margin + contentWidth - 2;
+        const summaryRowGap = 5.2;
+        doc.setFont("times", "bold");
+        doc.setFontSize(8.5);
+
+        doc.text("Total Before Tax :", rowLeftX, cursorY + 5.5);
+        doc.setFont("times", "normal");
+        doc.text(taxableTotal.toFixed(2), rowValueX, cursorY + 5.5, { align: "right" });
+
+        const isIntraState = receiverStateCode === extractStateCode(firmGstin);
+        const sgstLabel = isIntraState ? "Add SGST :" : "Add IGST :";
+        const sgstVal = isIntraState ? sgstAmount : igstAmount;
+        doc.setFont("times", "bold");
+        doc.text(sgstLabel, rowLeftX, cursorY + 5.5 + summaryRowGap);
+        doc.setFont("times", "normal");
+        doc.text(sgstVal.toFixed(2), rowValueX, cursorY + 5.5 + summaryRowGap, { align: "right" });
+
+        if (isIntraState) {
+          doc.setFont("times", "bold");
+          doc.text("Add CGST :", rowLeftX, cursorY + 5.5 + summaryRowGap * 2);
+          doc.setFont("times", "normal");
+          doc.text(cgstAmount.toFixed(2), rowValueX, cursorY + 5.5 + summaryRowGap * 2, { align: "right" });
+        }
+
+        const taxTotalLabel = "Total Tax Amount :";
+        doc.setFont("times", "bold");
+        doc.text(taxTotalLabel, rowLeftX, cursorY + 5.5 + summaryRowGap * 3);
+        doc.setFont("times", "normal");
+        doc.text(taxTotal.toFixed(2), rowValueX, cursorY + 5.5 + summaryRowGap * 3, { align: "right" });
+
+        doc.line(margin + leftSummaryWidth, cursorY + summaryHeight - 7, margin + contentWidth, cursorY + summaryHeight - 7);
+        doc.setFont("times", "bold");
+        doc.setFontSize(10.0);
+        doc.setTextColor(...blue);
+        doc.text("Grand Total :", rowLeftX, cursorY + summaryHeight - 2.8);
+        doc.text(netTotal.toFixed(2), rowValueX, cursorY + summaryHeight - 2.8, { align: "right" });
+
+        const footerY = cursorY + summaryHeight + 3;
+        doc.setFont("times", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Receiver's Signature :", margin + 2, footerY + 12);
+        doc.line(margin + 2, footerY + 9, margin + 40, footerY + 9);
+
+        doc.text("Authorized Signatory :", margin + contentWidth - 2, footerY + 12, { align: "right" });
+        doc.line(margin + contentWidth - 40, footerY + 9, margin + contentWidth - 2, footerY + 9);
+      } else {
+        const compactPageWidth = doc.internal.pageSize.getWidth();
+        const compactPageHeight = doc.internal.pageSize.getHeight();
+        const compactMargin = 6;
+        const compactContentWidth = 133;
+        const compactX = compactPageWidth - compactMargin - compactContentWidth;
+        const compactBlue = [0, 0, 190];
+        const compactBorder = [35, 35, 35];
+        const compactHeaderFill = [247, 247, 247];
+
+        const compactRows = parsedItems.map((item) => [
+          item.description || "--",
+          String(item.quantity || 0),
+          item.rate.toFixed(2),
+          item.discount.toFixed(2),
+          item.specialDiscount.toFixed(2),
+          item.netRate.toFixed(2),
+          item.amount.toFixed(2),
+        ]);
+
+        doc.setDrawColor(...compactBorder);
+        doc.setLineWidth(0.3);
+        doc.rect(compactX, compactMargin, compactContentWidth, compactPageHeight - compactMargin * 2);
+
+        let compactY = compactMargin + 4;
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(14.5);
+        doc.setTextColor(...compactBlue);
+        doc.text(String(firmName).toUpperCase(), compactX + compactContentWidth / 2, compactY, { align: "center" });
+
+        doc.setFont("times", "normal");
+        doc.setFontSize(8.0);
+        doc.text(returnTypeLabel, compactX + compactContentWidth / 2, compactY + 4.2, { align: "center" });
+        
+        doc.setTextColor(0, 0, 0);
+        const compactFirmAddress = doc.splitTextToSize(firmAddress === "--" ? "" : firmAddress, compactContentWidth - 12);
+        if (compactFirmAddress.length > 0) {
+          doc.text(compactFirmAddress.slice(0, 1), compactX + compactContentWidth / 2, compactY + 7.6, { align: "center" });
+        }
+        doc.setFontSize(7.5);
+        doc.text(`Ph., ${firmPhone}`, compactX + compactContentWidth / 2, compactY + 11.0, { align: "center" });
+        
+        doc.setFont("times", "bold");
+        doc.setFontSize(10.0);
+        doc.text(`GSTIN : ${firmGstin === "--" ? "APPLY FOR REGISTRATION" : firmGstin}`, compactX + compactContentWidth / 2, compactY + 15.5, { align: "center" });
+
+        compactY += 17.5;
+
+        doc.setFillColor(...compactHeaderFill);
+        doc.rect(compactX, compactY, compactContentWidth, 6.5, "FD");
+        doc.setFont("times", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(...compactBlue);
+        doc.text(`* ${returnTypeLabel} *`, compactX + compactContentWidth / 2, compactY + 4.5, { align: "center" });
+
+        compactY += 6.5;
+
+        const detailsSplitX = compactX + compactContentWidth * 0.655;
+        doc.setDrawColor(...compactBorder);
+        doc.rect(compactX, compactY, compactContentWidth, 25);
+        doc.line(detailsSplitX, compactY, detailsSplitX, compactY + 25);
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(...compactBlue);
+        doc.text(`M/s. : ${receiverName}`, compactX + 2, compactY + 5);
+        doc.setFont("times", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text(doc.splitTextToSize(receiverAddress === "--" ? receiverCity : receiverAddress, compactContentWidth * 0.52).slice(0, 2), compactX + 9, compactY + 9.5);
+        doc.text(`City --${receiverCity === "--" ? "" : receiverCity}--  Contact No.${receiverPhone === "--" ? "" : receiverPhone}`, compactX + 9, compactY + 18);
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Return No.: ${returnNo}`, detailsSplitX + 2, compactY + 6);
+        doc.text(`Date          : ${returnDate}`, detailsSplitX + 2, compactY + 12);
+        doc.text(`Ref. Bill      : ${data.bill_id?.bill_no || "-"}`, detailsSplitX + 2, compactY + 18);
+
+        compactY += 25;
+
+        const summaryBoxHeight = 12;
+        const footerReserve = 52;
+        const startTableY = compactY;
+        const tableBottomY = compactPageHeight - compactMargin - footerReserve - summaryBoxHeight;
+        const headerHeight = 6.5;
+        const tableHeight = tableBottomY - startTableY;
+        const bodyHeight = tableHeight - headerHeight;
+        
+        const columnDefs = [
+          { label: "Item Name", width: 57, align: "left" },
+          { label: "Qty", width: 10, align: "right" },
+          { label: "Rate", width: 13, align: "right" },
+          { label: "D1", width: 10, align: "right" },
+          { label: "D2", width: 10, align: "right" },
+          { label: "Net Rate", width: 16, align: "right" },
+          { label: "Amount", width: 17, align: "right" },
         ];
-      });
+        
+        const minRows = Math.max(compactRows.length, 12);
+        const rowHeight = bodyHeight / minRows;
+        const visibleRows = compactRows.length > 0 ? compactRows.slice(0, minRows) : [["--", "0", "0", "0", "0", "0", "0"]];
 
-      autoTable(doc, {
-        head: [
-          [
-            "#",
-            "Item",
-            "Qty",
-            "Rate",
-            "Dis%",
-            "SP Dis%",
-            "GST%",
-            "Taxable",
-            "GST Amt",
-            "Amount",
-          ],
-        ],
-        body: tableData,
-        startY: 70,
-        theme: "grid",
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [60, 60, 60] },
-      });
+        doc.setDrawColor(...compactBorder);
+        doc.setLineWidth(0.2);
+        doc.rect(compactX, startTableY, compactContentWidth, tableHeight);
+        doc.setFillColor(...compactHeaderFill);
+        doc.rect(compactX, startTableY, compactContentWidth, headerHeight, "FD");
+        doc.line(compactX, startTableY + headerHeight, compactX + compactContentWidth, startTableY + headerHeight);
 
-      const finalY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text(
-        `Total Amount: Rs ${Math.ceil(toNumber(data?.total_amount, 0))}`,
-        20,
-        finalY,
-      );
+        const columnStarts = [];
+        let currentX = compactX;
+        columnDefs.forEach((column, index) => {
+          columnStarts.push(currentX);
+          currentX += column.width;
+          if (index < columnDefs.length - 1) {
+            doc.line(currentX, startTableY, currentX, tableBottomY);
+          }
+        });
 
-      if (data?.note) {
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Note: ${data.note}`, 20, finalY + 8);
+        doc.setFont("times", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(...compactBlue);
+        columnDefs.forEach((column, index) => {
+          const startX = columnStarts[index];
+          if (column.align === "left") {
+            doc.text(column.label, startX + 1.2, startTableY + 4.7);
+          } else {
+            doc.text(column.label, startX + column.width - 1.2, startTableY + 4.7, { align: "right" });
+          }
+        });
+
+        doc.setFont("times", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(0, 0, 0);
+        visibleRows.forEach((row, rowIndex) => {
+          const rowY = startTableY + headerHeight + rowIndex * rowHeight + (rowHeight * 0.72);
+          row.forEach((cell, cellIndex) => {
+            const value = String(cell ?? "");
+            const startX = columnStarts[cellIndex];
+            const width = columnDefs[cellIndex].width;
+            const align = columnDefs[cellIndex].align;
+            if (align === "left") {
+              doc.text(doc.splitTextToSize(value, width - 2).slice(0, 1), startX + 1.2, rowY);
+            } else {
+              doc.text(value, startX + width - 1.2, rowY, { align: "right" });
+            }
+          });
+        });
+
+        const compactSummaryY = tableBottomY;
+        doc.rect(compactX, compactSummaryY, compactContentWidth, summaryBoxHeight);
+        let summaryLineX = compactX;
+        columnDefs.forEach((column, index) => {
+          summaryLineX += column.width;
+          if (index < columnDefs.length - 1) {
+            doc.line(summaryLineX, compactSummaryY, summaryLineX, compactSummaryY + summaryBoxHeight);
+          }
+        });
+        doc.setFont("times", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Total :", columnStarts[1] - 1.2, compactSummaryY + 5.5, { align: "right" });
+        doc.text(String(Math.round(totalQty)), columnStarts[2] - 1.2, compactSummaryY + 5.5, { align: "right" });
+        doc.text(netTotal.toFixed(2), compactX + compactContentWidth - 1.2, compactSummaryY + 5.5, { align: "right" });
+
+        const compactFooterY = compactSummaryY + summaryBoxHeight;
+        const compactFooterHeight = compactPageHeight - compactMargin - compactFooterY;
+        doc.rect(compactX, compactFooterY, compactContentWidth, compactFooterHeight);
+        doc.setFont("times", "bold");
+        doc.setFontSize(8.5);
+        doc.text("Remarks :", compactX + 1.5, compactFooterY + 4.5);
+        doc.text(doc.splitTextToSize(data.note || "--", compactContentWidth - 15).slice(0, 2), compactX + 18, compactFooterY + 4.5);
+        
+        doc.setFont("times", "bold");
+        doc.setTextColor(...compactBlue);
+        doc.setFontSize(9.0);
+        doc.text(`LD BAL. : ${Number(data.contact_id?.balance || 0).toFixed(2)}`, compactX + 1.5, compactFooterY + 10);
+        
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("times", "bold");
+        doc.setFontSize(9.5);
+        doc.text(doc.splitTextToSize(`In Words : Rs. ${amountInWords}`, compactContentWidth - 10).slice(0, 2), compactX + 1.5, compactFooterY + 17);
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(9.5);
+        doc.text("E.&O.E.", compactX + 1.5, compactPageHeight - compactMargin - 6);
+        doc.text("For, " + String(firmName).toUpperCase(), compactX + compactContentWidth - 2, compactPageHeight - compactMargin - 18, { align: "right" });
+        doc.text("Auth. Signatory", compactX + compactContentWidth - 2, compactPageHeight - compactMargin - 4, { align: "right" });
       }
 
-      // Add footer branding as clickable links
-      const link1 = "thekbclick.com";
-      const sep = " / ";
-      const link2 = "thekbcart.com";
-      const brandingFontSize = 7;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(brandingFontSize);
-
-      const w1 = doc.getTextWidth(link1);
-      const wSep = doc.getTextWidth(sep);
-      const w2 = doc.getTextWidth(link2);
-      const totalW = w1 + wSep + w2;
-
-      const xOffset = 105 - totalW / 2;
-      const yPos = 285;
-
-      // Draw first link
-      doc.setTextColor(0, 102, 204);
-      doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
-
-      // Draw separator
-      doc.setTextColor(0, 0, 0);
-      doc.text(sep, xOffset + w1, yPos);
-
-      // Draw second link
-      doc.setTextColor(0, 102, 204);
-      doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
-
-      // Add underlines for links
-      doc.setDrawColor(0, 102, 204);
-      doc.setLineWidth(0.1);
-      doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
-      doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
-
-      doc.save(
-        `${returnType.replace(" ", "_")}_${data?.return_no || "Return"}.pdf`,
-      );
-      showToast("PDF downloaded successfully", "success");
+      if (action === "print") {
+        doc.autoPrint();
+        window.open(doc.output("bloburl"), "_blank");
+      } else {
+        doc.save(`${returnTypeLabel.replace(/\s+/g, "_")}_${returnNo}.pdf`);
+        showToast("PDF downloaded successfully", "success");
+      }
     } catch (error) {
       console.error("Failed to generate PDF:", error);
-      showToast(
-        error?.response?.data?.message || "Failed to generate PDF",
-        "error",
-      );
+      showToast(error?.response?.data?.message || "Failed to generate PDF", "error");
     }
   };
 
@@ -897,10 +1357,18 @@ const ReturnMaster = () => {
         "bg-slate-600 text-white hover:bg-slate-700 p-1 sm:p-1.5 md:p-2 text-xs",
     },
     {
+      label: <FaPrint size={10} className="sm:size-3 md:size-4" />,
+      onClick: (entry) => generateReturnPDF(entry, "print"),
+      className:
+        "bg-indigo-600 text-white hover:bg-indigo-700 p-1 sm:p-1.5 md:p-2 text-xs",
+      title: "Print Return Invoice",
+    },
+    {
       label: <FaDownload size={10} className="sm:size-3 md:size-4" />,
-      onClick: generateReturnPDF,
+      onClick: (entry) => generateReturnPDF(entry, "download"),
       className:
         "bg-green-600 text-white hover:bg-green-700 p-1 sm:p-1.5 md:p-2 text-xs",
+      title: "Download Return Invoice",
     },
     {
       label: <FaTrash size={10} className="sm:size-3 md:size-4" />,

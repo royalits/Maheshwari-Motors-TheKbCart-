@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Return from "../../models/transaction/return.model.js";
 import Bill from "../../models/transaction/bill.model.js";
 import Challan from "../../models/transaction/challan.model.js";
+import Transaction from "../../models/transaction/transaction.model.js";
 import Contact from "../../models/master/contact.model.js";
 import Item from "../../models/master/item.model.js";
 import stockService from "../inventory/stock.service.js";
@@ -442,6 +443,8 @@ class ReturnService {
       user_id: userId,
     });
 
+    await this._recalculateContactBalance(bill.contact_id, userId, isGst);
+
     await returnDoc.populate(RETURN_POPULATE);
     return this._attachDamageCounts(returnDoc);
   }
@@ -567,6 +570,8 @@ class ReturnService {
       financial_year_id: financial_year_id || null,
       user_id: userId,
     });
+
+    await this._recalculateContactBalance(bill.contact_id, userId, isGst);
 
     await returnDoc.populate(RETURN_POPULATE);
     return this._attachDamageCounts(returnDoc);
@@ -794,7 +799,51 @@ class ReturnService {
       }
     }
 
+    await this._recalculateContactBalance(doc.contact_id, userId, isGst);
+
     await Return.findByIdAndDelete(returnId);
+  }
+
+  async _recalculateContactBalance(contactId, userId, isGst) {
+    if (!contactId) return;
+    const isGstVal = isGst === 1 || isGst === true;
+    const balanceField = isGstVal ? "gst_balance" : "nongst_balance";
+
+    const [txns, bills] = await Promise.all([
+      Transaction.find({
+        contact_id: contactId,
+        user_id: userId,
+        is_gst: isGstVal ? 1 : 0,
+      }).lean(),
+      Bill.find({
+        contact_id: contactId,
+        user_id: userId,
+        is_gst: isGstVal ? 1 : 0,
+      }).lean(),
+    ]);
+
+    let balance = 0;
+    for (const txn of txns) {
+      const settled = txn.settlement_summary?.settled_amount || 0;
+      const unsettled = Number(txn.amount || 0) - settled;
+      balance += Math.max(0, unsettled);
+    }
+    for (const bill of bills) {
+      const netAmount = Math.max(
+        0,
+        Number(bill.amount || 0) -
+          Number(bill.settlement_discount || 0) -
+          Number(bill.return_amount || 0),
+      );
+      const overpaid = Math.max(0, Number(bill.paid_amount || 0) - netAmount);
+      balance += overpaid;
+    }
+    balance = Math.round(balance * 100) / 100;
+
+    await Contact.updateOne(
+      { _id: contactId, user_id: userId },
+      { $set: { [balanceField]: balance } },
+    );
   }
 }
 

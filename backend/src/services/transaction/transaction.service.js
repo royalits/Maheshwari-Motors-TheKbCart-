@@ -392,13 +392,6 @@ class TransactionService {
       );
     }
 
-    const settledAmount = doc.settlement_summary?.settled_amount || 0;
-    if (settledAmount > 0.009) {
-      throw ApiError.badRequest(
-        `Cannot delete transaction because ₹${settledAmount} of its amount is still participating in settlement`,
-      );
-    }
-
     await Transaction.deleteOne({ _id: doc._id });
     await this.recalculateContactBalance(doc.contact_id, userId, doc.is_gst);
     return doc;

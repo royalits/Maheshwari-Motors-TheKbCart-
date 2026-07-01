@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 import { DataTable, Modal, DeleteConfirmDialog } from '../../components/common';
 import { Button, SearchableSelect } from '../../components/ui';
@@ -46,7 +46,7 @@ const INITIAL_FORM = {
 };
 
 const PartyMaster = () => {
-  const { showToast } = useStore();
+  const { showToast, user } = useStore();
   const [parties, setParties] = useState([]);
   const [agents, setAgents] = useState([]);
   const [transports, setTransports] = useState([]);
@@ -59,11 +59,35 @@ const PartyMaster = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedParty, setSelectedParty] = useState(null);
-  const [formData, setFormData] = useState(INITIAL_FORM);
+
+  const activeFirmType = localStorage.getItem("firm_type") || "";
+  const activeFirm =
+    activeFirmType === "GST" ? user?.gst_firm :
+    activeFirmType === "NON_GST" || activeFirmType === "NONGST" ? user?.nongst_firm :
+    user?.gst_firm || user?.nongst_firm || {};
+  const defaultFirmState = activeFirm?.state || "";
+
+  const resetForm = () => {
+    setFormData({
+      ...INITIAL_FORM,
+      state: defaultFirmState,
+    });
+  };
+
+  const [formData, setFormData] = useState({
+    ...INITIAL_FORM,
+    state: defaultFirmState,
+  });
   const [validationModal, setValidationModal] = useState({ isOpen: false, errors: [] });
   const firstFieldRef = useRef(null);
+
+  useEffect(() => {
+    if (defaultFirmState && !formData.state && !selectedParty) {
+      setFormData((prev) => ({ ...prev, state: defaultFirmState }));
+    }
+  }, [defaultFirmState, selectedParty]);
   useKeyboardShortcuts({
-    onAdd: () => { setFormData(INITIAL_FORM); setIsAddModalOpen(true); },
+    onAdd: () => { resetForm(); setIsAddModalOpen(true); },
     onRefresh: () => window.location.reload(),
   });
 
@@ -438,7 +462,7 @@ const PartyMaster = () => {
       setBanks(getResponseList(bankResponse));
       
       // after a successful save we reset form; when adding we keep the modal open so user can add more
-      setFormData(INITIAL_FORM);
+      resetForm();
       setSelectedParty(null);
       if (isEditModalOpen) {
         setIsEditModalOpen(false);
@@ -481,7 +505,7 @@ const PartyMaster = () => {
   useSaveShortcut(() => handleSubmit({ preventDefault: () => {} }), isAddModalOpen || isEditModalOpen);
 
   const openAddModal = () => {
-    setFormData(INITIAL_FORM);
+    resetForm();
     setIsAddModalOpen(true);
   };
 
@@ -694,7 +718,7 @@ const PartyMaster = () => {
           setIsAddModalOpen(false);
           setIsEditModalOpen(false);
           setSelectedParty(null);
-          setFormData(INITIAL_FORM);
+          resetForm();
         }} 
         title={isEditModalOpen ? 'Edit Party' : 'Add New Party'} 
         size="md"
@@ -986,7 +1010,7 @@ const PartyMaster = () => {
                 setIsAddModalOpen(false);
                 setIsEditModalOpen(false);
                 setSelectedParty(null);
-                setFormData(INITIAL_FORM);
+                resetForm();
               }}
             >
               Cancel

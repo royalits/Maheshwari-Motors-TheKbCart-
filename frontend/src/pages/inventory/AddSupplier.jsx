@@ -74,7 +74,7 @@ const INITIAL_FORM = {
 };
 
 const AddSupplier = () => {
-  const { showToast } = useStore();
+  const { showToast, user } = useStore();
   const [suppliers, setSuppliers] = useState([]);
   const [banks, setBanks] = useState([]);
   const [labels, setLabels] = useState([]);
@@ -87,7 +87,31 @@ const AddSupplier = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [formData, setFormData] = useState(INITIAL_FORM);
+
+  const activeFirmType = localStorage.getItem("firm_type") || "";
+  const activeFirm =
+    activeFirmType === "GST" ? user?.gst_firm :
+    activeFirmType === "NON_GST" || activeFirmType === "NONGST" ? user?.nongst_firm :
+    user?.gst_firm || user?.nongst_firm || {};
+  const defaultFirmState = activeFirm?.state || "";
+
+  const resetForm = () => {
+    setFormData({
+      ...INITIAL_FORM,
+      state: defaultFirmState,
+    });
+  };
+
+  const [formData, setFormData] = useState({
+    ...INITIAL_FORM,
+    state: defaultFirmState,
+  });
+
+  useEffect(() => {
+    if (defaultFirmState && !formData.state && !selectedSupplier) {
+      setFormData((prev) => ({ ...prev, state: defaultFirmState }));
+    }
+  }, [defaultFirmState, selectedSupplier]);
   const [validationModal, setValidationModal] = useState({
     isOpen: false,
     errors: [],
@@ -131,7 +155,7 @@ const AddSupplier = () => {
   };
 
   useKeyboardShortcuts({
-    onAdd: () => { setFormData(INITIAL_FORM); setIsAddModalOpen(true); },
+    onAdd: () => { resetForm(); setIsAddModalOpen(true); },
     enabled: !isAddModalOpen && !isEditModalOpen,
   });
 
@@ -396,7 +420,7 @@ const AddSupplier = () => {
         .map(mapSupplier);
       setSuppliers(filteredSuppliers);
 
-      setFormData(INITIAL_FORM);
+      resetForm();
       setSelectedSupplier(null);
       if (isEditModalOpen) {
         setIsEditModalOpen(false);
@@ -442,7 +466,7 @@ const AddSupplier = () => {
         </div>
         <Button
           onClick={() => {
-            setFormData(INITIAL_FORM);
+            resetForm();
             setIsAddModalOpen(true);
           }}
           className="flex items-center gap-2 text-xs sm:text-sm"
@@ -671,7 +695,7 @@ const AddSupplier = () => {
           setIsAddModalOpen(false);
           setIsEditModalOpen(false);
           setSelectedSupplier(null);
-          setFormData(INITIAL_FORM);
+          resetForm();
         }}
         title={isEditModalOpen ? "Edit Supplier" : "Add New Supplier"}
         size="md"
@@ -967,7 +991,7 @@ const AddSupplier = () => {
                 setIsAddModalOpen(false);
                 setIsEditModalOpen(false);
                 setSelectedSupplier(null);
-                setFormData(INITIAL_FORM);
+                resetForm();
               }}
             >
               Cancel

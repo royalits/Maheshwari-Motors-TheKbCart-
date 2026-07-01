@@ -3846,13 +3846,13 @@ const BillForm = () => {
       const tableHeight = tableBottomY - startTableY;
       const bodyHeight = tableHeight - headerHeight;
       const columnDefs = [
-        { label: "Item Name", width: 44, align: "left" },
+        { label: "Item Name", width: 57, align: "left" },
         { label: "Qty", width: 10, align: "right" },
         { label: "Rate", width: 13, align: "right" },
         { label: "D1", width: 10, align: "right" },
         { label: "D2", width: 10, align: "right" },
         { label: "Net Rate", width: 16, align: "right" },
-        { label: "Amount", width: 30, align: "right" },
+        { label: "Amount", width: 17, align: "right" },
       ];
       const minRows = Math.max(compactRows.length, 12);
       const rowHeight = bodyHeight / minRows;

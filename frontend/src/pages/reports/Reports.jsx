@@ -79,6 +79,7 @@ const Reports = () => {
     return {
       debitTotal: hasRows ? filteredRows.reduce((s, r) => s + toNumber(r.debit, 0), 0) : toNumber(apiTotals.debit, 0),
       creditTotal: hasRows ? filteredRows.reduce((s, r) => s + toNumber(r.credit, 0), 0) : toNumber(apiTotals.credit, 0),
+      discountTotal: hasRows ? filteredRows.reduce((s, r) => s + toNumber(r.discount, 0), 0) : 0,
       closingBalance: hasRows ? filteredRows[filteredRows.length - 1].balance : toNumber(apiTotals.closing, 0),
       closingCd: hasRows ? filteredRows[filteredRows.length - 1].cd : apiTotals.closingCd || "",
     };
@@ -113,6 +114,7 @@ const Reports = () => {
         narration: entry.narration || "",
         debit: toNumber(entry.debit_amount ?? entry.debit, 0),
         credit: toNumber(entry.credit_amount ?? entry.credit, 0),
+        discount: toNumber(entry.discount, 0),
         balance: toNumber(entry.balance, 0),
         cd: entry.cd || "",
       }));
@@ -211,6 +213,7 @@ const Reports = () => {
         <th>Type</th>
         <th class="r">Debit (Rs.)</th>
         <th class="r">Credit (Rs.)</th>
+        <th class="r">Discount (Rs.)</th>
         <th class="r">Balance (Rs.)</th>
         <th style="width:30px">C/D</th>
       </tr>
@@ -224,6 +227,7 @@ const Reports = () => {
         <td>${row.type || "-"}</td>
         <td class="r">${row.debit > 0 ? fmtAmt(row.debit) : "-"}</td>
         <td class="r">${row.credit > 0 ? fmtAmt(row.credit) : "-"}</td>
+        <td class="r">${row.discount > 0 ? fmtAmt(row.discount) : "-"}</td>
         <td class="r">${fmtAmt(row.balance)}</td>
         <td>${row.cd || ""}</td>
       </tr>`
@@ -233,6 +237,7 @@ const Reports = () => {
         <td colspan="3">TOTAL (${filteredRows.length} entries)</td>
         <td class="r">${fmtAmt(totals.debitTotal)}</td>
         <td class="r">${fmtAmt(totals.creditTotal)}</td>
+        <td class="r">${fmtAmt(totals.discountTotal)}</td>
         <td class="r">${fmtAmt(totals.closingBalance)} ${totals.closingCd}</td>
         <td></td>
       </tr>
@@ -354,13 +359,14 @@ const Reports = () => {
                 <th className="px-3 py-2 text-left">Type</th>
                 <th className="px-3 py-2 text-right">Debit Amount</th>
                 <th className="px-3 py-2 text-right">Credit Amount</th>
+                <th className="px-3 py-2 text-right">Discount</th>
                 <th className="px-3 py-2 text-right">Balance</th>
                 <th className="px-3 py-2 text-left">C/D</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={7}>Loading ledger...</td></tr>
+                <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={8}>Loading ledger...</td></tr>
               ) : (
                 filteredRows.map((row, idx) => (
                   <tr key={`${row.voucherNo}-${idx}`} className="border-b last:border-b-0">
@@ -369,13 +375,14 @@ const Reports = () => {
                     <td className="px-3 py-2">{row.type}</td>
                     <td className="px-3 py-2 text-right">{toNumber(row.debit, 0).toLocaleString()}</td>
                     <td className="px-3 py-2 text-right">{toNumber(row.credit, 0).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right">{toNumber(row.discount, 0).toLocaleString()}</td>
                     <td className="px-3 py-2 text-right">{toNumber(row.balance, 0).toLocaleString()}</td>
                     <td className="px-3 py-2">{row.cd}</td>
                   </tr>
                 ))
               )}
               {!loading && filteredRows.length === 0 && (
-                <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={7}>No ledger entries found</td></tr>
+                <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={8}>No ledger entries found</td></tr>
               )}
             </tbody>
           </table>
@@ -385,6 +392,7 @@ const Reports = () => {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>Total Debit: <span className="font-semibold">{totals.debitTotal.toLocaleString()}</span></div>
             <div>Total Credit: <span className="font-semibold">{totals.creditTotal.toLocaleString()}</span></div>
+            <div>Total Discount: <span className="font-semibold">{totals.discountTotal.toLocaleString()}</span></div>
             <div>Closing Balance: <span className="font-semibold">{toNumber(totals.closingBalance, 0).toLocaleString()} {totals.closingCd}</span></div>
           </div>
         </div>
