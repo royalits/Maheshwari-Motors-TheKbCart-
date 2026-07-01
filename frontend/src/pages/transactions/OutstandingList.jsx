@@ -218,7 +218,7 @@ const OutstandingList = () => {
           };
         });
 
-        setBills(mappedBills);
+        setBills(sortBillsNewestFirst(mappedBills));
         setSelectedBillIds(new Set());
         setBillsPagination((prev) => ({
           ...prev,
@@ -350,11 +350,9 @@ const OutstandingList = () => {
             };
           });
 
-          mappedBills.sort((a, b) => new Date(a.date) - new Date(b.date));
-
           return {
             contact: contact || { id: contactId, name: "Unknown" },
-            bills: mappedBills,
+            bills: sortBillsNewestFirst(mappedBills),
           };
         });
 
@@ -735,6 +733,25 @@ const OutstandingList = () => {
     : String(billOrId || "");
 
   const isBillSelectable = (bill) => Boolean(getBillId(bill));
+
+  const getBillSortTime = (bill) => {
+    const rawDate = bill?.date || bill?.createdAt || bill?.created_at || "";
+    const time = new Date(rawDate).getTime();
+    return Number.isFinite(time) ? time : 0;
+  };
+
+  const getBillSortNo = (bill) => {
+    const rawNo = String(bill?.billNo || bill?.bill_no || "").replace(/\D/g, "");
+    const parsed = Number(rawNo);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const sortBillsNewestFirst = (rows = []) =>
+    [...rows].sort((left, right) => {
+      const dateDiff = getBillSortTime(right) - getBillSortTime(left);
+      if (dateDiff !== 0) return dateDiff;
+      return getBillSortNo(right) - getBillSortNo(left);
+    });
 
   const isBillDeletable = (bill) =>
     Boolean(getBillId(bill)) &&
