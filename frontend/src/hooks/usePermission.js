@@ -52,6 +52,24 @@ const getStoredFirmRole = () => {
   }
 };
 
+const getStoredCredentialKey = () => {
+  try {
+    return localStorage.getItem("credential_key");
+  } catch {
+    return null;
+  }
+};
+
+const normalizeCredentialKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isFirmAdminCredentialKey = (value) =>
+  ["gst_firm", "nongst_firm", "gst_user", "nongst_user"].includes(
+    normalizeCredentialKey(value),
+  );
+
 const normalizeFirmRole = (value) => {
   const role = normalizeRoleValue(value);
   if (!role) return null;
@@ -89,6 +107,15 @@ export const usePermission = () => {
 
   const resolvedFirmRole = (() => {
     if (authRole !== "firm") return null;
+
+    const activeCredentialKey =
+      user?.current_credential_key ||
+      user?.credential_key ||
+      getStoredCredentialKey();
+
+    if (isFirmAdminCredentialKey(activeCredentialKey)) {
+      return "admin";
+    }
 
     const activeFirmType = normalizeFirmTypeValue(
       user?.firm_data?.firm_type ||

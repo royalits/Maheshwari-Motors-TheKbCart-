@@ -23,6 +23,19 @@ const getStoredFirmRole = () => {
   }
 };
 
+const getStoredCredentialKey = () => {
+  try {
+    return localStorage.getItem('credential_key');
+  } catch {
+    return null;
+  }
+};
+
+const isFirmAdminCredentialKey = (value) =>
+  ['gst_firm', 'nongst_firm', 'gst_user', 'nongst_user'].includes(
+    String(value || '').trim().toLowerCase(),
+  );
+
 const getStoredFinancialYearId = () => {
   try {
     return localStorage.getItem('financial_year_id');
@@ -33,6 +46,13 @@ const getStoredFinancialYearId = () => {
 
 const resolveFirmRole = (user) => {
   if (!user) return null;
+  if (
+    isFirmAdminCredentialKey(
+      user?.current_credential_key || user?.credential_key || getStoredCredentialKey(),
+    )
+  ) {
+    return 'admin';
+  }
   if (user?.current_firm_role) return user.current_firm_role;
   if (user?.firm_data?.firm_role) return user.firm_data.firm_role;
   if (getStoredFirmRole()) return getStoredFirmRole();
@@ -125,6 +145,7 @@ const useStore = create(devtools((set) => ({
     localStorage.removeItem('financial_year_start');
     localStorage.removeItem('financial_year_end');
     localStorage.removeItem('financial_year_label');
+    localStorage.removeItem('credential_key');
     set({
       user: null,
       isAuthenticated: false,

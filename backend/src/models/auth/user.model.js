@@ -206,10 +206,7 @@ userSchema.statics.findByFirmCredentials = async function (username, password) {
         }
 
         const contactId = user[field].contact_id || null;
-        const firmRole =
-          field === "gst_firm" || field === "nongst_firm" ?
-            normalizeRole(user[field].role || "admin")
-          : meta.firm_role;
+        const firmRole = meta.firm_role;
 
         return {
           user,

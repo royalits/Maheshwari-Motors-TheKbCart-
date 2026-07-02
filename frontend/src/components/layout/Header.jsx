@@ -114,6 +114,7 @@ const Header = ({ onMenuClick }) => {
       localStorage.removeItem('userRole');
       localStorage.removeItem('firm_type');
       localStorage.removeItem('firm_role');
+      localStorage.removeItem('credential_key');
       localStorage.removeItem('financial_year_id');
       localStorage.removeItem('financial_year_start');
       localStorage.removeItem('financial_year_end');

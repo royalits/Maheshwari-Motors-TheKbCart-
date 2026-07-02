@@ -92,6 +92,10 @@ const Login = () => {
         'firm_role',
         userData?.current_firm_role || userData?.firm_data?.firm_role || '',
       );
+      localStorage.setItem(
+        'credential_key',
+        userData?.current_credential_key || userData?.credential_key || '',
+      );
 
       setUser(userData);
       showToast('Login successful', 'success');

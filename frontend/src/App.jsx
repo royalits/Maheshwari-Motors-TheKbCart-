@@ -133,6 +133,12 @@ const App = () => {
               localStorage.getItem("firm_role") ||
               "",
           );
+          localStorage.setItem(
+            "credential_key",
+            profile?.current_credential_key ||
+              profile?.credential_key ||
+              "",
+          );
           setUser({
             ...profile,
             current_firm_type:
@@ -144,6 +150,10 @@ const App = () => {
               profile?.current_firm_role ||
               profile?.firm_data?.firm_role ||
               localStorage.getItem("firm_role") ||
+              "",
+            current_credential_key:
+              profile?.current_credential_key ||
+              profile?.credential_key ||
               "",
           });
         } catch (error) {
