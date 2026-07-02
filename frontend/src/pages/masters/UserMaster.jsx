@@ -670,14 +670,14 @@ const UserMaster = () => {
             ...(base.gst_firm || {}),
             password: '',
             bank_ids: Array.isArray(base.gst_firm?.bank_ids)
-              ? base.gst_firm.bank_ids
+              ? base.gst_firm.bank_ids.filter((b) => b && typeof b === "object")
               : [],
           },
           nongst_firm: {
             ...(base.nongst_firm || {}),
             password: '',
             bank_ids: Array.isArray(base.nongst_firm?.bank_ids)
-              ? base.nongst_firm.bank_ids
+              ? base.nongst_firm.bank_ids.filter((b) => b && typeof b === "object")
               : [],
           },
         });
