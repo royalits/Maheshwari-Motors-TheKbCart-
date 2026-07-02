@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/auth/user.model.js";
 import Session from "../models/auth/session.model.js";
+import Subscription from "../models/common/subscription.model.js";
 import { ApiError, asyncHandler } from "../utils/index.js";
 import { normalizeRole } from "../utils/role.utils.js";
 import env from "../config/env.js";
@@ -43,6 +44,21 @@ const auth = asyncHandler(async (req, res, next) => {
       req.isGst = decoded.firm_type === "GST" ? 1 : 0;
       req.firmRole = normalizeRole(decoded.firm_role || "admin");
       req.contactId = decoded.contact_id || null;
+
+      // Verify that firm's subscription is not expired
+      const subscription = await Subscription.findOne({ user_id: decoded._id });
+      if (subscription) {
+        if (
+          subscription.status === "expired" ||
+          (subscription.expiry_date && new Date(subscription.expiry_date) < new Date())
+        ) {
+          if (subscription.status !== "expired") {
+            subscription.status = "expired";
+            await subscription.save().catch(() => {});
+          }
+          throw ApiError.paymentRequired("Subscription has expired");
+        }
+      }
     }
 
     next();

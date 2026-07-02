@@ -195,6 +195,10 @@ class AuthService {
         contactId,
         credentialKey,
       } = await User.findByFirmCredentials(username, password);
+
+      // Verify that firm's subscription is not expired
+      await this._checkSubscription(user._id);
+
       const normalizedFirmRole = normalizeRole(firmRole || "admin");
       const token = user.generateFirmToken({
         firmType: resolvedFirmType,
@@ -257,6 +261,22 @@ class AuthService {
         signature: firmObj.signature || user.signature || null,
         token,
       };
+    }
+  }
+
+  async _checkSubscription(userId) {
+    const subscription = await Subscription.findOne({ user_id: userId });
+    if (subscription) {
+      if (
+        subscription.status === "expired" ||
+        (subscription.expiry_date && new Date(subscription.expiry_date) < new Date())
+      ) {
+        if (subscription.status !== "expired") {
+          subscription.status = "expired";
+          await subscription.save().catch(() => {});
+        }
+        throw ApiError.paymentRequired("Subscription has expired");
+      }
     }
   }
 

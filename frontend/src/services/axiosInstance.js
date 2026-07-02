@@ -283,7 +283,10 @@ api.interceptors.response.use(
       pendingGetRequests.delete(cacheKey);
     }
 
-    if (error.response?.status === 401 && !isHandlingUnauthorized) {
+    if (
+      (error.response?.status === 401 || error.response?.status === 402) &&
+      !isHandlingUnauthorized
+    ) {
       isHandlingUnauthorized = true;
       invalidateClientCache();
       localStorage.removeItem("token");
