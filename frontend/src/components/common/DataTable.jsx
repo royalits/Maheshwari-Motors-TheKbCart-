@@ -405,6 +405,7 @@ const DataTable = ({
                                   e.stopPropagation();
                                   !loading && action.onClick(row);
                                 }}
+                                title={action.title}
                                 className={`${isCompact ? "px-2 py-0.5" : "px-3 py-1"} text-xs rounded ${action.className || "bg-blue-600 text-white hover:bg-blue-700"} ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                                 disabled={loading}
                               >

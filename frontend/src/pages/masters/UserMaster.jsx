@@ -272,6 +272,14 @@ const UserMaster = () => {
   });
   const [isAdminCredentialModalOpen, setIsAdminCredentialModalOpen] = useState(false);
   const [adminCredentialsSaving, setAdminCredentialsSaving] = useState(false);
+  const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
+  const [renewUser, setRenewUser] = useState(null);
+  const [renewData, setRenewData] = useState({
+    years: 0,
+    months: 0,
+    days: 0,
+    amount: ''
+  });
   const [newUser, setNewUser] = useState(getDefaultUserForm());
   const addModalSubscription = {
     years: Number(pendingSubscription?.years ?? subscriptionData.years ?? 0),
@@ -365,6 +373,41 @@ const UserMaster = () => {
       username: prev.username || username,
     }));
   }, [loggedInUser]);
+
+  const handleRenewSubscription = async () => {
+    const years = Number(renewData.years || 0);
+    const months = Number(renewData.months || 0);
+    const days = Number(renewData.days || 0);
+    const amount = Number(renewData.amount || 0);
+
+    if (years === 0 && months === 0 && days === 0) {
+      showToast('At least one duration field must be greater than 0', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api.put(`/admin/subscriptions/${renewUser.id}`, {
+        years,
+        months,
+        days,
+        amount,
+        extend_from_current: false
+      });
+
+      showToast('Subscription renewed successfully', 'success');
+      setIsRenewModalOpen(false);
+      fetchUsers();
+      fetchTransactions();
+    } catch (error) {
+      showToast(
+        error.response?.data?.message || 'Failed to renew subscription',
+        'error'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAdminCredentialSave = async (event) => {
     event.preventDefault();
@@ -646,7 +689,8 @@ const UserMaster = () => {
         setViewingUser(user);
         setIsViewModalOpen(true);
       },
-      className: 'bg-gray-600 text-white hover:bg-gray-700 p-1 sm:p-1.5 md:p-2 text-xs'
+      className: 'bg-gray-600 text-white hover:bg-gray-700 p-1 sm:p-1.5 md:p-2 text-xs',
+      title: 'View Details'
     },
     {
       label: <FaEdit size={10} className="sm:size-3 md:size-4" />,
@@ -684,7 +728,23 @@ const UserMaster = () => {
         setEditingSignatureFile(null);
         setIsEditModalOpen(true);
       },
-      className: 'bg-blue-600 text-white hover:bg-blue-700 p-1 sm:p-1.5 md:p-2 text-xs'
+      className: 'bg-blue-600 text-white hover:bg-blue-700 p-1 sm:p-1.5 md:p-2 text-xs',
+      title: 'Edit'
+    },
+    {
+      label: <FaSync size={10} className="sm:size-3 md:size-4" />,
+      onClick: (user) => {
+        setRenewUser(user);
+        setRenewData({
+          years: 0,
+          months: 0,
+          days: 0,
+          amount: ''
+        });
+        setIsRenewModalOpen(true);
+      },
+      className: 'bg-green-600 text-white hover:bg-green-700 p-1 sm:p-1.5 md:p-2 text-xs',
+      title: 'Renew Subscription'
     },
     {
       label: <FaTrash size={10} className="sm:size-3 md:size-4" />,
@@ -693,7 +753,8 @@ const UserMaster = () => {
             setDeleteDialog({ isOpen: true, user });
         }
       },
-      className: 'bg-red-600 text-white hover:bg-red-700 p-1 sm:p-1.5 md:p-2 text-xs'
+      className: 'bg-red-600 text-white hover:bg-red-700 p-1 sm:p-1.5 md:p-2 text-xs',
+      title: 'Delete'
     }
   ], []);
 
@@ -2474,6 +2535,67 @@ const UserMaster = () => {
         onConfirm={handleConfirmDelete}
         itemName={deleteDialog.user?.username}
       />
+
+      <Modal
+        isOpen={isRenewModalOpen}
+        onClose={() => setIsRenewModalOpen(false)}
+        title={`Renew Subscription - ${renewUser?.username || ''}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Duration *</label>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Years</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={renewData.years !== undefined ? renewData.years : ''}
+                  onChange={(v) => setRenewData({ ...renewData, years: v })}
+                  placeholder="Years"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Months</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={renewData.months !== undefined ? renewData.months : ''}
+                  onChange={(v) => setRenewData({ ...renewData, months: v })}
+                  placeholder="Months"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Days</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={renewData.days !== undefined ? renewData.days : ''}
+                  onChange={(v) => setRenewData({ ...renewData, days: v })}
+                  placeholder="Days"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+            <Input
+              type="number"
+              min="0"
+              value={renewData.amount !== undefined ? renewData.amount : ''}
+              onChange={(v) => setRenewData({ ...renewData, amount: v })}
+              placeholder="Enter amount"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button onClick={handleRenewSubscription} className="text-xs sm:text-sm py-1.5 sm:py-2">Save Renewal</Button>
+            <Button variant="outline" onClick={() => setIsRenewModalOpen(false)} className="text-xs sm:text-sm py-1.5 sm:py-2">Cancel</Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isAdminCredentialModalOpen}
