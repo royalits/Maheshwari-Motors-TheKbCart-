@@ -170,6 +170,11 @@ export const requireOutstandingAccess = asyncHandler(async (req, res, next) => {
     return next();
   }
 
+  // Client role can view their own outstanding
+  if (req.role === "firm" && firmRole === "client") {
+    return next();
+  }
+
   throw ApiError.forbidden("You do not have access to outstanding");
 });
 

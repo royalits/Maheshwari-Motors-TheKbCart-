@@ -220,147 +220,180 @@ const App = () => {
               }
             />
 
-            {/* 2. Masters */}
-            <Route path="/masters/firm-master" element={<FirmMaster />} />
-            <Route path="/masters/firm-master/add" element={<FirmSetup />} />
-            <Route
-              path="/masters/firm-master/edit/:id"
-              element={<FirmSetup />}
-            />
-            <Route
-              path="/inventory/stock-alert-master"
-              element={<StockAlertMaster />}
-            />
-            <Route path="/inventory/item-master" element={<ItemMaster />} />
-            <Route path="/inventory/item-update" element={<ItemUpdate />} />
-            <Route path="/inventory/item-view" element={<ItemView />} />
-            <Route
-              path="/inventory/category-master"
-              element={<CategoryMaster />}
-            />
-            <Route path="/inventory/label-master" element={<LabelMaster />} />
-            <Route path="/inventory/view-category" element={<ViewCategory />} />
-            <Route path="/inventory/add-creditors" element={<AddSupplier />} />
-            <Route
-              path="/inventory/view-all-creditors"
-              element={<ViewAllSupplier />}
-            />
-            <Route path="/masters/item-master/add" element={<AddItem />} />
-            {/* <Route path="/masters/account-master" element={<AccountMaster />} /> */}
-            <Route path="/masters/debitors-master" element={<PartyMaster />} />
-            <Route path="/masters/brand-master" element={<BrandMaster />} />
-            <Route
-              path="/masters/discount-master"
-              element={<DiscountMaster />}
-            />
-            <Route path="/masters/agent-master" element={<AgentMaster />} />
-            <Route
-              path="/masters/transport-master"
-              element={<TransportMaster />}
-            />
-            <Route path="/masters/hsn-master" element={<HsnMaster />} />
-            <Route path="/masters/area-master" element={<AreaMaster />} />
-            <Route
-              path="/inventory/department-master"
-              element={<DepartmentMaster />}
-            />
-            <Route path="/masters/bank-master" element={<BankMaster />} />
-            <Route
-              path="/masters/transaction-master"
-              element={<TransactionMaster />}
-            />
-            <Route path="/masters/return-master" element={<ReturnMaster />} />
-
-            {/* 3. Transactions */}
-            <Route
-              path="/transactions/challan-list"
-              element={<ChallanList />}
-            />
-            <Route
-              path="/transactions/challans/create"
-              element={<ChallanForm />}
-            />
-            <Route
-              path="/transactions/challans/edit/:id"
-              element={<ChallanForm />}
-            />
-            <Route path="/transactions/bill-list" element={<BillList />} />
-            <Route
-              path="/transactions/bill-automation"
-              element={<BillAutomation />}
-            />
-            <Route path="/transactions/bills/create" element={<BillForm />} />
-            <Route path="/transactions/bills/edit/:id" element={<BillForm />} />
-            <Route
-              path="/transactions/transaction-history"
-              element={<TransactionHistory />}
-            />
+            {/* 2. Masters - Admin and Accountant only */}
             <Route
               element={
-                <ProtectedRoute requireRole={["admin", "account", "sales"]} />
+                <ProtectedRoute requireRole={["admin", "account"]} />
               }
             >
+              <Route path="/masters/firm-master" element={<FirmMaster />} />
+              <Route path="/masters/firm-master/add" element={<FirmSetup />} />
+              <Route
+                path="/masters/firm-master/edit/:id"
+                element={<FirmSetup />}
+              />
+              <Route
+                path="/inventory/stock-alert-master"
+                element={<StockAlertMaster />}
+              />
+              <Route path="/inventory/item-master" element={<ItemMaster />} />
+              <Route path="/inventory/item-update" element={<ItemUpdate />} />
+              <Route
+                path="/inventory/category-master"
+                element={<CategoryMaster />}
+              />
+              <Route path="/inventory/label-master" element={<LabelMaster />} />
+              <Route path="/inventory/view-category" element={<ViewCategory />} />
+              <Route path="/inventory/add-creditors" element={<AddSupplier />} />
+              <Route
+                path="/inventory/view-all-creditors"
+                element={<ViewAllSupplier />}
+              />
+              <Route path="/masters/item-master/add" element={<AddItem />} />
+              <Route path="/masters/debitors-master" element={<PartyMaster />} />
+              <Route path="/masters/brand-master" element={<BrandMaster />} />
+              <Route
+                path="/masters/discount-master"
+                element={<DiscountMaster />}
+              />
+              <Route path="/masters/agent-master" element={<AgentMaster />} />
+              <Route
+                path="/masters/transport-master"
+                element={<TransportMaster />}
+              />
+              <Route path="/masters/hsn-master" element={<HsnMaster />} />
+              <Route path="/masters/area-master" element={<AreaMaster />} />
+              <Route
+                path="/inventory/department-master"
+                element={<DepartmentMaster />}
+              />
+              <Route path="/masters/bank-master" element={<BankMaster />} />
+              <Route
+                path="/masters/transaction-master"
+                element={<TransactionMaster />}
+              />
+              <Route path="/masters/return-master" element={<ReturnMaster />} />
+            </Route>
+
+            {/* Item View - Admin, Accountant, and Client */}
+            <Route
+              element={
+                <ProtectedRoute requireRole={["admin", "account", "client"]} />
+              }
+            >
+              <Route path="/inventory/item-view" element={<ItemView />} />
+            </Route>
+
+            {/* 3. Transactions - Admin and Accountant only */}
+            <Route
+              element={
+                <ProtectedRoute requireRole={["admin", "account"]} />
+              }
+            >
+              <Route
+                path="/transactions/challan-list"
+                element={<ChallanList />}
+              />
+              <Route
+                path="/transactions/challans/create"
+                element={<ChallanForm />}
+              />
+              <Route
+                path="/transactions/challans/edit/:id"
+                element={<ChallanForm />}
+              />
+              <Route path="/transactions/bill-list" element={<BillList />} />
+              <Route
+                path="/transactions/bill-automation"
+                element={<BillAutomation />}
+              />
+              <Route path="/transactions/bills/create" element={<BillForm />} />
+              <Route path="/transactions/bills/edit/:id" element={<BillForm />} />
+              <Route
+                path="/transactions/transaction-history"
+                element={<TransactionHistory />}
+              />
               <Route
                 path="/transactions/outstandings"
                 element={<OutStandings />}
               />
+            </Route>
+
+            {/* Outstanding List - Admin, Accountant, Sales, and Client */}
+            <Route
+              element={
+                <ProtectedRoute requireRole={["admin", "account", "sales", "client"]} />
+              }
+            >
               <Route
                 path="/transactions/outstanding-list"
                 element={<OutstandingList />}
               />
             </Route>
 
-            {/* 4. Reports */}
-            <Route path="/reports" element={<Reports />} />
+            {/* 4. Reports - Admin, Accountant, and Sales */}
             <Route
-              path="/reports/purchase-report"
-              element={<PurchaseReport />}
-            />
-            <Route path="/reports/gst-report" element={<GSTReport />} />
-            <Route
-              path="/reports/gst-report-details"
-              element={<GSTReportDetails />}
-            />
-            <Route path="/reports/sales-report" element={<SalesReport />} />
-            <Route
-              path="/reports/sales-return-report"
-              element={<SalesReturnReport />}
-            />
-            <Route
-              path="/reports/purchase-return-report"
-              element={<PurchaseReturnReport />}
-            />
-            <Route
-              path="/reports/item-ledger-report"
-              element={<ItemLedgerReport />}
-            />
-            <Route
-              path="/reports/purchase-date-wise-report"
-              element={<PurchaseDateWiseReport />}
-            />
-            <Route
-              path="/reports/collection-report"
-              element={<CollectionReport />}
-            />
-            <Route
-              path="/reports/profit-loss-report"
-              element={<ProfitLossReport />}
-            />
-            <Route
-              path="/reports/damage-item-report"
-              element={<DamageItemReport />}
-            />
+              element={
+                <ProtectedRoute requireRole={["admin", "account", "sales"]} />
+              }
+            >
+              <Route path="/reports" element={<Reports />} />
+              <Route
+                path="/reports/purchase-report"
+                element={<PurchaseReport />}
+              />
+              <Route path="/reports/gst-report" element={<GSTReport />} />
+              <Route
+                path="/reports/gst-report-details"
+                element={<GSTReportDetails />}
+              />
+              <Route path="/reports/sales-report" element={<SalesReport />} />
+              <Route
+                path="/reports/sales-return-report"
+                element={<SalesReturnReport />}
+              />
+              <Route
+                path="/reports/purchase-return-report"
+                element={<PurchaseReturnReport />}
+              />
+              <Route
+                path="/reports/item-ledger-report"
+                element={<ItemLedgerReport />}
+              />
+              <Route
+                path="/reports/purchase-date-wise-report"
+                element={<PurchaseDateWiseReport />}
+              />
+              <Route
+                path="/reports/collection-report"
+                element={<CollectionReport />}
+              />
+              <Route
+                path="/reports/profit-loss-report"
+                element={<ProfitLossReport />}
+              />
+              <Route
+                path="/reports/damage-item-report"
+                element={<DamageItemReport />}
+              />
+            </Route>
 
-            {/* 5. Setup & Tools */}
-            <Route path="/setup/backup-restore" element={<BackupRestore />} />
+            {/* 5. Setup & Tools - Admin only */}
             <Route
-              path="/setup/financial-year-close"
-              element={<FinancialYearClose />}
-            />
-            <Route
-              path="/setup/cheque-print-setup"
-              element={<ChequePrintSetup />}
-            />
+              element={
+                <ProtectedRoute requireRole="admin" />
+              }
+            >
+              <Route path="/setup/backup-restore" element={<BackupRestore />} />
+              <Route
+                path="/setup/financial-year-close"
+                element={<FinancialYearClose />}
+              />
+              <Route
+                path="/setup/cheque-print-setup"
+                element={<ChequePrintSetup />}
+              />
+            </Route>
 
             {/* Settings */}
             <Route path="/settings" element={<Settings />} />

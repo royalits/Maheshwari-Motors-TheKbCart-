@@ -20,6 +20,7 @@ import {
   getResolvedFirmMeta,
 } from "../../utils/reportPdf";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
+import { usePermission } from "../../hooks/usePermission";
 
 const PAYMENT_LABELS = {
   bank_transaction_received_amount: "Bank Received",
@@ -46,8 +47,18 @@ const OutstandingList = () => {
       setPagination((prev) => ({ ...prev, page: 1 }));
     },
   });
-  const [selectedContact, setSelectedContact] = useState("");
+  const { isClient, contactId, isRole } = usePermission();
+  const isClientUser = isClient();
+  const canWrite = isRole("admin") || isRole("account");
+
+  const [selectedContact, setSelectedContact] = useState(isClient() ? (contactId || "") : "");
   const [selectedContacts, setSelectedContacts] = useState(new Set());
+
+  useEffect(() => {
+    if (isClientUser && contactId) {
+      setSelectedContact(contactId);
+    }
+  }, [isClientUser, contactId]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingBills, setLoadingBills] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -1313,7 +1324,8 @@ const OutstandingList = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="bg-white border rounded-lg p-4 space-y-3 lg:col-span-1">
+        {!isClientUser && (
+          <div className="bg-white border rounded-lg p-4 space-y-3 lg:col-span-1">
           <div className="flex items-center gap-2">
             <Select value={contactType} onChange={handleContactTypeChange}>
               <option value="party">Party</option>
@@ -1429,8 +1441,9 @@ const OutstandingList = () => {
             }
           </div>
         </div>
+      )}
 
-        <div className="lg:col-span-3 space-y-4">
+        <div className={`${isClientUser ? "lg:col-span-4" : "lg:col-span-3"} space-y-4`}>
           {selectedContacts.size > 0 ?
             <>
               {/* Multi Party Summary Card */}
@@ -1809,21 +1822,23 @@ const OutstandingList = () => {
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
-                          <th className="text-center px-3 py-2 w-10">
-                            <input
-                              type="checkbox"
-                              checked={
-                                bills.some(isBillSelectable) &&
-                                bills
-                                  .filter(isBillSelectable)
-                                  .every((bill) =>
-                                    selectedBillIds.has(getBillId(bill)),
-                                  )
-                              }
-                              onChange={toggleAllVisibleBills}
-                              className="w-3.5 h-3.5 accent-red-600"
-                            />
-                          </th>
+                          {canWrite && (
+                            <th className="text-center px-3 py-2 w-10">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  bills.some(isBillSelectable) &&
+                                  bills
+                                    .filter(isBillSelectable)
+                                    .every((bill) =>
+                                      selectedBillIds.has(getBillId(bill)),
+                                    )
+                                }
+                                onChange={toggleAllVisibleBills}
+                                className="w-3.5 h-3.5 accent-red-600"
+                              />
+                            </th>
+                          )}
                           <th className="text-center px-3 py-2 whitespace-nowrap">
                             Date
                           </th>
@@ -1854,16 +1869,18 @@ const OutstandingList = () => {
                           <th className="text-center px-3 py-2 whitespace-nowrap">
                             Days
                           </th>
-                          <th className="text-center px-3 py-2 whitespace-nowrap">
-                            Actions
-                          </th>
+                          {canWrite && (
+                            <th className="text-center px-3 py-2 whitespace-nowrap">
+                              Actions
+                            </th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
                         {(activeTab === "due" ? bills : bills).length === 0 ?
                           <tr>
                             <td
-                              colSpan={12}
+                              colSpan={canWrite ? 12 : 10}
                               className="px-3 py-4 text-sm text-gray-500"
                             >
                               No bills found.
@@ -1886,24 +1903,26 @@ const OutstandingList = () => {
 
                                 return (
                                   <tr key={bill.id} className="border-t">
-                                    <td className="px-3 py-2 text-center">
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedBillIds.has(
-                                          getBillId(bill),
-                                        )}
-                                        disabled={!isBillSelectable(bill)}
-                                        onChange={() =>
-                                          toggleBillSelection(bill.id)
-                                        }
-                                        className="w-3.5 h-3.5 accent-red-600 disabled:opacity-40"
-                                        title={
-                                          isBillSelectable(bill) ?
-                                            "Select bill"
-                                          : "Bill cannot be selected"
-                                        }
-                                      />
-                                    </td>
+                                    {canWrite && (
+                                      <td className="px-3 py-2 text-center">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedBillIds.has(
+                                            getBillId(bill),
+                                          )}
+                                          disabled={!isBillSelectable(bill)}
+                                          onChange={() =>
+                                            toggleBillSelection(bill.id)
+                                          }
+                                          className="w-3.5 h-3.5 accent-red-600 disabled:opacity-40"
+                                          title={
+                                            isBillSelectable(bill) ?
+                                              "Select bill"
+                                            : "Bill cannot be selected"
+                                          }
+                                        />
+                                      </td>
+                                    )}
                                     <td className="px-3 py-2 text-center whitespace-nowrap">
                                       {formatDateDDMMYYYY(bill.date)}
                                     </td>
@@ -1944,59 +1963,61 @@ const OutstandingList = () => {
                                     >
                                       {`${bill.daysSince} days`}
                                     </td>
-                                    <td className="px-3 py-2 text-center">
-                                      <div className="flex items-center justify-center gap-2">
-                                        {bill.status === "due" &&
-                                          bill.due > 0.009 && (
+                                    {canWrite && (
+                                      <td className="px-3 py-2 text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                          {bill.status === "due" &&
+                                            bill.due > 0.009 && (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={
+                                                  discountingBillId === bill.id
+                                                }
+                                                onClick={() =>
+                                                  applyDiscountToBill(bill)
+                                                }
+                                              >
+                                                {discountingBillId === bill.id ?
+                                                  "..."
+                                                : "Disc"}
+                                              </Button>
+                                            )}
+                                          {bill.status !== "due" && (
                                             <Button
                                               size="sm"
                                               variant="outline"
-                                              disabled={
-                                                discountingBillId === bill.id
-                                              }
                                               onClick={() =>
-                                                applyDiscountToBill(bill)
+                                                downloadBillSettlementReceipt(
+                                                  bill,
+                                                )
                                               }
+                                              title="Download settlement receipt"
                                             >
-                                              {discountingBillId === bill.id ?
-                                                "..."
-                                              : "Disc"}
+                                              <FaPrint className="h-3.5 w-3.5" />
                                             </Button>
                                           )}
-                                        {bill.status !== "due" && (
                                           <Button
                                             size="sm"
-                                            variant="outline"
-                                            onClick={() =>
-                                              downloadBillSettlementReceipt(
-                                                bill,
-                                              )
+                                            variant="danger"
+                                            disabled={
+                                              !isBillSelectable(bill) ||
+                                              deletingBillIds.has(bill.id)
                                             }
-                                            title="Download settlement receipt"
+                                            onClick={() =>
+                                              deleteBillsByIds([bill.id])
+                                            }
+                                            title={
+                                              isBillSettlementUndoable(bill) ?
+                                                "Undo settlement"
+                                              : "Delete bill"
+                                            }
                                           >
-                                            <FaPrint className="h-3.5 w-3.5" />
+                                            <FaTrash className="h-3.5 w-3.5" />
                                           </Button>
-                                        )}
-                                        <Button
-                                          size="sm"
-                                          variant="danger"
-                                          disabled={
-                                            !isBillSelectable(bill) ||
-                                            deletingBillIds.has(bill.id)
-                                          }
-                                          onClick={() =>
-                                            deleteBillsByIds([bill.id])
-                                          }
-                                          title={
-                                            isBillSettlementUndoable(bill) ?
-                                              "Undo settlement"
-                                            : "Delete bill"
-                                          }
-                                        >
-                                          <FaTrash className="h-3.5 w-3.5" />
-                                        </Button>
-                                      </div>
-                                    </td>
+                                        </div>
+                                      </td>
+                                    )}
                                   </tr>
                                 );
                               },
