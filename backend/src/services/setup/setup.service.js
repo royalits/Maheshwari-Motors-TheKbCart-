@@ -30,6 +30,19 @@ const ensureDirs = async () => {
   await fs.promises.mkdir(restoresDir, { recursive: true });
 };
 
+const moveFile = async (src, dest) => {
+  try {
+    await fs.promises.rename(src, dest);
+  } catch (error) {
+    if (error.code === "EXDEV") {
+      await fs.promises.copyFile(src, dest);
+      await fs.promises.unlink(src);
+    } else {
+      throw error;
+    }
+  }
+};
+
 const sanitizeFilename = (name) =>
   name.replace(/[^\w.\-]/g, "_").slice(0, 120) || "file";
 
@@ -660,7 +673,7 @@ const importFromBackup = async (file, userId) => {
   try {
     // Save the file
     if (file.path) {
-      await fs.promises.rename(file.path, targetPath);
+      await moveFile(file.path, targetPath);
     } else if (file.buffer) {
       await fs.promises.writeFile(targetPath, file.buffer);
     }
@@ -984,7 +997,7 @@ const importData = async (file, userId) => {
   try {
     // Save the file
     if (file.path) {
-      await fs.promises.rename(file.path, targetPath);
+      await moveFile(file.path, targetPath);
     } else if (file.buffer) {
       await fs.promises.writeFile(targetPath, file.buffer);
     }
@@ -1390,7 +1403,7 @@ const restoreDatabase = async (file, userId) => {
   const targetPath = path.join(restoresDir, storedFilename);
 
   if (file.path) {
-    await fs.promises.rename(file.path, targetPath);
+    await moveFile(file.path, targetPath);
   } else if (file.buffer) {
     await fs.promises.writeFile(targetPath, file.buffer);
   }
