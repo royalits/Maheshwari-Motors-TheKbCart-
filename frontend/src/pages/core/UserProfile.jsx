@@ -170,6 +170,38 @@ const UserProfile = () => {
   };
 
   const saveCredentials = async () => {
+    // Check for duplicate usernames
+    const allUsernames = new Map();
+    const addUsername = (username, displayName) => {
+      if (!username) return null;
+      const norm = username.trim().toLowerCase();
+      if (allUsernames.has(norm)) {
+        return `Username '${username}' is already used for ${allUsernames.get(norm)}. Every role must have a unique username.`;
+      }
+      allUsernames.set(norm, displayName);
+      return null;
+    };
+
+    let duplicateErr = null;
+    const roles = ['gst_firm', 'nongst_firm', 'sale_user', 'account_user', 'client_user'];
+    for (const roleKey of roles) {
+      const isEditable = editableCredentialFields.some(f => f.key === roleKey);
+      let username = userData?.[roleKey]?.username;
+      if (isEditable) {
+        const draft = credentialForm[roleKey] || {};
+        username = draft.username !== undefined ? draft.username : username;
+      }
+      if (username) {
+        duplicateErr = addUsername(username, roleKey.replace('_', ' ').toUpperCase());
+        if (duplicateErr) break;
+      }
+    }
+
+    if (duplicateErr) {
+      showToast(duplicateErr, 'error');
+      return;
+    }
+
     const credentials = {};
 
     for (const field of editableCredentialFields) {
