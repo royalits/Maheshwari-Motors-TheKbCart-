@@ -159,7 +159,7 @@ const reviveImportedValue = (
   key,
   value,
   userId,
-  { remapUserId = true } = {},
+  { remapUserId = true, isItemCollection = false } = {},
 ) => {
   if (key === "user_id" && remapUserId) {
     if (isObjectIdString(String(userId))) {
@@ -178,12 +178,13 @@ const reviveImportedValue = (
         }
         return reviveImportedValue(key.slice(0, -1), entry, userId, {
           remapUserId,
+          isItemCollection,
         });
       });
     }
 
     return value.map((entry) =>
-      reviveImportedValue(key, entry, userId, { remapUserId }),
+      reviveImportedValue(key, entry, userId, { remapUserId, isItemCollection }),
     );
   }
 
@@ -194,6 +195,7 @@ const reviveImportedValue = (
     for (const [innerKey, innerValue] of Object.entries(value)) {
       const revived = reviveImportedValue(innerKey, innerValue, userId, {
         remapUserId,
+        isItemCollection,
       });
       if (revived !== undefined) output[innerKey] = revived;
     }
@@ -203,14 +205,16 @@ const reviveImportedValue = (
   if (typeof value === "string") {
     const trimmed = value.trim();
 
-    if ((key === "_id" || key.endsWith("_id")) && isObjectIdString(trimmed)) {
+    const isObjectIdField = key === "_id" || (key.endsWith("_id") && !(key === "item_id" && isItemCollection));
+
+    if (isObjectIdField && isObjectIdString(trimmed)) {
       return new mongoose.Types.ObjectId(trimmed);
     }
 
     // For _id/_*_id fields that are NOT valid ObjectId format (numeric, etc),
     // return undefined so MongoDB can auto-generate _id or skip the field
     // This prevents "Invalid _id: X" CastErrors during queries
-    if ((key === "_id" || key.endsWith("_id")) && !isObjectIdString(trimmed)) {
+    if (isObjectIdField && !isObjectIdString(trimmed)) {
       // For primary _id field, return undefined to let MongoDB generate new ID
       if (key === "_id") {
         return undefined;
@@ -822,7 +826,10 @@ const importFromBackup = async (file, userId) => {
                 terminalKey,
                 value,
                 userId,
-                { remapUserId },
+                {
+                  remapUserId,
+                  isItemCollection: String(sheetName).toLowerCase() === "items"
+                },
               );
               setNestedField(doc, header, revivedValue);
             }
