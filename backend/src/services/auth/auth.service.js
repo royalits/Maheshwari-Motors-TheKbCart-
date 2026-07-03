@@ -4,6 +4,7 @@ import User from "../../models/auth/user.model.js";
 import Session from "../../models/auth/session.model.js";
 import Bank from "../../models/master/bank.model.js";
 import Contact from "../../models/master/contact.model.js";
+import Subscription from "../../models/common/subscription.model.js";
 import s3Service from "../common/s3.service.js";
 import financialYearService from "../common/financialYear.service.js";
 import { ApiError } from "../../utils/index.js";

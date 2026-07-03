@@ -532,15 +532,41 @@ const UserMaster = () => {
       }
 
       if (isMounted.current) {
-        const mappedTransactions = allTransactions.map(sub => ({
-          user: sub.user_id?.name || 'Unknown User',
-          plan: sub.plan_type,
-          validityFrom: sub.start_date,
-          validityTo: sub.expiry_date,
-          amount: sub.amount || 0,
-          createdAt: sub.createdAt,
-          status: sub.status
-        }));
+        const mappedTransactions = [];
+        for (const sub of allTransactions) {
+          const userName = sub.user_id?.name || 'Unknown User';
+          
+          // 1. Add current active subscription if exists
+          if (sub.start_date && sub.expiry_date) {
+            mappedTransactions.push({
+              user: userName,
+              plan: sub.plan_type,
+              validityFrom: sub.start_date,
+              validityTo: sub.expiry_date,
+              amount: sub.amount || 0,
+              createdAt: sub.activated_at || sub.createdAt,
+              status: sub.status
+            });
+          }
+
+          // 2. Add all historical subscription entries
+          if (Array.isArray(sub.history)) {
+            for (const hist of sub.history) {
+              mappedTransactions.push({
+                user: userName,
+                plan: hist.plan_type,
+                validityFrom: hist.start_date,
+                validityTo: hist.expiry_date,
+                amount: hist.amount || 0,
+                createdAt: hist.activated_at || sub.createdAt,
+                status: 'expired'
+              });
+            }
+          }
+        }
+
+        // Sort all transaction entries descending by date/createdAt
+        mappedTransactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setTransactions(mappedTransactions);
       }
     } catch (error) {
