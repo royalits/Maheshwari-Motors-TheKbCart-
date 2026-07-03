@@ -240,4 +240,34 @@ userSchema.statics.getCredentialMeta = (credentialKey) =>
 userSchema.statics.getPasswordPathForCredential = (credentialKey) =>
   CREDENTIAL_PASSWORD_PATHS[credentialKey] || null;
 
+userSchema.pre("validate", function (next) {
+  if (this.type === "secondary") {
+    const usernames = new Map();
+    const fields = [
+      "gst_firm",
+      "nongst_firm",
+      "sale_user",
+      "account_user",
+      "client_user",
+    ];
+
+    for (const field of fields) {
+      const username = this[field]?.username;
+      if (username) {
+        const norm = String(username).trim().toLowerCase();
+        if (usernames.has(norm)) {
+          const original = usernames.get(norm);
+          return next(
+            ApiError.badRequest(
+              `Username '${username}' is duplicate. Every role inside a user must have a unique username (duplicate found in '${original}' and '${field}').`
+            )
+          );
+        }
+        usernames.set(norm, field);
+      }
+    }
+  }
+  next();
+});
+
 export default mongoose.model("User", userSchema);

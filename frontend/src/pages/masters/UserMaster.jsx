@@ -835,6 +835,33 @@ const UserMaster = () => {
         return;
       }
 
+      const allUsernames = new Map();
+      const addUsername = (username, displayName) => {
+        if (!username) return null;
+        const norm = username.trim().toLowerCase();
+        if (allUsernames.has(norm)) {
+          return `Username '${username}' is already used for ${allUsernames.get(norm)}. Every role within a user must have a unique username.`;
+        }
+        allUsernames.set(norm, displayName);
+        return null;
+      };
+
+      let duplicateErr = null;
+      duplicateErr = addUsername(newUser.gst_firm?.username, 'GST Firm');
+      if (!duplicateErr) duplicateErr = addUsername(newUser.nongst_firm?.username, 'Non-GST Firm');
+      
+      for (const field of ADD_USER_ROLE_CREDENTIAL_FIELDS) {
+        const entry = newUser.role_users?.[field.key] || {};
+        if (entry.username) {
+          if (!duplicateErr) duplicateErr = addUsername(entry.username, `${field.label} Role`);
+        }
+      }
+      
+      if (duplicateErr) {
+        showToast(duplicateErr, 'error');
+        return;
+      }
+
       const roleValidationError = validateRoleUsers(newUser.role_users, {
         requirePassword: true,
         fields: ADD_USER_ROLE_CREDENTIAL_FIELDS,
@@ -978,6 +1005,34 @@ const UserMaster = () => {
     const currentForm = editingFormRef.current || editingForm;
     if (!currentForm) return;
     try {
+      const allUsernames = new Map();
+      const addUsername = (username, displayName) => {
+        if (!username) return null;
+        const norm = username.trim().toLowerCase();
+        if (allUsernames.has(norm)) {
+          return `Username '${username}' is already used for ${allUsernames.get(norm)}. Every role within a user must have a unique username.`;
+        }
+        allUsernames.set(norm, displayName);
+        return null;
+      };
+
+      let duplicateErr = null;
+      duplicateErr = addUsername(currentForm?.gst_firm?.username, 'GST Firm');
+      if (!duplicateErr) duplicateErr = addUsername(currentForm?.nongst_firm?.username, 'Non-GST Firm');
+      
+      const roles = ['sales', 'account', 'client'];
+      for (const roleKey of roles) {
+        const entry = currentForm?.role_users?.[roleKey] || {};
+        if (entry.username) {
+          if (!duplicateErr) duplicateErr = addUsername(entry.username, `${roleKey.toUpperCase()} Role`);
+        }
+      }
+      
+      if (duplicateErr) {
+        showToast(duplicateErr, 'error');
+        return;
+      }
+
       const roleValidationError = validateRoleUsers(currentForm?.role_users, {
         requirePassword: false,
         requiredFields: [],
