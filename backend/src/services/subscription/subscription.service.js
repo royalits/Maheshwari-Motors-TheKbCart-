@@ -73,7 +73,9 @@ class SubscriptionService {
   async getSubscriptionByUserId(userId) {
     const subscription = await Subscription.findOne({
       user_id: userId,
-    }).populate("user_id", "name email phone type is_active");
+    })
+      .sort({ expiry_date: -1, createdAt: -1 })
+      .populate("user_id", "name email phone type is_active");
 
     if (!subscription) throw ApiError.notFound("Subscription not found");
     return subscription;
@@ -108,64 +110,46 @@ class SubscriptionService {
     const planType = data.plan_type === "demo" ? "demo" : "paid";
     const amount = Number(data.amount || 0);
     const now = new Date();
-    const existing = await Subscription.findOne({ user_id: userId });
+
+    // 1. Find the latest active subscription to determine start date
+    const latestActive = await Subscription.findOne({ user_id: userId, status: "active" })
+      .sort({ expiry_date: -1, createdAt: -1 });
 
     let startDate = now;
     if (
-      existing &&
-      existing.status === "active" &&
-      existing.expiry_date &&
-      existing.expiry_date > now &&
+      latestActive &&
+      latestActive.expiry_date &&
+      latestActive.expiry_date > now &&
       data.extend_from_current !== false
     ) {
-      startDate = existing.expiry_date;
+      startDate = latestActive.expiry_date;
     }
 
     const expiryDate = addDuration(startDate, duration);
 
-    if (!existing) {
-      const created = await Subscription.create({
-        user_id: userId,
-        plan_type: planType,
-        status: "active",
-        timeline: duration,
-        amount,
-        start_date: startDate,
-        expiry_date: expiryDate,
-        activated_by: adminUserId,
-        activated_at: now,
-        last_extended_at: now,
-        notes: data.notes || "",
-      });
+    // 2. Deactivate any currently active subscriptions for this user
+    await Subscription.updateMany(
+      { user_id: userId, status: "active" },
+      { status: "expired" }
+    );
 
-      return created.populate("user_id", "name email phone type is_active");
-    }
-
-    existing.history.push({
-      plan_type: existing.plan_type,
-      timeline: existing.timeline,
-      amount: existing.amount || 0,
-      start_date: existing.start_date,
-      expiry_date: existing.expiry_date,
-      activated_by: existing.activated_by,
-      activated_at: existing.activated_at,
-      notes: existing.notes || "",
+    // 3. Create a new subscription entry for this new period
+    const created = await Subscription.create({
+      user_id: userId,
+      plan_type: planType,
+      status: "active",
+      timeline: duration,
+      amount,
+      start_date: startDate,
+      expiry_date: expiryDate,
+      activated_by: adminUserId,
+      activated_at: now,
+      last_extended_at: now,
+      notes: data.notes || "",
     });
 
-    existing.plan_type = planType;
-    existing.status = "active";
-    existing.timeline = duration;
-    existing.amount = amount;
-    existing.start_date = startDate;
-    existing.expiry_date = expiryDate;
-    existing.activated_by = adminUserId;
-    existing.activated_at = now;
-    existing.last_extended_at = now;
-    existing.notes = data.notes || "";
-
-    await existing.save();
-    await existing.populate("user_id", "name email phone type is_active");
-    return existing;
+    await created.populate("user_id", "name email phone type is_active");
+    return created;
   }
 
   async getExpiringToday(date = new Date()) {

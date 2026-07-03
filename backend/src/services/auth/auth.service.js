@@ -266,7 +266,7 @@ class AuthService {
   }
 
   async _checkSubscription(userId) {
-    const subscription = await Subscription.findOne({ user_id: userId });
+    const subscription = await Subscription.findOne({ user_id: userId }).sort({ expiry_date: -1, createdAt: -1 });
     if (subscription) {
       if (
         subscription.status === "expired" ||

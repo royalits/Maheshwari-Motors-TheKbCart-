@@ -532,38 +532,15 @@ const UserMaster = () => {
       }
 
       if (isMounted.current) {
-        const mappedTransactions = [];
-        for (const sub of allTransactions) {
-          const userName = sub.user_id?.name || 'Unknown User';
-          
-          // 1. Add current active subscription if exists
-          if (sub.start_date && sub.expiry_date) {
-            mappedTransactions.push({
-              user: userName,
-              plan: sub.plan_type,
-              validityFrom: sub.start_date,
-              validityTo: sub.expiry_date,
-              amount: sub.amount || 0,
-              createdAt: sub.activated_at || sub.createdAt,
-              status: sub.status
-            });
-          }
-
-          // 2. Add all historical subscription entries
-          if (Array.isArray(sub.history)) {
-            for (const hist of sub.history) {
-              mappedTransactions.push({
-                user: userName,
-                plan: hist.plan_type,
-                validityFrom: hist.start_date,
-                validityTo: hist.expiry_date,
-                amount: hist.amount || 0,
-                createdAt: hist.activated_at || sub.createdAt,
-                status: 'expired'
-              });
-            }
-          }
-        }
+        const mappedTransactions = allTransactions.map(sub => ({
+          user: sub.user_id?.name || 'Unknown User',
+          plan: sub.plan_type,
+          validityFrom: sub.start_date,
+          validityTo: sub.expiry_date,
+          amount: sub.amount || 0,
+          createdAt: sub.activated_at || sub.createdAt,
+          status: sub.status
+        }));
 
         // Sort all transaction entries descending by date/createdAt
         mappedTransactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -781,6 +758,67 @@ const UserMaster = () => {
       },
       className: 'bg-red-600 text-white hover:bg-red-700 p-1 sm:p-1.5 md:p-2 text-xs',
       title: 'Delete'
+    }
+  ], []);
+
+  const transactionColumns = useMemo(() => [
+    {
+      key: 'user',
+      label: 'User',
+      render: (value) => <span className="font-medium text-gray-900">{value}</span>
+    },
+    {
+      key: 'plan',
+      label: 'Plan',
+      render: (value) => <span className="uppercase font-semibold text-gray-700">{value}</span>
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (value) => {
+        const isActive = value === 'active' || value === 'demo';
+        const colorClass = isActive ? 'bg-blue-500 text-white' : 'bg-red-500 text-white';
+        const label = isActive ? 'Active' : 'Expired';
+        return (
+          <span
+            className={`inline-flex h-4 w-4 rounded-full ring-1 ring-black/10 shadow-sm ${colorClass}`}
+            title={label}
+            aria-label={label}
+          />
+        );
+      }
+    },
+    {
+      key: 'validityFrom',
+      label: 'Valid From',
+      render: (value) => value ? new Date(value).toLocaleDateString() : '-'
+    },
+    {
+      key: 'validityTo',
+      label: 'Valid To',
+      render: (value) => value ? new Date(value).toLocaleDateString() : '-'
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      render: (value) => <span className="font-semibold text-gray-900">{'\u20B9'}{value || '0'}</span>
+    },
+    {
+      key: 'createdAt',
+      label: 'Date',
+      render: (value) => value ? new Date(value).toLocaleDateString() : '-'
+    }
+  ], []);
+
+  const transactionActions = useMemo(() => [
+    {
+      label: <FaEye size={10} className="sm:size-3 md:size-4" />,
+      onClick: (txn) => {
+        setSelectedUserTransactions(txn.user);
+        setIsTransactionHistoryModalOpen(true);
+      },
+      className: 'bg-blue-600 text-white hover:bg-blue-700 p-1 sm:p-1.5 md:p-2 text-xs',
+      title: 'View User History'
     }
   ], []);
 
@@ -1205,68 +1243,17 @@ const UserMaster = () => {
           </div>
 
           <div className="overflow-x-auto">
-            {transactions.length > 0 ? (
-              <table className="w-full text-xs sm:text-sm">
-                <thead className="bg-gray-100 border-b">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">User</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Plan</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Status</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Valid From</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Valid To</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Amount</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {transactions.slice(0, 10).map((txn, idx) => {
-                    const status = getSubscriptionStatus({
-                      validityFrom: txn.validityFrom,
-                      validityTo: txn.validityTo
-                    });
-                    const showStatusDot = [1, 2, 3, 4].includes(status.sort);
-
-                    return (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 truncate">{txn.user || '-'}</td>
-                        <td className="px-4 py-2">{txn.plan || '-'}</td>
-                        <td className="px-4 py-2">
-                          {showStatusDot ? (
-                            <span
-                              className={`inline-flex h-4 w-4 rounded-full ring-1 ring-black/10 shadow-sm ${status.className}`}
-                              title={status.label}
-                              aria-label={status.label}
-                            />
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2">{txn.validityFrom ? new Date(txn.validityFrom).toLocaleDateString() : '-'}</td>
-                        <td className="px-4 py-2">{txn.validityTo ? new Date(txn.validityTo).toLocaleDateString() : '-'}</td>
-                        <td className="px-4 py-2 font-medium">{'\u20B9'}{txn.amount || '0'}</td>
-                        <td className="px-4 py-2">{txn.createdAt ? new Date(txn.createdAt).toLocaleDateString() : '-'}</td>
-                        <td className="px-4 py-2">
-                          <button
-                            onClick={() => {
-                              setSelectedUserTransactions(txn.user);
-                              setIsTransactionHistoryModalOpen(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <FaEye size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-center py-6 text-gray-500">
-                <p>No transactions yet</p>
-              </div>
-            )}
+            <DataTable
+              loading={loading}
+              columns={transactionColumns}
+              data={transactions}
+              actions={transactionActions}
+              searchable={true}
+              sortable={true}
+              pagination={true}
+              minWidth="600px"
+              className="text-xs sm:text-sm"
+            />
           </div>
         </div>
 

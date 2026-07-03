@@ -46,7 +46,7 @@ const auth = asyncHandler(async (req, res, next) => {
       req.contactId = decoded.contact_id || null;
 
       // Verify that firm's subscription is not expired
-      const subscription = await Subscription.findOne({ user_id: decoded._id });
+      const subscription = await Subscription.findOne({ user_id: decoded._id }).sort({ expiry_date: -1, createdAt: -1 });
       if (subscription) {
         if (
           subscription.status === "expired" ||

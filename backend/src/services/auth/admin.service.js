@@ -244,11 +244,13 @@ class AdminService {
       user_id: { $in: userIds },
     })
       .select("user_id plan_type status start_date expiry_date timeline amount")
+      .sort({ expiry_date: 1 })
       .lean();
 
-    const subMap = new Map(
-      subscriptions.map((sub) => [String(sub.user_id), sub]),
-    );
+    const subMap = new Map();
+    for (const sub of subscriptions) {
+      subMap.set(String(sub.user_id), sub);
+    }
 
     return users.map((user) => ({
       ...user,
@@ -985,7 +987,7 @@ class AdminService {
       updateData.subscription_months !== undefined ||
       updateData.subscription_days !== undefined
     ) {
-      const subscription = await Subscription.findOne({ user_id: userId });
+      const subscription = await Subscription.findOne({ user_id: userId }).sort({ expiry_date: -1, createdAt: -1 });
       if (subscription) {
         if (subscription_amount !== undefined) {
           const amount = Number(subscription_amount);
