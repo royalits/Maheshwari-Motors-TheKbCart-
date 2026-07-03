@@ -48,6 +48,28 @@ const ensureBillIndexes = async () => {
   });
 };
 
+const ensureSubscriptionIndexes = async () => {
+  const collection = mongoose.connection.collection("subscriptions");
+  let indexes = [];
+
+  try {
+    indexes = await collection.indexes();
+  } catch (error) {
+    if (error?.codeName !== "NamespaceNotFound") return;
+  }
+
+  for (const index of indexes) {
+    const keys = index.key || {};
+    if (index.unique === true && Object.prototype.hasOwnProperty.call(keys, "user_id")) {
+      console.log("[DB] Dropping unique index on subscriptions user_id:", index.name);
+      await collection.dropIndex(index.name);
+    }
+  }
+
+  // Create a non-unique index on user_id
+  await collection.createIndex({ user_id: 1 });
+};
+
 class Database {
   constructor() {
     this.connection = null;
@@ -69,6 +91,7 @@ class Database {
       this.connection = await mongoose.connect(env.MONGODB_URI, options);
       console.log("Database connected successfully!");
       await ensureBillIndexes();
+      await ensureSubscriptionIndexes();
 
       mongoose.connection.on("error", (err) => {
         console.error("Database connection error:", err);
