@@ -32,6 +32,9 @@ const getCredentialForm = (user = {}) =>
     return acc;
   }, {});
 
+const hasCredentialUsername = (user = {}, key) =>
+  Boolean(String(user?.[key]?.username || '').trim());
+
 const UserProfile = () => {
   const { setUser, showToast } = useStore();
   const [credentialForm, setCredentialForm] = useState(getCredentialForm());
@@ -139,19 +142,32 @@ const UserProfile = () => {
     const role = String(profileData.role || '').toLowerCase();
     const firmType = String(profileData.current_firm_type || '').toUpperCase();
     const firmRole = String(profileData.current_firm_role || '').toLowerCase();
+    const isConfigured = (field) => hasCredentialUsername(userData, field.key);
+    const isRoleCredential = (field) =>
+      ['sale_user', 'account_user', 'client_user'].includes(field.key);
+    const visibleIfConfigured = (field) =>
+      !isRoleCredential(field) || isConfigured(field);
 
-    if (role === 'admin') return CREDENTIAL_FIELDS;
+    if (role === 'admin') {
+      return CREDENTIAL_FIELDS.filter(visibleIfConfigured);
+    }
     if (role !== 'firm' || firmRole !== 'admin') return [];
     if (firmType === 'GST') {
       return CREDENTIAL_FIELDS.filter((field) =>
-        ['gst_firm', 'sale_user', 'account_user', 'client_user'].includes(field.key),
+        ['gst_firm', 'sale_user', 'account_user', 'client_user'].includes(field.key) &&
+        visibleIfConfigured(field),
       );
     }
     if (firmType === 'NON_GST') {
       return CREDENTIAL_FIELDS.filter((field) => field.key === 'nongst_firm');
     }
     return [];
-  }, [profileData.role, profileData.current_firm_type, profileData.current_firm_role]);
+  }, [
+    profileData.role,
+    profileData.current_firm_type,
+    profileData.current_firm_role,
+    userData,
+  ]);
 
   useEffect(() => {
     if (userData && Object.keys(userData).length > 0) {

@@ -523,6 +523,22 @@ class AuthService {
     }
   }
 
+  _isRoleManagedCredential(credentialKey) {
+    return ["sale_user", "account_user", "client_user"].includes(
+      credentialKey,
+    );
+  }
+
+  _hasStoredCredential(user, credentialPath) {
+    return Boolean(
+      String(
+        credentialPath
+          .split(".")
+          .reduce((acc, key) => acc?.[key], user)?.username || "",
+      ).trim(),
+    );
+  }
+
   async updateCredentials(userId, role, firmType, firmRole, payload) {
     const allowedKeys = new Set(
       this._getAllowedCredentialKeys(role, firmType, firmRole),
@@ -544,6 +560,20 @@ class AuthService {
 
     const user = await User.findById(userId);
     if (!user) throw ApiError.notFound("User not found");
+
+    if (role === "firm") {
+      for (const credentialKey of requestedKeys) {
+        const config = this._credentialConfig[credentialKey];
+        if (
+          this._isRoleManagedCredential(credentialKey) &&
+          !this._hasStoredCredential(user, config.path)
+        ) {
+          throw ApiError.forbidden(
+            `${config.label} can only be enabled from the admin panel`,
+          );
+        }
+      }
+    }
 
     const normalizedUpdates = {};
     for (const [credentialKey, credential] of Object.entries(updates)) {

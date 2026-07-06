@@ -899,6 +899,8 @@ class AdminService {
         user.nongst_firm.bank_ids = validatedNonGstBankIds;
     }
 
+    const touchedRoleCredentialFields = new Set();
+
     if (hasRoleCredentialUpdates) {
       const optionalRoleCredentialFields = new Set([
         "sale_user",
@@ -924,7 +926,9 @@ class AdminService {
         }
 
         const label = this._getRoleCredentialLabel(field);
-        this._validateCredentialShape(credential, label);
+        this._validateCredentialShape(credential, label, {
+          requirePassword: !user[normalizedField]?.password,
+        });
         mergedRoleCredentials[normalizedField] = {
           username: String(credential.username || "").trim(),
         };
@@ -939,6 +943,8 @@ class AdminService {
           optionalRoleCredentialFields.has(normalizedField) &&
           !this._hasCredentialInput(credential)
         ) {
+          user[normalizedField] = null;
+          touchedRoleCredentialFields.add(normalizedField);
           continue;
         }
 
@@ -959,6 +965,7 @@ class AdminService {
         }
 
         user[normalizedField].username = nextUsername;
+        touchedRoleCredentialFields.add(normalizedField);
 
         if (credential.password) {
           user[normalizedField].password = await bcrypt.hash(
@@ -980,6 +987,14 @@ class AdminService {
     }
 
     await user.save();
+
+    if (touchedRoleCredentialFields.size > 0) {
+      await Session.deleteMany({
+        user_id: userId,
+        role: "firm",
+        credential_key: { $in: Array.from(touchedRoleCredentialFields) },
+      });
+    }
 
     if (
       subscription_amount !== undefined ||
