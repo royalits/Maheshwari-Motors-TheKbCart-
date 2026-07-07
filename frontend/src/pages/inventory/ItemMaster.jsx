@@ -390,21 +390,38 @@ const ItemMaster = () => {
       const failed = Number(result.totalFailed || 0);
       const created = Number(result.totalCreated || 0);
       const updated = Number(result.totalUpdated || 0);
+      const imported = Number(result.totalImported || 0);
       const firstError = Array.isArray(result.errors) ? result.errors[0] : null;
       const failureReason =
         firstError ?
           `: Row ${firstError.row || "?"} - ${firstError.message || "Import failed"}`
         : "";
 
+      if (imported === 0) {
+        showToast(
+          failed ?
+            `No items imported${failureReason}`
+          : "No items found in Excel file",
+          "warning",
+        );
+        return;
+      }
+
       showToast(
-        `Imported ${Number(result.totalImported || 0)} item(s): ${created} new, ${updated} updated${
+        `Imported ${imported} item(s): ${created} new, ${updated} updated${
           failed ? `, ${failed} failed${failureReason}` : ""
         }`,
         failed ? "warning" : "success",
       );
 
-      queryClient.invalidateQueries({ queryKey: ["items"] });
-      queryClient.invalidateQueries({ queryKey: ["items-low-stock"] });
+      setDepartmentFilter("all");
+      setBrandFilter("all");
+      await queryClient.invalidateQueries({ queryKey: ["items"], exact: false });
+      await queryClient.invalidateQueries({
+        queryKey: ["items-low-stock"],
+        exact: false,
+      });
+      await queryClient.refetchQueries({ queryKey: ["items"], exact: false });
     } catch (error) {
       showToast(
         error.response?.data?.message || "Failed to import items",

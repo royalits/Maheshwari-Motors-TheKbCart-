@@ -757,6 +757,22 @@ class AdminService {
     return Boolean(username || password || contactId);
   }
 
+  _normalizeOptionalCredentialSubdocs(user) {
+    for (const field of ["admin", "sale_user", "account_user", "client_user"]) {
+      const credential = user.get(field);
+      if (!credential || typeof credential !== "object" || Array.isArray(credential)) {
+        user.set(field, null);
+        continue;
+      }
+
+      const username = String(credential.username || "").trim();
+      const password = String(credential.password || "").trim();
+      if (!username && !password) {
+        user.set(field, null);
+      }
+    }
+  }
+
   async updateSecondaryUser(userId, updateData) {
     const user = await User.findOne({
       _id: userId,
@@ -764,6 +780,7 @@ class AdminService {
     });
 
     if (!user) throw ApiError.notFound("User not found");
+    this._normalizeOptionalCredentialSubdocs(user);
 
     const roleCredentialUpdates = this._extractRoleCredentials(updateData);
     const hasRoleCredentialUpdates =

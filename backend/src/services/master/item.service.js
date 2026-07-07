@@ -424,7 +424,11 @@ class ItemService {
       "Purchase rate",
     );
     const parsedMrpRate = toNumberIfDefined(mrp_rate, "MRP rate");
-    const normalizedIsGst = Number(is_gst ?? 1) === 1 ? 1 : 0;
+    const normalizedIsGst =
+      is_gst === undefined || is_gst === null || is_gst === "" ?
+        isGst === 0 ? 0 : 1
+      : Number(is_gst) === 1 ? 1
+      : 0;
     const parsedGstPercent =
       gst_percent === undefined || gst_percent === null || gst_percent === "" ?
         undefined
@@ -1037,6 +1041,10 @@ class ItemService {
       importRows.push({ rowNumber, rowValues });
     }
 
+    if (importRows.length === 0) {
+      throw ApiError.badRequest("Excel file has no item rows to import");
+    }
+
     for (const { rowNumber, rowValues } of importRows) {
       try {
         const gstPercent = this._getItemExcelCell(
@@ -1064,6 +1072,12 @@ class ItemService {
           userId,
         );
 
+        const importIsGst = this._getItemExcelCell(
+          rowValues,
+          headerMap,
+          "is_gst",
+        );
+
         const itemData = {
           item_name: this._getItemExcelCell(rowValues, headerMap, "item_name"),
           alias: this._getItemExcelCell(rowValues, headerMap, "alias"),
@@ -1088,7 +1102,7 @@ class ItemService {
           mrp_rate: this._getItemExcelCell(rowValues, headerMap, "mrp_rate"),
           discount: this._getItemExcelCell(rowValues, headerMap, "discount"),
           threshold: this._getItemExcelCell(rowValues, headerMap, "threshold"),
-          is_gst: this._getItemExcelCell(rowValues, headerMap, "is_gst"),
+          is_gst: importIsGst === "" ? (isGst === 0 ? 0 : 1) : importIsGst,
         };
 
         const existingItem = await this._findExistingImportItem(itemData, userId);

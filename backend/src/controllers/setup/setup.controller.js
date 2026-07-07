@@ -7,7 +7,7 @@ class SetupController {
       res.status(400).json(new ApiResponse(400, null, "File is required"));
       return;
     }
-    const job = await setupService.importData(req.file, req.user._id);
+    const job = await setupService.importData(req.file, req.user._id, req.isGst);
     res
       .status(202)
       .json(
@@ -46,7 +46,7 @@ class SetupController {
     const isBackup = await setupService.isBackupFile(req.file);
     const job = isBackup 
       ? await setupService.importFromBackup(req.file, req.user._id)
-      : await setupService.importData(req.file, req.user._id);
+      : await setupService.importData(req.file, req.user._id, req.isGst);
     
     const message = isBackup 
       ? "Backup import started. Importing all collections..."

@@ -323,7 +323,14 @@ const setNestedField = (target, fieldPath, value) => {
 };
 
 // Validate and create/update item from row data
-const processItemRow = async (row, rowIndex, userId, errors, report) => {
+const processItemRow = async (
+  row,
+  rowIndex,
+  userId,
+  errors,
+  report,
+  isGst = 1,
+) => {
   try {
     const {
       item_name,
@@ -432,7 +439,12 @@ const processItemRow = async (row, rowIndex, userId, errors, report) => {
     const currentFY = getCurrentFinancialYear();
     const dataFY = getFinancialYearForDate(stock_date);
 
-    const normalizedIsGst = Number(is_gst ?? 1) === 1 ? 1 : 0;
+    const normalizedIsGst =
+      is_gst === undefined || is_gst === null || is_gst === "" ?
+        Number(isGst) === 0 ? 0
+        : 1
+      : Number(is_gst) === 1 ? 1
+      : 0;
 
     // If data is for current year, go to regular stock
     // If data is for previous year, go to opening stock
@@ -994,7 +1006,7 @@ const importFromBackup = async (file, userId) => {
   }
 };
 
-const importData = async (file, userId) => {
+const importData = async (file, userId, isGst = 1) => {
   await ensureDirs();
   const jobId = createId();
   const safeName = sanitizeFilename(file.originalname || "import.xlsx");
@@ -1039,6 +1051,7 @@ const importData = async (file, userId) => {
         userId,
         errors,
         report,
+        isGst,
       );
       if (result.success) successCount++;
     }
