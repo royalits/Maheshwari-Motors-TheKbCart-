@@ -8,7 +8,7 @@ import { ApiError } from "../../utils/index.js";
 import {
   getUniversalCollectionSchema,
   isInternalUniversalField,
-  universalSheetNames,
+  universalCollectionNames,
 } from "../setup/universalImportExport.schema.js";
 
 const storageRoot = path.resolve(process.cwd(), "storage");
@@ -613,11 +613,11 @@ const sanitizeExportDocument = (doc, lookups, collectionName = "") => {
   }, {});
 };
 
-const addCollectionSheet = (workbook, sheetName, docs = []) => {
+const addCollectionSheet = (workbook, sheetName, docs = [], lookups = {}) => {
   const schema = getUniversalCollectionSchema(sheetName);
   if (!schema) return;
 
-  const worksheet = workbook.addWorksheet(sanitizeWorksheetName(sheetName));
+  const worksheet = workbook.addWorksheet(sanitizeWorksheetName(schema.sheet));
   worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
   if (!docs.length) {
@@ -630,7 +630,7 @@ const addCollectionSheet = (workbook, sheetName, docs = []) => {
   }
 
   const flatRows = docs.map((doc) =>
-    flattenDocument(normalizeForExport(doc)),
+    flattenDocument(sanitizeExportDocument(doc, lookups, schema.collectionName)),
   );
   const allKeys = schema.columns.filter(
     (key) => !isInternalUniversalField(key),
@@ -810,13 +810,14 @@ const createWorkbookBackup = async (userId, isGst = null) => {
         getUniversalCollectionSchema(name),
     );
   const orderedCollectionNames = buildCollectionOrder([
-    ...new Set([...collectionNames, ...universalSheetNames()]),
+    ...new Set([...collectionNames, ...universalCollectionNames()]),
   ]);
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = `Maheshwari Motors ${firmLabel(isGst)} Backup`;
   workbook.created = new Date();
   workbook.modified = new Date();
+  const lookups = await buildReferenceLookups(db, userId);
   const collectionCounts = [];
   let totalRecords = 0;
 
@@ -827,7 +828,7 @@ const createWorkbookBackup = async (userId, isGst = null) => {
       records: docs.length,
     });
     totalRecords += docs.length;
-    addCollectionSheet(workbook, collectionName, docs);
+    addCollectionSheet(workbook, collectionName, docs, lookups);
   }
 
   const summary = {

@@ -16,8 +16,10 @@ import {
   isInternalUniversalField,
   normalizeUniversalHeader,
   normalizeUniversalValue,
+  universalSchemas,
   universalSheetNames,
 } from "./universalImportExport.schema.js";
+import { buildUniversalImportTemplateWorkbook } from "./universalImportExport.workbook.js";
 import {
   generateUniqueBarcode,
   generateUniqueItemId,
@@ -198,6 +200,34 @@ const buildUniversalUpsertFilter = (schema, doc, userObjectId) => {
   return null;
 };
 
+const resolveUniversalItemReferences = async (doc, userObjectId) => {
+  const [brand, department, hsn] = await Promise.all([
+    doc.brand_name ?
+      Brand.findOne({ user_id: userObjectId, name: doc.brand_name }).select("_id").lean()
+    : null,
+    doc.dept_name ?
+      Department.findOne({ user_id: userObjectId, name: doc.dept_name }).select("_id").lean()
+    : null,
+    doc.hsn_code ?
+      Hsn.findOne({ user_id: userObjectId, hsn_code: doc.hsn_code }).select("_id").lean()
+    : null,
+  ]);
+
+  if (brand?._id) doc.brand_id = brand._id;
+  if (department?._id) doc.dept_id = department._id;
+  if (hsn?._id) doc.hsn_id = hsn._id;
+  delete doc.brand_name;
+  delete doc.dept_name;
+  delete doc.hsn_code;
+
+  if (!doc.barcode) {
+    doc.barcode = await generateUniqueBarcode();
+  }
+  if (!doc.item_id) {
+    doc.item_id = await generateUniqueItemId(userObjectId);
+  }
+};
+
 const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
   const db = mongoose.connection?.db;
   if (!db) throw new Error("Database connection not available");
@@ -287,8 +317,11 @@ const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
       if (schema.columns.includes("is_gst") && doc.is_gst === undefined) {
         doc.is_gst = Number(isGst) === 0 ? 0 : 1;
       }
-      if (schema.sheet === "contacts" && doc.type) {
+      if (schema.collectionName === "contacts" && doc.type) {
         doc.type = String(doc.type).trim().toLowerCase();
+      }
+      if (schema.collectionName === "items") {
+        await resolveUniversalItemReferences(doc, userObjectId);
       }
 
       const missingRowRequired = schema.required.filter(
@@ -319,7 +352,7 @@ const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
 
     if (bulkOps.length === 0) continue;
 
-    const result = await db.collection(schema.sheet).bulkWrite(bulkOps, {
+    const result = await db.collection(schema.collectionName).bulkWrite(bulkOps, {
       ordered: false,
     });
     const imported = bulkOps.length;
@@ -1402,276 +1435,79 @@ const getImportReport = (jobId, userId) => {
 };
 
 const generateTemplate = async () => {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Items");
-  const instructionSheet = workbook.addWorksheet("Instructions");
-
-  // Instructions sheet
-  const instr = instructionSheet;
-  instr.columns = [
-    { header: "Field", key: "field", width: 25 },
-    { header: "Description", key: "description", width: 60 },
-  ];
-  instr.addRow({
-    field: "item_name (required)",
-    description: "Name of the item",
-  });
-  instr.addRow({
-    field: "item_id (optional)",
-    description:
-      "Unique item ID (alphanumeric, must have at least 1 letter). Auto-generated if empty.",
-  });
-  instr.addRow({
-    field: "barcode (optional)",
-    description:
-      "Item barcode (10 alphanumeric chars). Auto-generated if empty.",
-  });
-  instr.addRow({
-    field: "sale_rate (required)",
-    description: "Selling price per unit",
-  });
-  instr.addRow({
-    field: "purchase_rate",
-    description: "Cost price per unit",
-  });
-  instr.addRow({
-    field: "mrp_rate",
-    description: "Maximum Retail Price",
-  });
-  instr.addRow({
-    field: "gst_percent",
-    description: "GST percentage (0-100)",
-  });
-  instr.addRow({
-    field: "discount",
-    description: "Default discount percentage (0-100)",
-  });
-  instr.addRow({
-    field: "is_gst",
-    description: "1 for GST item, 0 for non-GST. Default: 1",
-  });
-  instr.addRow({
-    field: "physical_stock / stock",
-    description: "Stock count (for current year if stock_date is current FY)",
-  });
-  instr.addRow({
-    field: "logical_stock",
-    description: "Logical stock for non-GST items",
-  });
-  instr.addRow({
-    field: "opening_physical_stock",
-    description: "Opening stock for previous year",
-  });
-  instr.addRow({
-    field: "opening_logical_stock",
-    description: "Opening logical stock for previous year non-GST",
-  });
-  instr.addRow({
-    field: "stock_date",
-    description:
-      "Date for stock (YYYY-MM-DD or MM/DD/YYYY). Determines if current or previous FY.",
-  });
-  instr.addRow({
-    field: "alias",
-    description: "Alternative name for the item",
-  });
-  instr.addRow({
-    field: "description",
-    description: "Item description",
-  });
-  instr.addRow({
-    field: "brand_name",
-    description: "Brand name (must exist in system)",
-  });
-  instr.addRow({
-    field: "dept_name",
-    description: "Department name (must exist in system)",
-  });
-  instr.addRow({
-    field: "hsn_code",
-    description: "HSN code (must exist in system)",
-  });
-
-  // Data sheet with example
-  sheet.columns = [
-    { header: "item_name", key: "item_name", width: 20 },
-    { header: "item_id", key: "item_id", width: 12 },
-    { header: "barcode", key: "barcode", width: 12 },
-    { header: "sale_rate", key: "sale_rate", width: 12 },
-    { header: "purchase_rate", key: "purchase_rate", width: 14 },
-    { header: "mrp_rate", key: "mrp_rate", width: 12 },
-    { header: "gst_percent", key: "gst_percent", width: 12 },
-    { header: "discount", key: "discount", width: 10 },
-    { header: "is_gst", key: "is_gst", width: 8 },
-    { header: "physical_stock", key: "physical_stock", width: 15 },
-    { header: "logical_stock", key: "logical_stock", width: 14 },
-    {
-      header: "opening_physical_stock",
-      key: "opening_physical_stock",
-      width: 20,
-    },
-    {
-      header: "opening_logical_stock",
-      key: "opening_logical_stock",
-      width: 19,
-    },
-    { header: "stock_date", key: "stock_date", width: 12 },
-    { header: "alias", key: "alias", width: 15 },
-    { header: "description", key: "description", width: 25 },
-    { header: "brand_name", key: "brand_name", width: 15 },
-    { header: "dept_name", key: "dept_name", width: 15 },
-    { header: "hsn_code", key: "hsn_code", width: 10 },
-  ];
-
-  // Example rows (current year)
-  const currentDate = new Date().toISOString().split("T")[0];
-  sheet.addRow({
-    item_name: "Premium Motor Oil 5L",
-    item_id: "OIL001",
-    barcode: "1000000001",
-    sale_rate: 450,
-    purchase_rate: 350,
-    mrp_rate: 500,
-    gst_percent: 5,
-    discount: 0,
-    is_gst: 1,
-    physical_stock: 50,
-    logical_stock: 0,
-    opening_physical_stock: 0,
-    opening_logical_stock: 0,
-    stock_date: currentDate,
-    alias: "Premium Oil",
-    description: "High quality synthetic motor oil",
-    brand_name: "",
-    dept_name: "",
-    hsn_code: "",
-  });
-
-  sheet.addRow({
-    item_name: "Spark Plug Set",
-    item_id: "SPARK002",
-    barcode: "1000000002",
-    sale_rate: 250,
-    purchase_rate: 180,
-    mrp_rate: 280,
-    gst_percent: 12,
-    discount: 5,
-    is_gst: 1,
-    physical_stock: 100,
-    logical_stock: 0,
-    opening_physical_stock: 0,
-    opening_logical_stock: 0,
-    stock_date: currentDate,
-    alias: "Sparks",
-    description: "Replacement spark plugs",
-    brand_name: "",
-    dept_name: "",
-    hsn_code: "",
-  });
-
-  // Example rows (previous year - for opening stock)
-  const previousYearDate = new Date(new Date().getFullYear() - 1, 0, 15)
-    .toISOString()
-    .split("T")[0];
-  sheet.addRow({
-    item_name: "Air Filter",
-    item_id: "AIR003",
-    barcode: "1000000003",
-    sale_rate: 180,
-    purchase_rate: 120,
-    mrp_rate: 200,
-    gst_percent: 5,
-    discount: 0,
-    is_gst: 1,
-    physical_stock: 0,
-    logical_stock: 0,
-    opening_physical_stock: 75,
-    opening_logical_stock: 0,
-    stock_date: previousYearDate,
-    alias: "Air Filter",
-    description: "Engine air filter",
-    brand_name: "",
-    dept_name: "",
-    hsn_code: "",
-  });
-
+  const workbook = buildUniversalImportTemplateWorkbook();
   const buffer = await workbook.xlsx.writeBuffer();
   return {
     buffer,
-    filename: `stock_import_template_${formatDateStamp()}.xlsx`,
+    filename: `universal_import_template_${formatDateStamp()}.xlsx`,
   };
 };
 
 const exportData = async (userId) => {
-  const items = await Item.find({ user_id: userId })
-    .populate([
-      { path: "brand_id", select: "name" },
-      { path: "dept_id", select: "name" },
-      { path: "hsn_id", select: "hsn_code" },
-    ])
-    .lean();
-
+  const db = mongoose.connection?.db;
+  if (!db) {
+    throw ApiError.internal("Database connection is not available");
+  }
+  const userObjectId = new mongoose.Types.ObjectId(String(userId));
+  const buildMap = async (collectionName, labelField) => {
+    const docs = await db
+      .collection(collectionName)
+      .find({ user_id: userObjectId })
+      .project({ [labelField]: 1 })
+      .toArray()
+      .catch(() => []);
+    return new Map(docs.map((doc) => [String(doc._id), doc[labelField] || ""]));
+  };
+  const [brandNames, departmentNames, hsnCodes] = await Promise.all([
+    buildMap("brands", "name"),
+    buildMap("departments", "name"),
+    buildMap("hsns", "hsn_code"),
+  ]);
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Items");
 
-  sheet.columns = [
-    { header: "item_name", key: "item_name", width: 20 },
-    { header: "item_id", key: "item_id", width: 12 },
-    { header: "barcode", key: "barcode", width: 12 },
-    { header: "sale_rate", key: "sale_rate", width: 12 },
-    { header: "purchase_rate", key: "purchase_rate", width: 14 },
-    { header: "mrp_rate", key: "mrp_rate", width: 12 },
-    { header: "gst_percent", key: "gst_percent", width: 12 },
-    { header: "discount", key: "discount", width: 10 },
-    { header: "is_gst", key: "is_gst", width: 8 },
-    { header: "physical_stock", key: "physical_stock", width: 15 },
-    { header: "logical_stock", key: "logical_stock", width: 14 },
-    {
-      header: "opening_physical_stock",
-      key: "opening_physical_stock",
-      width: 20,
-    },
-    {
-      header: "opening_logical_stock",
-      key: "opening_logical_stock",
-      width: 19,
-    },
-    { header: "stock_date", key: "stock_date", width: 12 },
-    { header: "alias", key: "alias", width: 15 },
-    { header: "description", key: "description", width: 25 },
-    { header: "brand_name", key: "brand_name", width: 15 },
-    { header: "dept_name", key: "dept_name", width: 15 },
-    { header: "hsn_code", key: "hsn_code", width: 10 },
-  ];
+  for (const schema of universalSchemas()) {
+    const worksheet = workbook.addWorksheet(schema.sheet);
+    worksheet.views = [{ state: "frozen", ySplit: 1 }];
+    worksheet.columns = schema.columns.map((key) => ({
+      header: key,
+      key,
+      width: Math.max(12, Math.min(30, key.length + 4)),
+    }));
 
-  for (const item of items) {
-    sheet.addRow({
-      item_name: item.item_name,
-      item_id: item.item_id,
-      barcode: item.barcode,
-      sale_rate: item.sale_rate,
-      purchase_rate: item.purchase_rate || 0,
-      mrp_rate: item.mrp_rate || 0,
-      gst_percent: item.gst_percent || 0,
-      discount: item.discount || 0,
-      is_gst: item.is_gst || 1,
-      physical_stock: item.physical_stock || 0,
-      logical_stock: item.logical_stock || 0,
-      opening_physical_stock: item.opening_physical_stock || 0,
-      opening_logical_stock: item.opening_logical_stock || 0,
-      stock_date: item.updatedAt ? new Date(item.updatedAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-      alias: item.alias || "",
-      description: item.description || "",
-      brand_name: item.brand_id?.name || "",
-      dept_name: item.dept_id?.name || "",
-      hsn_code: item.hsn_id?.hsn_code || "",
+    const documents = await db
+      .collection(schema.collectionName)
+      .find({ user_id: userObjectId })
+      .toArray()
+      .catch(() => []);
+
+    for (const document of documents) {
+      const row = {};
+      for (const key of schema.columns) {
+        row[key] = document[key] ?? "";
+      }
+      if (schema.collectionName === "items") {
+        row.brand_name = brandNames.get(String(document.brand_id)) || "";
+        row.dept_name = departmentNames.get(String(document.dept_id)) || "";
+        row.hsn_code = hsnCodes.get(String(document.hsn_id)) || "";
+      }
+      worksheet.addRow(row);
+    }
+
+    const header = worksheet.getRow(1);
+    header.font = { bold: true };
+    header.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFECEFF4" },
+      };
     });
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
   return {
     buffer,
-    filename: `stock_export_${formatDateStamp()}.xlsx`,
+    filename: `universal_export_${formatDateStamp()}.xlsx`,
   };
 };
 
@@ -1770,7 +1606,9 @@ const isBackupFile = async (file) => {
       return true;
     }
 
-    const universalSheets = new Set(universalSheetNames());
+    const universalSheets = new Set(
+      universalSheetNames().map((sheetName) => String(sheetName).toLowerCase()),
+    );
     if (
       workbook.worksheets.some((worksheet) =>
         universalSheets.has(String(worksheet.name || "").toLowerCase()),
@@ -1781,7 +1619,9 @@ const isBackupFile = async (file) => {
 
     const sheetCount = workbook.worksheets.length;
 
-    const backupCollectionNames = universalSheetNames();
+    const backupCollectionNames = universalSheetNames().map((sheetName) =>
+      String(sheetName).toLowerCase(),
+    );
 
     // Check sheet names for backup indicators
     const sheetNames = workbook.worksheets.map((s) => s.name.toLowerCase());

@@ -53,7 +53,6 @@ export const IGNORED_UNIVERSAL_REFERENCE_COLUMNS = new Set([
   "financial_year",
   "from_bank",
   "items",
-  "label",
   "labels",
   "party",
   "payment_entries",
@@ -63,6 +62,7 @@ export const IGNORED_UNIVERSAL_REFERENCE_COLUMNS = new Set([
 
 export const isInternalUniversalField = (fieldName) => {
   const key = text(fieldName);
+  if (key === "item_id") return false;
   return (
     INTERNAL_IMPORT_EXPORT_FIELDS.has(key) ||
     IGNORED_UNIVERSAL_REFERENCE_COLUMNS.has(key) ||
@@ -73,6 +73,7 @@ export const isInternalUniversalField = (fieldName) => {
 
 const collection = ({
   sheet,
+  collectionName = sheet.toLowerCase(),
   columns,
   required = [],
   numeric = [],
@@ -81,6 +82,7 @@ const collection = ({
   naturalKey = [],
 }) => ({
   sheet,
+  collectionName,
   columns,
   required,
   optional: columns.filter((column) => !required.includes(column)),
@@ -250,16 +252,17 @@ export const UNIVERSAL_COLLECTION_SCHEMAS = {
     naturalKey: ["hsn_code"],
   }),
   items: collection({
-    sheet: "items",
+    sheet: "Items",
+    collectionName: "items",
     columns: [
       "item_name",
       "item_id",
       "barcode",
       "alias",
       "description",
-      "brand",
-      "department",
-      "hsn",
+      "brand_name",
+      "dept_name",
+      "hsn_code",
       "sale_rate",
       "purchase_rate",
       "mrp_rate",
@@ -326,11 +329,27 @@ export const UNIVERSAL_COLLECTION_SCHEMAS = {
   }),
 };
 
-export const getUniversalCollectionSchema = (sheetName) =>
-  UNIVERSAL_COLLECTION_SCHEMAS[lower(sheetName)] || null;
+export const getUniversalCollectionSchema = (sheetName) => {
+  const key = lower(sheetName);
+  return (
+    UNIVERSAL_COLLECTION_SCHEMAS[key] ||
+    Object.values(UNIVERSAL_COLLECTION_SCHEMAS).find(
+      (schema) => lower(schema.sheet) === key || lower(schema.collectionName) === key,
+    ) ||
+    null
+  );
+};
 
 export const universalSheetNames = () =>
   Object.values(UNIVERSAL_COLLECTION_SCHEMAS).map((schema) => schema.sheet);
+
+export const universalCollectionNames = () =>
+  Object.values(UNIVERSAL_COLLECTION_SCHEMAS).map(
+    (schema) => schema.collectionName,
+  );
+
+export const universalSchemas = () =>
+  Object.values(UNIVERSAL_COLLECTION_SCHEMAS);
 
 export const normalizeUniversalHeader = (value) =>
   lower(value)
