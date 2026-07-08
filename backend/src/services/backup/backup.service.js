@@ -5,6 +5,11 @@ import mongoose from "mongoose";
 import ExcelJS from "exceljs";
 import s3Service from "../common/s3.service.js";
 import { ApiError } from "../../utils/index.js";
+import {
+  getUniversalCollectionSchema,
+  isInternalUniversalField,
+  universalSheetNames,
+} from "../setup/universalImportExport.schema.js";
 
 const storageRoot = path.resolve(process.cwd(), "storage");
 const backupDir = path.join(storageRoot, "backups");
@@ -609,19 +614,26 @@ const sanitizeExportDocument = (doc, lookups, collectionName = "") => {
 };
 
 const addCollectionSheet = (workbook, sheetName, docs = []) => {
+  const schema = getUniversalCollectionSchema(sheetName);
+  if (!schema) return;
+
   const worksheet = workbook.addWorksheet(sanitizeWorksheetName(sheetName));
   worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
   if (!docs.length) {
-    worksheet.columns = [{ header: "_empty", key: "_empty", width: 12 }];
+    worksheet.columns = schema.columns.map((key) => ({
+      header: key,
+      key,
+      width: Math.max(12, Math.min(28, key.length + 4)),
+    }));
     return;
   }
 
   const flatRows = docs.map((doc) =>
     flattenDocument(normalizeForExport(doc)),
   );
-  const allKeys = sortColumnKeys(
-    Array.from(new Set(flatRows.flatMap((row) => Object.keys(row)))),
+  const allKeys = schema.columns.filter(
+    (key) => !isInternalUniversalField(key),
   );
 
   worksheet.columns = allKeys.map((key) => ({
@@ -793,9 +805,13 @@ const createWorkbookBackup = async (userId, isGst = null) => {
     .map((entry) => entry.name)
     .filter(
       (name) =>
-        !name.startsWith("system.") && !SYSTEM_EXPORT_COLLECTIONS.has(name),
+        !name.startsWith("system.") &&
+        !SYSTEM_EXPORT_COLLECTIONS.has(name) &&
+        getUniversalCollectionSchema(name),
     );
-  const orderedCollectionNames = buildCollectionOrder(collectionNames);
+  const orderedCollectionNames = buildCollectionOrder([
+    ...new Set([...collectionNames, ...universalSheetNames()]),
+  ]);
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = `Maheshwari Motors ${firmLabel(isGst)} Backup`;

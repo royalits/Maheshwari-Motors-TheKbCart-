@@ -11,6 +11,14 @@ import Brand from "../../models/master/brand.model.js";
 import Department from "../../models/master/department.model.js";
 import Hsn from "../../models/master/hsn.model.js";
 import {
+  getUniversalCollectionSchema,
+  IGNORED_UNIVERSAL_SHEETS,
+  isInternalUniversalField,
+  normalizeUniversalHeader,
+  normalizeUniversalValue,
+  universalSheetNames,
+} from "./universalImportExport.schema.js";
+import {
   generateUniqueBarcode,
   generateUniqueItemId,
   isValidBarcodeFormat,
@@ -153,6 +161,186 @@ const isNormalizedBackupWorkbook = (workbook) => {
   });
 
   return format === BACKUP_EXCEL_FORMAT;
+};
+
+const isLegacyEmptyWorksheet = (worksheet) =>
+  String(normalizeImportedCellValue(worksheet.getRow(1).getCell(1).value) || "")
+    .trim()
+    .toLowerCase() === "_empty";
+
+const getUniversalHeaders = (worksheet) => {
+  const headers = [];
+  worksheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colIndex) => {
+    const raw = String(normalizeImportedCellValue(cell.value) || "").trim();
+    if (raw) {
+      headers.push({ raw, key: normalizeUniversalHeader(raw), colIndex });
+    }
+  });
+  return headers;
+};
+
+const rowHasUniversalData = (row, allowedColumns) => {
+  for (const { colIndex } of allowedColumns) {
+    const value = normalizeImportedCellValue(row.getCell(colIndex).value);
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      return true;
+    }
+  }
+  return false;
+};
+
+const buildUniversalUpsertFilter = (schema, doc, userObjectId) => {
+  for (const key of schema.naturalKey || []) {
+    if (doc[key] !== undefined && doc[key] !== null && String(doc[key]).trim() !== "") {
+      return { user_id: userObjectId, [key]: doc[key] };
+    }
+  }
+  return null;
+};
+
+const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
+  const db = mongoose.connection?.db;
+  if (!db) throw new Error("Database connection not available");
+
+  const userObjectId = new mongoose.Types.ObjectId(String(userId));
+  const collectionStats = {};
+  const skippedEmptySheets = [];
+  const ignoredUnknownSheets = [];
+  const warnings = [];
+  const errors = [];
+  let totalRecords = 0;
+
+  for (const worksheet of workbook.worksheets) {
+    const sheetName = worksheet.name;
+    const normalizedSheetName = String(sheetName || "").toLowerCase();
+
+    if (IGNORED_UNIVERSAL_SHEETS.has(normalizedSheetName)) continue;
+
+    const schema = getUniversalCollectionSchema(sheetName);
+    if (!schema) {
+      ignoredUnknownSheets.push(sheetName);
+      continue;
+    }
+
+    if (isLegacyEmptyWorksheet(worksheet)) {
+      skippedEmptySheets.push(sheetName);
+      continue;
+    }
+
+    const headers = getUniversalHeaders(worksheet);
+    if (headers.length === 0) {
+      skippedEmptySheets.push(sheetName);
+      continue;
+    }
+
+    const schemaColumns = new Set(schema.columns);
+    const allowedHeaders = headers.filter((header) => schemaColumns.has(header.key));
+    const ignoredInternal = headers
+      .filter((header) => isInternalUniversalField(header.key))
+      .map((header) => header.raw);
+    const unknownHeaders = headers
+      .filter(
+        (header) =>
+          !schemaColumns.has(header.key) && !isInternalUniversalField(header.key),
+      )
+      .map((header) => header.raw);
+
+    if (ignoredInternal.length > 0) {
+      warnings.push(
+        `Sheet "${sheetName}" ignored internal columns: [${ignoredInternal.join(", ")}]`,
+      );
+    }
+
+    const rows = [];
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      if (rowHasUniversalData(row, allowedHeaders)) rows.push({ row, rowNumber });
+    });
+
+    if (rows.length === 0) {
+      skippedEmptySheets.push(sheetName);
+      continue;
+    }
+
+    const missingRequired = schema.required.filter(
+      (requiredKey) => !allowedHeaders.some((header) => header.key === requiredKey),
+    );
+    if (missingRequired.length > 0 || unknownHeaders.length > 0) {
+      errors.push({
+        sheet: sheetName,
+        error: `Invalid columns in sheet "${sheetName}": missing [${missingRequired.join(", ")}], unknown [${unknownHeaders.join(", ")}]`,
+      });
+      continue;
+    }
+
+    const bulkOps = [];
+    for (const { row, rowNumber } of rows) {
+      const doc = { ...(schema.defaults || {}), user_id: userObjectId };
+      for (const header of allowedHeaders) {
+        const value = normalizeImportedCellValue(row.getCell(header.colIndex).value);
+        if (value === undefined || value === null || String(value).trim() === "") {
+          continue;
+        }
+        doc[header.key] = normalizeUniversalValue(schema, header.key, value);
+      }
+
+      if (schema.columns.includes("is_gst") && doc.is_gst === undefined) {
+        doc.is_gst = Number(isGst) === 0 ? 0 : 1;
+      }
+      if (schema.sheet === "contacts" && doc.type) {
+        doc.type = String(doc.type).trim().toLowerCase();
+      }
+
+      const missingRowRequired = schema.required.filter(
+        (key) => doc[key] === undefined || doc[key] === null || String(doc[key]).trim() === "",
+      );
+      if (missingRowRequired.length > 0) {
+        errors.push({
+          sheet: sheetName,
+          row: rowNumber,
+          error: `Missing required values in sheet "${sheetName}" row ${rowNumber}: [${missingRowRequired.join(", ")}]`,
+        });
+        continue;
+      }
+
+      const filter = buildUniversalUpsertFilter(schema, doc, userObjectId);
+      if (filter) {
+        bulkOps.push({
+          updateOne: {
+            filter,
+            update: { $set: doc },
+            upsert: true,
+          },
+        });
+      } else {
+        bulkOps.push({ insertOne: { document: doc } });
+      }
+    }
+
+    if (bulkOps.length === 0) continue;
+
+    const result = await db.collection(schema.sheet).bulkWrite(bulkOps, {
+      ordered: false,
+    });
+    const imported = bulkOps.length;
+    collectionStats[sheetName] = {
+      rows: rows.length,
+      imported,
+      inserted: result.insertedCount || 0,
+      updated: result.modifiedCount || 0,
+      upserted: result.upsertedCount || 0,
+    };
+    totalRecords += imported;
+  }
+
+  return {
+    collectionStats,
+    skippedEmptySheets,
+    ignoredUnknownSheets,
+    warnings,
+    errors,
+    totalRecords,
+  };
 };
 
 const reviveImportedValue = (
@@ -679,7 +867,7 @@ const parseExcelRows = async (workbook) => {
 };
 
 // Import from backup Excel file (restores all collections)
-const importFromBackup = async (file, userId) => {
+const importFromBackup = async (file, userId, isGst = 1) => {
   await ensureDirs();
   const jobId = createId();
   const safeName = sanitizeFilename(file.originalname || "backup.xlsx");
@@ -697,6 +885,75 @@ const importFromBackup = async (file, userId) => {
     // Parse Excel
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(targetPath);
+
+    {
+    const universalResult = await importUniversalWorkbook(
+      workbook,
+      userId,
+      isGst,
+    );
+    const report = [
+      `Universal Import Report - ${new Date().toISOString()}`,
+      `Job ID: ${jobId}`,
+      `User: ${String(userId)}`,
+      `File: ${safeName}`,
+      "",
+      "Imported Collections:",
+      ...Object.entries(universalResult.collectionStats).map(
+        ([sheet, stats]) =>
+          `  ${sheet}: ${stats.imported}/${stats.rows} rows imported`,
+      ),
+      "",
+      `Skipped Empty Sheets: ${universalResult.skippedEmptySheets.join(", ") || "None"}`,
+      `Ignored Unknown Sheets: ${universalResult.ignoredUnknownSheets.join(", ") || "None"}`,
+      "",
+      "Warnings:",
+      ...(universalResult.warnings.length ? universalResult.warnings : ["  None"]),
+      "",
+      "Errors:",
+      ...(
+        universalResult.errors.length ?
+          universalResult.errors.map((entry) => `  ${entry.error}`)
+        : ["  None"]
+      ),
+    ];
+
+    const reportFilename = `backup_import_report_${jobId}.txt`;
+    const reportPath = path.join(reportsDir, reportFilename);
+    await fs.promises.writeFile(reportPath, report.join("\n"), "utf8");
+
+    const status =
+      universalResult.errors.length > 0 ? "completed_with_errors" : "completed";
+
+    const job = {
+      id: jobId,
+      user_id: String(userId),
+      status,
+      progress: 100,
+      created_at: new Date().toISOString(),
+      file: {
+        name: safeName,
+        size: file.size || 0,
+      },
+      result: {
+        total_collections: Object.keys(universalResult.collectionStats).length,
+        total_records: universalResult.totalRecords,
+        errors_count: universalResult.errors.length,
+        collection_stats: universalResult.collectionStats,
+        skipped_empty_sheets: universalResult.skippedEmptySheets,
+        ignored_unknown_sheets: universalResult.ignoredUnknownSheets,
+        warnings: universalResult.warnings,
+        errors: universalResult.errors,
+      },
+      report: {
+        filename: reportFilename,
+        path: reportPath,
+      },
+    };
+
+    importJobs.set(jobId, job);
+    return job;
+    }
 
     const report = [
       `Backup Import Report - ${new Date().toISOString()}`,
@@ -1513,26 +1770,18 @@ const isBackupFile = async (file) => {
       return true;
     }
 
-    // Backup files typically have 10+ sheets with collection names
-    // Stock import files typically have 1-2 sheets
+    const universalSheets = new Set(universalSheetNames());
+    if (
+      workbook.worksheets.some((worksheet) =>
+        universalSheets.has(String(worksheet.name || "").toLowerCase()),
+      )
+    ) {
+      return true;
+    }
+
     const sheetCount = workbook.worksheets.length;
 
-    // Known backup collection names
-    const backupCollectionNames = [
-      "contacts",
-      "items",
-      "bills",
-      "challans",
-      "returns",
-      "parties",
-      "brands",
-      "departments",
-      "hsn",
-      "users",
-      "transactions",
-      "stock",
-      "financial",
-    ];
+    const backupCollectionNames = universalSheetNames();
 
     // Check sheet names for backup indicators
     const sheetNames = workbook.worksheets.map((s) => s.name.toLowerCase());

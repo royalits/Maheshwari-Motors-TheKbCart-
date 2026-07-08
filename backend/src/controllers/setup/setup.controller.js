@@ -26,7 +26,11 @@ class SetupController {
       res.status(400).json(new ApiResponse(400, null, "Backup file is required"));
       return;
     }
-    const job = await setupService.importFromBackup(req.file, req.user._id);
+    const job = await setupService.importFromBackup(
+      req.file,
+      req.user._id,
+      req.isGst,
+    );
     res
       .status(202)
       .json(
@@ -71,7 +75,11 @@ class SetupController {
       return;
     }
 
-    const job = await setupService.importFromBackup(req.file, req.user._id);
+    const job = await setupService.importFromBackup(
+      req.file,
+      req.user._id,
+      req.isGst,
+    );
 
     res
       .status(202)
