@@ -1,5 +1,7 @@
 import { asyncHandler, ApiResponse } from "../../utils/index.js";
 import setupService from "../../services/setup/setup.service.js";
+import itemService from "../../services/master/item.service.js";
+import fs from "fs";
 
 class SetupController {
   importData = asyncHandler(async (req, res) => {
@@ -44,21 +46,40 @@ class SetupController {
     
     // Auto-detect file type: backup vs stock items
     const isBackup = await setupService.isBackupFile(req.file);
-    const job = isBackup 
-      ? await setupService.importFromBackup(req.file, req.user._id)
-      : await setupService.importData(req.file, req.user._id, req.isGst);
-    
-    const message = isBackup 
-      ? "Backup import started. Importing all collections..."
-      : "Stock items import started. Use progress endpoint to track status.";
-    
+    if (!isBackup) {
+      const buffer =
+        req.file.buffer ||
+        (req.file.path ? await fs.promises.readFile(req.file.path) : null);
+      const result = await itemService.importItems(
+        { ...req.file, buffer },
+        req.user._id,
+        req.isGst,
+      );
+      if (req.file.path) await fs.promises.unlink(req.file.path).catch(() => {});
+      const status = result.totalFailed > 0 ? 207 : 201;
+      res
+        .status(status)
+        .json(
+          new ApiResponse(
+            status,
+            result,
+            result.totalFailed > 0 ?
+              "Items imported with skipped rows"
+            : "Items imported successfully",
+          ),
+        );
+      return;
+    }
+
+    const job = await setupService.importFromBackup(req.file, req.user._id);
+
     res
       .status(202)
       .json(
         new ApiResponse(
           202,
           job,
-          message,
+          "Backup import started. Importing all collections...",
         ),
       );
   });

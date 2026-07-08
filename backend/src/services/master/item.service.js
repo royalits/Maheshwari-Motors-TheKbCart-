@@ -36,7 +36,7 @@ const ITEM_EXCEL_COLUMNS = [
   { header: "alias", key: "alias", width: 24, aliases: ["Alias"] },
   { header: "description", key: "description", width: 36, aliases: ["Description"] },
   { header: "brand_id", key: "brand", width: 24, aliases: ["Brand", "brand", "brand name"] },
-  { header: "dept_id", key: "department", width: 24, aliases: ["Department", "dept", "department"] },
+  { header: "dept_id", key: "department", width: 24, aliases: ["Department", "dept", "department", "dept_name", "department name"] },
   { header: "hsn_id", key: "hsn_code", width: 16, aliases: ["HSN Code", "hsn_code", "hsn"] },
   { header: "gst_percent", key: "gst_percent", width: 12, aliases: ["GST %", "gst%", "gst percent", "gst rate"] },
   { header: "sale_rate", key: "sale_rate", width: 14, aliases: ["Sale Rate", "sales rate"] },
@@ -101,14 +101,15 @@ class ItemService {
   }
 
   async _findExistingImportItem(itemData, userId) {
-    const filters = [];
+    const identifierFilters = [];
+    const fallbackFilters = [];
     const barcode = this._normalizeImportText(itemData.barcode).toUpperCase();
     const itemId = this._normalizeImportText(itemData.item_id);
     const itemName = this._normalizeImportText(itemData.item_name);
     const alias = this._normalizeImportText(itemData.alias);
 
     if (barcode) {
-      filters.push({ barcode, user_id: userId });
+      identifierFilters.push({ barcode, user_id: userId });
     }
 
     if (itemId) {
@@ -116,11 +117,11 @@ class ItemService {
       if (/^[0-9]+$/.test(itemId)) {
         itemIdFilters.push({ item_id: Number(itemId), user_id: userId });
       }
-      filters.push(...itemIdFilters);
+      identifierFilters.push(...itemIdFilters);
     }
 
     if (itemName) {
-      filters.push({
+      fallbackFilters.push({
         item_name: {
           $regex: new RegExp(`^${this._escapeRegex(itemName)}$`, "i"),
         },
@@ -129,7 +130,7 @@ class ItemService {
     }
 
     if (alias) {
-      filters.push({
+      fallbackFilters.push({
         alias: {
           $regex: new RegExp(`^${this._escapeRegex(alias)}$`, "i"),
         },
@@ -137,22 +138,28 @@ class ItemService {
       });
     }
 
-    if (filters.length === 0) return null;
+    const findUniqueMatch = async (filters) => {
+      if (filters.length === 0) return null;
+      const matches = await Item.find({ $or: filters })
+        .select("_id item_name barcode item_id alias")
+        .lean();
+      const uniqueMatches = [
+        ...new Map(matches.map((item) => [String(item._id), item])).values(),
+      ];
 
-    const matches = await Item.find({ $or: filters })
-      .select("_id item_name barcode item_id alias")
-      .lean();
-    const uniqueMatches = [
-      ...new Map(matches.map((item) => [String(item._id), item])).values(),
-    ];
+      if (uniqueMatches.length > 1) {
+        throw ApiError.conflict(
+          "Import row matches multiple existing items. Check barcode, item ID, name, and alias.",
+        );
+      }
 
-    if (uniqueMatches.length > 1) {
-      throw ApiError.conflict(
-        "Import row matches multiple existing items. Check barcode, item ID, name, and alias.",
-      );
-    }
+      return uniqueMatches[0] || null;
+    };
 
-    return uniqueMatches[0] || null;
+    const identifierMatch = await findUniqueMatch(identifierFilters);
+    if (identifierMatch) return identifierMatch;
+
+    return findUniqueMatch(fallbackFilters);
   }
 
   async _resolveImportBrand(name, userId) {

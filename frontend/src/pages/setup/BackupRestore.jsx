@@ -18,6 +18,7 @@ const BackupRestore = () => {
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [backingUp, setBackingUp] = useState(false);
   const [filterType, setFilterType] = useState("");
@@ -204,7 +205,7 @@ const BackupRestore = () => {
     if (!selectedFile) return;
     const formData = new FormData();
     formData.append("file", selectedFile);
-    const isExcel = /\.(xlsx?|csv)$/i.test(selectedFile.name);
+    const isExcel = /\.xlsx$/i.test(selectedFile.name);
     const endpoint = isExcel ? "/setup/import" : "/setup/restore";
     try {
       setImporting(true);
@@ -229,11 +230,25 @@ const BackupRestore = () => {
       });
 
       // Get import result details
-      const importJob = importRes?.data?.data || {};
+      const importPayload = importRes?.data?.data || {};
+      const isItemImport = importPayload?.totalImported !== undefined;
+      const importJob = isItemImport ?
+        {
+          status: importPayload.totalFailed > 0 ? "completed_with_errors" : "completed",
+          result: {
+            successful: importPayload.totalImported,
+            total_rows: importPayload.totalRows,
+            failed: importPayload.totalFailed,
+            created: importPayload.totalCreated,
+            updated: importPayload.totalUpdated,
+          },
+        }
+      : importPayload;
       const importResult = importJob.result || {};
       const isBackupImport =
-        importResult?.total_collections !== undefined ||
-        importResult?.total_records !== undefined;
+        !isItemImport &&
+        (importResult?.total_collections !== undefined ||
+          importResult?.total_records !== undefined);
       const successfulCount = Number(
         importResult?.successful ?? importResult?.total_records ?? 0,
       );
@@ -266,13 +281,20 @@ const BackupRestore = () => {
             "success",
           );
         } else {
-          showToast(`All ${successfulCount} items imported successfully!`, "success");
+          const createdCount = Number(importResult?.created || 0);
+          const updatedCount = Number(importResult?.updated || 0);
+          showToast(
+            `Imported ${successfulCount} item(s): ${createdCount} new, ${updatedCount} updated.`,
+            "success",
+          );
         }
       } else if (importJob.status === "failed") {
         showToast(
           `Import failed: ${importJob.error || "Unknown error"}`,
           "error"
         );
+      } else {
+        showToast("Import finished", "success");
       }
 
       const newEntry = {
@@ -293,6 +315,34 @@ const BackupRestore = () => {
       setImporting(false);
       setSelectedFile(null);
       setUploadProgress(0);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      const res = await api.get("/setup/import/template", {
+        responseType: "blob",
+      });
+      const disposition = res.headers?.["content-disposition"] || "";
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/i);
+      const filename = filenameMatch?.[1] || "stock_import_template.xlsx";
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      showToast("Template downloaded successfully", "success");
+    } catch (err) {
+      showToast(
+        err?.response?.data?.message || "Template download failed",
+        "error",
+      );
+    } finally {
+      setDownloadingTemplate(false);
     }
   };
 
@@ -383,6 +433,28 @@ const BackupRestore = () => {
               Upload backup or stock items. Auto-detects format and imports accordingly.
             </p>
           </button>
+
+          {/* Download template option */}
+          <button
+            onClick={() =>
+              setSelectedOpt(selectedOpt === "template" ? null : "template")
+            }
+            className={`flex-1 min-w-[180px] text-left border rounded-lg p-3 transition-all ${
+              selectedOpt === "template"
+                ? "border-purple-400 bg-purple-50"
+                : "border-gray-200 bg-gray-50 hover:bg-white hover:border-gray-300"
+            }`}
+          >
+            <div className="w-8 h-8 rounded-md bg-purple-100 flex items-center justify-center mb-2">
+              <FaDownload className="text-purple-600" size={13} />
+            </div>
+            <p className="text-sm font-medium text-gray-800">
+              Download Template
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Download stock item Excel format for import.
+            </p>
+          </button>
         </div>
 
         {/* Backup panel */}
@@ -402,6 +474,24 @@ const BackupRestore = () => {
           </div>
         )}
 
+        {/* Template panel */}
+        {selectedOpt === "template" && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm text-gray-500">
+              Use this Excel format to add item data, then import it back into
+              the software.
+            </p>
+            <button
+              onClick={handleDownloadTemplate}
+              disabled={downloadingTemplate}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-40 hover:bg-gray-700 transition-colors"
+            >
+              <FaDownload size={11} />
+              {downloadingTemplate ? "Downloading..." : "Download Template"}
+            </button>
+          </div>
+        )}
+
         {/* Import panel */}
         {selectedOpt === "import" && (
           <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3 flex-wrap">
@@ -410,7 +500,7 @@ const BackupRestore = () => {
               {selectedFile ? "Change file" : "Choose file"}
               <input
                 type="file"
-                accept=".xlsx,.xls,.csv"
+                accept=".xlsx"
                 className="hidden"
                 onChange={(e) => setSelectedFile(e.target.files[0] || null)}
               />
