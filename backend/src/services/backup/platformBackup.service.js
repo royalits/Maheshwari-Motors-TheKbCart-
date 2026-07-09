@@ -1,4 +1,5 @@
 import zlib from "zlib";
+import { promisify } from "util";
 import crypto from "crypto";
 import mongoose from "mongoose";
 import { EJSON } from "bson";
@@ -6,10 +7,16 @@ import PlatformBackup from "../../models/common/platform_backup.model.js";
 import PlatformBackupChunk from "../../models/common/platform_backup_chunk.model.js";
 import { ApiError } from "../../utils/index.js";
 
+const gzip = promisify(zlib.gzip);
+const gunzip = promisify(zlib.gunzip);
+
 const CHUNK_SIZE_BYTES = 4 * 1024 * 1024;
-const BACKUP_COLLECTIONS = new Set([
+
+// Collections excluded from backup (backup infra + transient auth data)
+const BACKUP_EXCLUDED = new Set([
   "platformbackups",
   "platformbackupchunks",
+  "sessions", // stale sessions after restore would cause corrupted auth state
 ]);
 
 const getDb = () => {
@@ -34,7 +41,7 @@ const listBackupableCollections = async (db) => {
   return collections
     .map((entry) => entry.name)
     .filter(
-      (name) => !name.startsWith("system.") && !BACKUP_COLLECTIONS.has(name),
+      (name) => !name.startsWith("system.") && !BACKUP_EXCLUDED.has(name),
     )
     .sort((left, right) => left.localeCompare(right));
 };
@@ -125,7 +132,8 @@ const createBackup = async (adminUserId) => {
   try {
     const snapshot = await buildSnapshot(db);
     const serialized = EJSON.stringify(snapshot, { relaxed: false });
-    const compressed = zlib.gzipSync(Buffer.from(serialized, "utf8"));
+    // Use async gzip to avoid blocking the event loop
+    const compressed = await gzip(Buffer.from(serialized, "utf8"));
     const chunkCount = await writeChunks(backup._id, compressed);
 
     backup.status = "success";
@@ -149,6 +157,14 @@ const createBackup = async (adminUserId) => {
   }
 };
 
+/**
+ * Atomically restore a backup using temp-collection staging:
+ * 1. Write each collection into a temp collection (_restore_<name>)
+ * 2. Drop the original collections
+ * 3. Rename each temp collection to the target name
+ *
+ * This prevents a half-restored database if something fails during inserts.
+ */
 const restoreBackup = async (backupId, adminUserId, confirmBackupNo) => {
   const backup = await PlatformBackup.findById(backupId);
   if (!backup) {
@@ -163,10 +179,9 @@ const restoreBackup = async (backupId, adminUserId, confirmBackupNo) => {
 
   const db = getDb();
   const compressed = await readBackupBuffer(backup._id);
-  const snapshot = EJSON.parse(
-    zlib.gunzipSync(compressed).toString("utf8"),
-    { relaxed: false },
-  );
+  // Use async gunzip to avoid blocking the event loop
+  const decompressed = await gunzip(compressed);
+  const snapshot = EJSON.parse(decompressed.toString("utf8"), { relaxed: false });
 
   if (!Array.isArray(snapshot?.collections)) {
     throw ApiError.badRequest("Backup snapshot is invalid");
@@ -175,33 +190,51 @@ const restoreBackup = async (backupId, adminUserId, confirmBackupNo) => {
   backup.status = "restoring";
   await backup.save();
 
-  try {
-    const currentCollections = await listBackupableCollections(db);
-    for (const collectionName of currentCollections) {
-      await db.collection(collectionName).drop().catch((error) => {
-        if (error?.codeName !== "NamespaceNotFound") throw error;
-      });
-    }
+  const TEMP_PREFIX = "_restore_";
+  const stagedTempNames = [];
 
+  try {
+    // Stage 1: Write all data into temporary collections
     for (const collection of snapshot.collections) {
-      if (!collection?.name || BACKUP_COLLECTIONS.has(collection.name)) {
+      if (!collection?.name || BACKUP_EXCLUDED.has(collection.name)) {
         continue;
       }
 
-      const documents = Array.isArray(collection.documents)
-        ? collection.documents
-        : [];
+      const tempName = `${TEMP_PREFIX}${collection.name}`;
+      // Drop any leftover temp collection from a previous failed restore
+      await db.collection(tempName).drop().catch((err) => {
+        if (err?.codeName !== "NamespaceNotFound") throw err;
+      });
 
+      const documents = Array.isArray(collection.documents) ? collection.documents : [];
       if (documents.length) {
-        await db.collection(collection.name).insertMany(documents, {
-          ordered: false,
-        });
+        await db.collection(tempName).insertMany(documents, { ordered: false });
       } else {
-        await db.createCollection(collection.name).catch((error) => {
-          if (error?.codeName !== "NamespaceExists") throw error;
+        await db.createCollection(tempName).catch((err) => {
+          if (err?.codeName !== "NamespaceExists") throw err;
         });
       }
+
+      stagedTempNames.push({ temp: tempName, target: collection.name });
     }
+
+    // Stage 2: Drop existing live collections
+    const currentCollections = await listBackupableCollections(db);
+    for (const collectionName of currentCollections) {
+      await db.collection(collectionName).drop().catch((err) => {
+        if (err?.codeName !== "NamespaceNotFound") throw err;
+      });
+    }
+
+    // Stage 3: Rename temp collections to final names
+    for (const { temp, target } of stagedTempNames) {
+      await db.collection(temp).rename(target, { dropTarget: true });
+    }
+
+    // Clear all live sessions — they reference old user/token state
+    await db.collection("sessions").drop().catch((err) => {
+      if (err?.codeName !== "NamespaceNotFound") throw err;
+    });
 
     backup.status = "success";
     backup.restored_by = adminUserId;
@@ -210,11 +243,36 @@ const restoreBackup = async (backupId, adminUserId, confirmBackupNo) => {
 
     return toListItem(backup.toObject());
   } catch (error) {
-    backup.status = "success";
+    // Clean up any temp collections left behind
+    for (const { temp } of stagedTempNames) {
+      await db.collection(temp).drop().catch(() => {});
+    }
+
+    backup.status = "failed";
     backup.error_message = error?.message || "Restore failed";
     await backup.save();
     throw error;
   }
+};
+
+/**
+ * Download a backup: decompress and return raw JSON snapshot buffer
+ * so the caller can stream it to the HTTP response.
+ */
+const downloadBackup = async (backupId) => {
+  const backup = await PlatformBackup.findById(backupId).lean();
+  if (!backup) {
+    throw ApiError.notFound("Backup not found");
+  }
+  if (backup.status !== "success") {
+    throw ApiError.badRequest("Only successful backups can be downloaded");
+  }
+
+  const compressed = await readBackupBuffer(backupId);
+  const decompressed = await gunzip(compressed);
+
+  const filename = `${backup.backup_no}.json`;
+  return { buffer: decompressed, filename };
 };
 
 const deleteBackup = async (backupId) => {
@@ -233,5 +291,6 @@ export default {
   listBackups,
   createBackup,
   restoreBackup,
+  downloadBackup,
   deleteBackup,
 };

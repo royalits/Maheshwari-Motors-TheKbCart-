@@ -58,6 +58,10 @@ router.put("/subscriptions/:userId", adminController.setSubscription);
 
 router.get("/platform-backups", platformBackupController.listBackups);
 router.post("/platform-backups", platformBackupController.createBackup);
+router.get(
+  "/platform-backups/:backupId/download",
+  platformBackupController.downloadBackup,
+);
 router.post(
   "/platform-backups/:backupId/restore",
   platformBackupController.restoreBackup,

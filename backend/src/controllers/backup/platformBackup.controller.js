@@ -27,6 +27,19 @@ class PlatformBackupController {
       .json(new ApiResponse(200, backup, "Platform backup restored"));
   });
 
+  downloadBackup = asyncHandler(async (req, res) => {
+    const { buffer, filename } = await platformBackupService.downloadBackup(
+      req.params.backupId,
+    );
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`,
+    );
+    res.setHeader("Content-Length", buffer.length);
+    res.end(buffer);
+  });
+
   deleteBackup = asyncHandler(async (req, res) => {
     const result = await platformBackupService.deleteBackup(
       req.params.backupId,
@@ -38,3 +51,4 @@ class PlatformBackupController {
 }
 
 export default new PlatformBackupController();
+

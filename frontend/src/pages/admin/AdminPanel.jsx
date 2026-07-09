@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   FaDatabase,
+  FaDownload,
   FaEdit,
   FaKey,
   FaPlus,
@@ -23,6 +24,7 @@ const AdminPanel = () => {
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupCreating, setBackupCreating] = useState(false);
   const [restoreId, setRestoreId] = useState('');
+  const [downloadingId, setDownloadingId] = useState('');
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
   const [credentialsSaving, setCredentialsSaving] = useState(false);
 
@@ -40,10 +42,10 @@ const AdminPanel = () => {
     try {
       setLoading(true);
       const [usersResponse, profileResponse] = await Promise.all([
-        api.get('/users'),
+        api.get('/admin/users'),
         api.get('/auth/me'),
       ]);
-      setUsers(usersResponse.data.data || []);
+      setUsers(usersResponse.data.data?.data || usersResponse.data.data || []);
       const profile = profileResponse.data.data || {};
       setAdminCredentials((prev) => ({
         ...prev,
@@ -82,8 +84,11 @@ const AdminPanel = () => {
 
   const toggleUserStatus = async (userId, currentStatus) => {
     try {
-      await api.patch(`/users/${userId}/status`, { is_active: !currentStatus });
-      showToast('User status updated successfully', 'success');
+      const endpoint = currentStatus
+        ? `/admin/users/${userId}/deactivate`
+        : `/admin/users/${userId}/reactivate`;
+      await api.post(endpoint);
+      showToast(`User ${currentStatus ? 'deactivated' : 'reactivated'} successfully`, 'success');
       fetchUsers();
     } catch (error) {
       showToast(error.response?.data?.message || 'Failed to update user status', 'error');
@@ -136,6 +141,27 @@ const AdminPanel = () => {
       showToast(error.response?.data?.message || 'Failed to restore backup', 'error');
     } finally {
       setRestoreId('');
+    }
+  };
+
+  const handleDownloadBackup = async (backup) => {
+    try {
+      setDownloadingId(backup._id);
+      const response = await api.get(`/admin/platform-backups/${backup._id}/download`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${backup.backup_no}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to download backup', 'error');
+    } finally {
+      setDownloadingId('');
     }
   };
 
@@ -391,7 +417,9 @@ const AdminPanel = () => {
                             ? 'bg-green-100 text-green-800'
                             : backup.status === 'failed'
                               ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                              : backup.status === 'restoring'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-yellow-100 text-yellow-800'
                         }`}>
                           {backup.status}
                         </span>
@@ -416,6 +444,16 @@ const AdminPanel = () => {
                             className="px-3 py-2 text-blue-700 border border-blue-200 rounded hover:bg-blue-50 disabled:opacity-50"
                           >
                             {restoreId === backup._id ? 'Restoring...' : 'Restore'}
+                          </button>
+                          <button
+                            onClick={() => handleDownloadBackup(backup)}
+                            disabled={backup.status !== 'success' || downloadingId === backup._id}
+                            title="Download backup as JSON"
+                            className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded disabled:opacity-50"
+                          >
+                            {downloadingId === backup._id
+                              ? <span className="text-xs">...</span>
+                              : <FaDownload />}
                           </button>
                           <button
                             onClick={() => handleDeleteBackup(backup)}
