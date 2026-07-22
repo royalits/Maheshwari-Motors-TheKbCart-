@@ -1521,6 +1521,8 @@ const UserMaster = () => {
                       <label className="text-xs font-medium text-gray-700">Username</label>
                       <Input
                         value={newUser.role_users?.[roleField.key]?.username || ''}
+                        name={`new-role-${roleField.key}-username`}
+                        autoComplete="new-password"
                         onChange={(v) =>
                           setNewUser((prev) => ({
                             ...prev,
@@ -1542,6 +1544,8 @@ const UserMaster = () => {
                       <Input
                         type="password"
                         value={newUser.role_users?.[roleField.key]?.password || ''}
+                        name={`new-role-${roleField.key}-password`}
+                        autoComplete="new-password"
                         onChange={(v) =>
                           setNewUser((prev) => ({
                             ...prev,
@@ -2285,6 +2289,8 @@ const UserMaster = () => {
                         <label className="text-xs font-medium text-gray-700">Username</label>
                         <Input
                           value={editingForm?.role_users?.[roleField.key]?.username || ''}
+                          name={`edit-role-${roleField.key}-username-${editingForm?.id || ''}`}
+                          autoComplete="new-password"
                           onChange={(v) =>
                             setEditingForm((prev) => ({
                               ...prev,
@@ -2305,6 +2311,8 @@ const UserMaster = () => {
                         <Input
                           type="password"
                           value={editingForm?.role_users?.[roleField.key]?.password || ''}
+                          name={`edit-role-${roleField.key}-password-${editingForm?.id || ''}`}
+                          autoComplete="new-password"
                           onChange={(v) =>
                             setEditingForm((prev) => ({
                               ...prev,

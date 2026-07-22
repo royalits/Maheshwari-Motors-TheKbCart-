@@ -397,7 +397,7 @@ const OutStandings = ({
       try {
         setLoadingBills(true);
         const response = await api.get(`/bills/contact/${selectedContact}`, {
-          params: { page: 1, limit: 200, payment_status: "due,paid" },
+          params: { page: 1, limit: 200 },
           skipCache: true,
         });
 
@@ -430,7 +430,7 @@ const OutStandings = ({
         });
 
         const sorted = [...list].sort(
-          (a, b) => new Date(a.date) - new Date(b.date),
+          (a, b) => new Date(b.date) - new Date(a.date),
         );
         setBills(sorted);
 
