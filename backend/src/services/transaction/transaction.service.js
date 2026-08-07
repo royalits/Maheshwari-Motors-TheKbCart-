@@ -602,6 +602,66 @@ class TransactionService {
     }
     return txnObj;
   }
+
+  async getUnsettledTransactions(contactId, userId, isGst) {
+    if (!contactId) {
+      throw ApiError.badRequest("contact_id is required");
+    }
+
+    const contact = await Contact.findOne({ _id: contactId, user_id: userId });
+    if (!contact) {
+      throw ApiError.notFound("Contact not found");
+    }
+
+    const isGstVal = isGst === 1 || isGst === true;
+    
+    // Find all transaction_ids linked to any bill of this contact
+    const bills = await Bill.find({
+      contact_id: contactId,
+      user_id: userId,
+      is_gst: isGstVal ? 1 : 0,
+    })
+      .select("payment_entries")
+      .lean();
+
+    const linkedTxnIds = new Set();
+    for (const bill of bills) {
+      if (Array.isArray(bill.payment_entries)) {
+        for (const entry of bill.payment_entries) {
+          if (entry.transaction_id) {
+            linkedTxnIds.add(String(entry.transaction_id));
+          }
+        }
+      }
+    }
+
+    // For party: we receive payments (bank_received, cash_received)
+    // For supplier: we pay them (bank_payment, cash_payment)
+    const allowedTypes =
+      contact.type === "supplier"
+        ? ["bank_payment", "cash_payment"]
+        : ["bank_received", "cash_received"];
+
+    const query = {
+      contact_id: contactId,
+      user_id: userId,
+      is_gst: isGstVal ? 1 : 0,
+      type: { $in: allowedTypes },
+      settlement_status: { $ne: "settled" },
+    };
+
+    if (linkedTxnIds.size > 0) {
+      query._id = {
+        $nin: Array.from(linkedTxnIds).map((id) => new mongoose.Types.ObjectId(id)),
+      };
+    }
+
+    const transactions = await Transaction.find(query)
+      .sort({ date: -1, createdAt: -1 })
+      .lean();
+
+    return transactions;
+  }
 }
 
 export default new TransactionService();

@@ -93,6 +93,17 @@ class TransactionController {
       .status(200)
       .json(new ApiResponse(200, result, "Last payment fetched successfully"));
   });
+
+  getUnsettledTransactions = asyncHandler(async (req, res) => {
+    const result = await transactionService.getUnsettledTransactions(
+      req.params.contactId,
+      req.user._id,
+      req.isGst,
+    );
+    res
+      .status(200)
+      .json(new ApiResponse(200, result, "Unsettled transactions fetched successfully"));
+  });
 }
 
 const transactionController = new TransactionController();
@@ -104,3 +115,4 @@ export const updateTransaction = transactionController.updateTransaction;
 export const deleteTransaction = transactionController.deleteTransaction;
 export const getBookSummary = transactionController.getBookSummary;
 export const getLastPayment = transactionController.getLastPayment;
+export const getUnsettledTransactions = transactionController.getUnsettledTransactions;

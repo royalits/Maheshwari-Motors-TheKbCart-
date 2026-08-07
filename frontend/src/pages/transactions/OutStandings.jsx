@@ -170,6 +170,8 @@ const OutStandings = ({
   const [discountDrafts, setDiscountDrafts] = useState({});
   const [lastSettlement, setLastSettlement] = useState(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [unsettledTxns, setUnsettledTxns] = useState([]);
+  const [selectedTxnId, setSelectedTxnId] = useState("");
   const [payment, setPayment] = useState({
     amount: "",
     payment_type: "bank_transaction_received_amount",
@@ -232,6 +234,38 @@ const OutStandings = ({
       dueAfterSettlement,
     };
   }, [payment.amount, allocations, discountDrafts, bills]);
+
+  const handleTxnChange = (txnId) => {
+    setSelectedTxnId(txnId);
+    if (!txnId) {
+      const contactBalanceAmount = Math.max(0, selectedContactBalance);
+      setPayment((prev) => ({
+        ...prev,
+        amount: contactBalanceAmount ? String(contactBalanceAmount) : "",
+        payment_type: availablePaymentTypes[0]?.value || "",
+        bank_id: "",
+        reference_no: "",
+        date: formatDateForDisplay(new Date()),
+      }));
+      return;
+    }
+
+    const txn = unsettledTxns.find((t) => String(t._id) === String(txnId));
+    if (txn) {
+      const settled = txn.settlement_summary?.settled_amount || 0;
+      const unsettledAmount = Math.max(0, Number(txn.amount || 0) - settled);
+      const suggestedPaymentType = getPaymentTypeFromTransactionType(txn.type);
+      
+      setPayment((prev) => ({
+        ...prev,
+        amount: String(unsettledAmount),
+        payment_type: suggestedPaymentType || prev.payment_type,
+        bank_id: txn.bank_id ? String(getEntityId(txn.bank_id) || txn.bank_id) : "",
+        reference_no: txn.reference || "",
+        date: formatDateForDisplay(txn.date),
+      }));
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -390,16 +424,24 @@ const OutStandings = ({
       setAllocations({});
       setDiscountDrafts({});
       setPayment((prev) => ({ ...prev, amount: "" }));
+      setUnsettledTxns([]);
+      setSelectedTxnId("");
       return;
     }
 
-    const fetchBills = async () => {
+    const fetchBillsAndTxns = async () => {
       try {
         setLoadingBills(true);
-        const response = await api.get(`/bills/contact/${selectedContact}`, {
-          params: { page: 1, limit: 200 },
-          skipCache: true,
-        });
+        const [response, txnsResponse] = await Promise.all([
+          api.get(`/bills/contact/${selectedContact}`, {
+            params: { page: 1, limit: 200 },
+            skipCache: true,
+          }),
+          api.get(`/transactions/unsettled/${selectedContact}`).catch((err) => {
+            console.error("Failed to fetch unsettled transactions", err);
+            return { data: { data: [] } };
+          })
+        ]);
 
         const list = getResponseList(response).map((bill) => {
 	          const amount = toNumber(bill.amount ?? bill.total_amount, 0);
@@ -434,11 +476,21 @@ const OutStandings = ({
         );
         setBills(sorted);
 
+        const fetchedTxns = txnsResponse?.data?.data || [];
+        setUnsettledTxns(fetchedTxns);
+
         const contactBalanceAmount = Math.max(0, selectedContactBalance);
         const routedTransactionMatches =
           settlementStateAppliedRef.current === settlementStateKey &&
           settlementState &&
           String(settlementState.contact_id || "") === String(selectedContact);
+
+        if (routedTransactionMatches && settlementState.transaction_id) {
+          setSelectedTxnId(String(settlementState.transaction_id));
+        } else {
+          setSelectedTxnId("");
+        }
+
         const suggestedPaymentType =
           routedTransactionMatches
             ? settlementState.payment_type ||
@@ -451,9 +503,14 @@ const OutStandings = ({
         const suggestedDate =
           routedTransactionMatches ? settlementState.date : "";
 
+        // If routed transaction match, load its amount
+        const suggestedAmount = routedTransactionMatches && settlementState.amount !== undefined
+          ? String(settlementState.amount)
+          : contactBalanceAmount ? String(contactBalanceAmount) : "";
+
         setPayment((prev) => ({
           ...prev,
-          amount: contactBalanceAmount ? String(contactBalanceAmount) : "",
+          amount: suggestedAmount,
           payment_type: suggestedPaymentType || prev.payment_type,
           bank_id:
             suggestedPaymentType && BANK_REQUIRED.has(suggestedPaymentType)
@@ -483,7 +540,7 @@ const OutStandings = ({
       }
     };
 
-    fetchBills();
+    fetchBillsAndTxns();
   }, [
     selectedContact,
     selectedContactBalance,
@@ -678,8 +735,7 @@ const OutStandings = ({
       note: payment.note || undefined,
       date: normalizedPaymentDate,
       allocations: allocationsPayload,
-      apply_remaining_to_balance: false,
-      transaction_id: settlementState?.transaction_id || undefined,
+      transaction_id: selectedTxnId || undefined,
     };
 
     try {
@@ -1046,6 +1102,33 @@ const OutStandings = ({
                 </Select>
               )}
             </div>
+            {selectedContact && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Link Unsettled Transaction (Optional)
+                </label>
+                <Select
+                  value={selectedTxnId}
+                  onChange={(value) => handleTxnChange(value)}
+                  placeholder="-- Select Transaction --"
+                >
+                  <option value="">New Payment (Use general balance)</option>
+                  {(unsettledTxns || []).map((txn) => {
+                    const settled = txn.settlement_summary?.settled_amount || 0;
+                    const openAmt = Math.max(0, Number(txn.amount || 0) - settled);
+                    const formattedDate = formatDateForDisplay(txn.date);
+                    return (
+                      <option key={txn._id} value={txn._id}>
+                        {formattedDate} - {txn.transaction_no} (Open: ₹{openAmt.toFixed(2)})
+                      </option>
+                    );
+                  })}
+                </Select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Optionally select an existing unsettled transaction.
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Payment Amount
@@ -1070,6 +1153,7 @@ const OutStandings = ({
               </label>
               <Select
                 value={payment.payment_type}
+                disabled={!!selectedTxnId}
                 onChange={(value) =>
                   setPayment((prev) => ({ ...prev, payment_type: value }))
                 }
@@ -1098,6 +1182,7 @@ const OutStandings = ({
                 </label>
                 <Select
                   value={payment.bank_id}
+                  disabled={!!selectedTxnId}
                   onChange={(value) =>
                     setPayment((prev) => ({ ...prev, bank_id: value }))
                   }
@@ -1118,6 +1203,7 @@ const OutStandings = ({
               </label>
               <Input
                 value={payment.reference_no}
+                disabled={!!selectedTxnId}
                 onChange={(value) =>
                   setPayment((prev) => ({ ...prev, reference_no: value }))
                 }
@@ -1130,6 +1216,7 @@ const OutStandings = ({
               </label>
               <Input
                 value={payment.date}
+                disabled={!!selectedTxnId}
                 onChange={(value) =>
                   setPayment((prev) => ({
                     ...prev,

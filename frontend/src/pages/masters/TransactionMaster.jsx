@@ -520,8 +520,22 @@ const TransactionMaster = () => {
     {
       key: "amount",
       label: "Amount",
-      width: "100px",
-      render: (v) => `₹${v?.toFixed(2)}`,
+      width: "150px",
+      render: (v, row) => {
+        const isSettled = row?.settlement_status === "settled";
+        return (
+          <div className="flex items-center gap-2">
+            <span className={isSettled ? "text-green-600 font-bold" : "text-neutral-900"}>
+              ₹{v?.toFixed(2)}
+            </span>
+            {isSettled && (
+              <span className="px-2 py-0.5 text-[10px] leading-tight font-medium bg-green-100 text-green-800 rounded-full border border-green-200">
+                Settled
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "bank_id",
