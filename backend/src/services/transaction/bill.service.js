@@ -43,6 +43,54 @@ const DEFAULT_BALANCE_PAYMENT_TYPE = {
 };
 
 class BillService {
+  async syncTransactionSettlement(transactionId, userId, isGst) {
+    if (!transactionId) return;
+
+    const txn = await Transaction.findOne({ _id: transactionId, user_id: userId, is_gst: isGst });
+    if (!txn) return;
+
+    const bills = await Bill.find({
+      user_id: userId,
+      is_gst: isGst,
+      "payment_entries.transaction_id": transactionId,
+    }).lean();
+
+    let totalSettled = 0;
+    const allocations = [];
+
+    for (const bill of bills) {
+      if (Array.isArray(bill.payment_entries)) {
+        for (const entry of bill.payment_entries) {
+          if (entry.transaction_id && String(entry.transaction_id) === String(transactionId)) {
+            totalSettled += entry.amount || 0;
+            allocations.push({
+              bill_id: bill._id,
+              amount: entry.amount || 0,
+            });
+          }
+        }
+      }
+    }
+
+    const settled = this._round(totalSettled);
+    const isSettled = settled >= txn.amount - 0.009;
+
+    await Transaction.updateOne(
+      { _id: transactionId },
+      {
+        $set: {
+          settlement_status: isSettled ? "settled" : "none",
+          "settlement_summary.settled_amount": settled,
+          "settlement_summary.allocations": allocations.map((a) => ({
+            bill_id: a.bill_id,
+            amount: a.amount,
+            settlement_discount: 0,
+          })),
+        },
+      }
+    );
+  }
+
   _formatBillNo(sequence) {
     return String(Math.max(0, Number(sequence) || 0)).padStart(6, "0");
   }
@@ -1810,24 +1858,7 @@ class BillService {
     }
 
     if (txnId) {
-      await Transaction.updateOne(
-        { _id: txnId, user_id: userId },
-        {
-          $set: {
-            settlement_status: "settled",
-            settlement_summary: {
-              settled_amount: allocatedAmount,
-              settlement_discount_amount: settlementDiscountAmount,
-              settle_date: paymentDate,
-              allocations: normalizedAllocations.map((a) => ({
-                bill_id: a.bill_id,
-                amount: a.amount,
-                settlement_discount: a.settlement_discount,
-              })),
-            },
-          },
-        }
-      );
+      await this.syncTransactionSettlement(txnId, userId, isGst);
     }
 
     await this._recalculateContactBalance(contact_id, userId, isGst);
@@ -2238,31 +2269,7 @@ class BillService {
     if (settlementTransactionIds.length) {
       await Promise.all(
         settlementTransactionIds.map(async (transactionId) => {
-          const stillLinked = await Bill.exists({
-            _id: { $ne: bill._id },
-            user_id: userId,
-            is_gst: isGst,
-            "payment_entries.transaction_id": transactionId,
-            ...(financialYearId ? { financial_year_id: financialYearId } : {}),
-          });
-
-          if (!stillLinked) {
-            await Transaction.updateOne(
-              { _id: transactionId, user_id: userId, is_gst: isGst },
-              {
-                $set: {
-                  settlement_status: "none",
-                  settlement_summary: {
-                    settled_amount: 0,
-                    settlement_discount_amount: 0,
-                    unsettled_amount: 0,
-                    bill_ids: [],
-                    settled_at: null,
-                  },
-                },
-              },
-            );
-          }
+          await this.syncTransactionSettlement(transactionId, userId, isGst);
         }),
       );
     }

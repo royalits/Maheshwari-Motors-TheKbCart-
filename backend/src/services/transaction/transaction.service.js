@@ -624,12 +624,14 @@ class TransactionService {
       .select("payment_entries")
       .lean();
 
-    const linkedTxnIds = new Set();
+    const allocationMap = new Map();
     for (const bill of bills) {
       if (Array.isArray(bill.payment_entries)) {
         for (const entry of bill.payment_entries) {
           if (entry.transaction_id) {
-            linkedTxnIds.add(String(entry.transaction_id));
+            const idStr = String(entry.transaction_id);
+            const current = allocationMap.get(idStr) || 0;
+            allocationMap.set(idStr, current + (entry.amount || 0));
           }
         }
       }
@@ -651,17 +653,20 @@ class TransactionService {
       createdAt: { $gte: new Date("2026-08-01T00:00:00Z") },
     };
 
-    if (linkedTxnIds.size > 0) {
-      query._id = {
-        $nin: Array.from(linkedTxnIds).map((id) => new mongoose.Types.ObjectId(id)),
-      };
-    }
-
     const transactions = await Transaction.find(query)
       .sort({ date: -1, createdAt: -1 })
       .lean();
 
-    return transactions;
+    const unsettled = [];
+    for (const txn of transactions) {
+      const allocated = allocationMap.get(String(txn._id)) || 0;
+      const remaining = Math.max(0, Number(txn.amount || 0) - allocated);
+      if (remaining > 0.009) {
+        unsettled.push(txn);
+      }
+    }
+
+    return unsettled;
   }
 }
 
