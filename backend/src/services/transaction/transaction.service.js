@@ -648,6 +648,7 @@ class TransactionService {
       is_gst: isGstVal ? 1 : 0,
       type: { $in: allowedTypes },
       settlement_status: { $ne: "settled" },
+      createdAt: { $gte: new Date("2026-08-01T00:00:00Z") },
     };
 
     if (linkedTxnIds.size > 0) {
