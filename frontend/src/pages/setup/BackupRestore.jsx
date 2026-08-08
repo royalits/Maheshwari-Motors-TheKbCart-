@@ -141,15 +141,13 @@ const BackupRestore = () => {
       label: "Download",
       render: (v, row) =>
         row?.status === "Success" && v ? (
-          <a
-            href={v}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+          <button
+            onClick={() => window.open(v, "_blank")}
+            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 focus:outline-none"
           >
             Download
             <FaArrowUpRightFromSquare size={10} />
-          </a>
+          </button>
         ) : (
           <span className="text-xs text-gray-300">N/A</span>
         ),
