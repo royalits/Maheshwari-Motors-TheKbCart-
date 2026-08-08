@@ -708,20 +708,6 @@ const getFirmScopedFilter = (collectionName, userId, isGst) => {
     return type ? { user_id: userObjectId, firm_type: type } : { user_id: userObjectId };
   }
 
-  if (collectionName === "contacts" && scope !== null) {
-    return {
-      user_id: userObjectId,
-      $or: [
-        { type: "party", is_gst: scope },
-        { type: { $in: ["supplier", "book"] } },
-      ],
-    };
-  }
-
-  if (collectionName === "items" && scope !== null) {
-    return { user_id: userObjectId, is_gst: scope };
-  }
-
   if (FIRM_SCOPED_COLLECTIONS.has(collectionName) && scope !== null) {
     return { user_id: userObjectId, is_gst: scope };
   }
@@ -734,23 +720,6 @@ const getFirmScopedFilter = (collectionName, userId, isGst) => {
 };
 
 const getCollectionDocuments = async (db, collectionName, userId, isGst) => {
-  const scope = normalizeFirmScope(isGst);
-  if (collectionName === "autobills" && scope !== null) {
-    const userObjectId = new mongoose.Types.ObjectId(String(userId));
-    const partyIds = await db
-      .collection("contacts")
-      .find({ user_id: userObjectId, type: "party", is_gst: scope })
-      .project({ _id: 1 })
-      .toArray();
-    return await db
-      .collection(collectionName)
-      .find({
-        user_id: userObjectId,
-        party_id: { $in: partyIds.map((party) => party._id) },
-      })
-      .toArray();
-  }
-
   const filter = getFirmScopedFilter(collectionName, userId, isGst);
   const docs = await db.collection(collectionName).find(filter).toArray();
   return docs || [];
