@@ -1,5 +1,281 @@
 [
   {
+    "id": "2e1bd3e9-5c06-42a4-ba66-cf23af903c5e",
+    "user_id": "6a76cd789074407c4eeb66d1",
+    "is_gst": 1,
+    "firm_scope": "GST",
+    "created_at": "2026-08-08T13:22:15.919Z",
+    "date": "2026-08-08 18:52:15",
+    "type": "Manual Backup",
+    "filename": "manual_backup_2026-08-08_18-52-15.xlsx",
+    "status": "Success",
+    "size": "0.05 MB",
+    "note": "GST backup | 300 records across 17 collections",
+    "location": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/ebf32531914f7eb3233674c0ce6d5422.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/ebf32531914f7eb3233674c0ce6d5422.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260808%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260808T132216Z&X-Amz-Expires=604800&X-Amz-Signature=b39bae03d569a185fc0632dbb8a39d3afce2446750708ecac621e3bab3409abd&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-08-15T13:22:16.495Z",
+    "s3_key": "backups/thekbcart/ebf32531914f7eb3233674c0ce6d5422.xlsx",
+    "local_path": "D:\\Projects\\flutter_projects\\ROYAL\\maheshwari-motors\\backend\\storage\\backups\\manual_backup_2026-08-08_18-52-15.xlsx",
+    "backup_id": "a678a06d-9f58-48f0-9d72-dd3e75a4ee84",
+    "database_name": "maheshwari_motors",
+    "total_collections": 17,
+    "total_records": 300,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 0
+      },
+      {
+        "collection": "areas",
+        "records": 0
+      },
+      {
+        "collection": "banks",
+        "records": 0
+      },
+      {
+        "collection": "bills",
+        "records": 0
+      },
+      {
+        "collection": "brands",
+        "records": 0
+      },
+      {
+        "collection": "challans",
+        "records": 0
+      },
+      {
+        "collection": "contacts",
+        "records": 288
+      },
+      {
+        "collection": "departments",
+        "records": 0
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 0
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 0
+      },
+      {
+        "collection": "labels",
+        "records": 0
+      },
+      {
+        "collection": "reports",
+        "records": 0
+      },
+      {
+        "collection": "returns",
+        "records": 0
+      },
+      {
+        "collection": "transactions",
+        "records": 0
+      },
+      {
+        "collection": "financialyears",
+        "records": 1
+      },
+      {
+        "collection": "transports",
+        "records": 1
+      }
+    ]
+  },
+  {
+    "id": "a96369a9-8176-4458-a46d-26f3a9ca377e",
+    "user_id": "6a76cd789074407c4eeb66d1",
+    "is_gst": 1,
+    "firm_scope": "GST",
+    "created_at": "2026-08-08T13:22:08.487Z",
+    "date": "2026-08-08 18:52:08",
+    "type": "Manual Backup",
+    "filename": "manual_backup_2026-08-08_18-52-08.xlsx",
+    "status": "Success",
+    "size": "0.05 MB",
+    "note": "GST backup | 300 records across 17 collections",
+    "location": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/f4f1280a1cb386c9b6d79dedec408f4a.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/f4f1280a1cb386c9b6d79dedec408f4a.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260808%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260808T132209Z&X-Amz-Expires=604800&X-Amz-Signature=c35f68ebd25fa3d8a71a47dca6b41cb5e8dc7e3f3e928ab1e7985fd9f79fe929&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-08-15T13:22:09.140Z",
+    "s3_key": "backups/thekbcart/f4f1280a1cb386c9b6d79dedec408f4a.xlsx",
+    "local_path": "D:\\Projects\\flutter_projects\\ROYAL\\maheshwari-motors\\backend\\storage\\backups\\manual_backup_2026-08-08_18-52-08.xlsx",
+    "backup_id": "abbd507e-180b-4630-900b-18e290e5d57e",
+    "database_name": "maheshwari_motors",
+    "total_collections": 17,
+    "total_records": 300,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 0
+      },
+      {
+        "collection": "areas",
+        "records": 0
+      },
+      {
+        "collection": "banks",
+        "records": 0
+      },
+      {
+        "collection": "bills",
+        "records": 0
+      },
+      {
+        "collection": "brands",
+        "records": 0
+      },
+      {
+        "collection": "challans",
+        "records": 0
+      },
+      {
+        "collection": "contacts",
+        "records": 288
+      },
+      {
+        "collection": "departments",
+        "records": 0
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 0
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 0
+      },
+      {
+        "collection": "labels",
+        "records": 0
+      },
+      {
+        "collection": "reports",
+        "records": 0
+      },
+      {
+        "collection": "returns",
+        "records": 0
+      },
+      {
+        "collection": "transactions",
+        "records": 0
+      },
+      {
+        "collection": "financialyears",
+        "records": 1
+      },
+      {
+        "collection": "transports",
+        "records": 1
+      }
+    ]
+  },
+  {
+    "id": "f06d39c4-9ed9-4aae-b133-5886f158e0ac",
+    "user_id": "6a76cd789074407c4eeb66d1",
+    "is_gst": 1,
+    "firm_scope": "GST",
+    "created_at": "2026-08-08T12:53:39.866Z",
+    "date": "2026-08-08 18:23:39",
+    "type": "Manual Backup",
+    "filename": "manual_backup_2026-08-08_18-23-39.xlsx",
+    "status": "Success",
+    "size": "0.05 MB",
+    "note": "GST backup | 293 records across 17 collections",
+    "location": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/834f850f5ce06fc1532209da64e68340.xlsx",
+    "download_url": "https://thekbcart.s3.ap-south-1.amazonaws.com/backups/thekbcart/834f850f5ce06fc1532209da64e68340.xlsx?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUA7GC3IFKOKTDBGW%2F20260808%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20260808T125340Z&X-Amz-Expires=604800&X-Amz-Signature=0bc6510c6fbc1a802c6832b5265211f28fa2ffbfa12f344cd232885425f3a748&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+    "download_expires_at": "2026-08-15T12:53:40.453Z",
+    "s3_key": "backups/thekbcart/834f850f5ce06fc1532209da64e68340.xlsx",
+    "local_path": "D:\\Projects\\flutter_projects\\ROYAL\\maheshwari-motors\\backend\\storage\\backups\\manual_backup_2026-08-08_18-23-39.xlsx",
+    "backup_id": "ad2dbf26-785f-43f2-b06d-674b0627b08c",
+    "database_name": "maheshwari_motors",
+    "total_collections": 17,
+    "total_records": 293,
+    "collections": [
+      {
+        "collection": "agents",
+        "records": 0
+      },
+      {
+        "collection": "areas",
+        "records": 0
+      },
+      {
+        "collection": "banks",
+        "records": 0
+      },
+      {
+        "collection": "bills",
+        "records": 0
+      },
+      {
+        "collection": "brands",
+        "records": 0
+      },
+      {
+        "collection": "challans",
+        "records": 0
+      },
+      {
+        "collection": "contacts",
+        "records": 281
+      },
+      {
+        "collection": "departments",
+        "records": 0
+      },
+      {
+        "collection": "financialyearcloses",
+        "records": 0
+      },
+      {
+        "collection": "hsns",
+        "records": 10
+      },
+      {
+        "collection": "items",
+        "records": 0
+      },
+      {
+        "collection": "labels",
+        "records": 0
+      },
+      {
+        "collection": "reports",
+        "records": 0
+      },
+      {
+        "collection": "returns",
+        "records": 0
+      },
+      {
+        "collection": "transactions",
+        "records": 0
+      },
+      {
+        "collection": "financialyears",
+        "records": 1
+      },
+      {
+        "collection": "transports",
+        "records": 1
+      }
+    ]
+  },
+  {
     "id": "4c8576bb-b79c-4eda-b590-a1a743ef2530",
     "user_id": "69dde34b15e7221db34ccd9d",
     "created_at": "2026-05-19T13:23:35.380Z",
