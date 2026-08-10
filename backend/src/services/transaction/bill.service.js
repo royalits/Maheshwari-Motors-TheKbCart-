@@ -1052,7 +1052,13 @@ class BillService {
         .lean();
     }
 
-    const resolvedContactType = contactType || "party";
+    let resolvedContactType = contactType || null;
+    if (!resolvedContactType && contactId) {
+      const contactDoc = await Contact.findById(contactId).select("type").lean();
+      resolvedContactType = contactDoc?.type || "party";
+    }
+    if (!resolvedContactType) resolvedContactType = "party";
+
     const isSale = ["party", "book"].includes(resolvedContactType);
 
     return Boolean(
@@ -1062,7 +1068,7 @@ class BillService {
         is_gst: Number(isGst) === 1 ? 1 : 0,
         ...(isSale ?
           { contact_type: { $in: ["party", "book"] } }
-        : (contactId ? { contact_id: contactId } : { contact_type: "supplier" })),
+        : (contactId ? { contact_id: contactId, contact_type: "supplier" } : { contact_type: "supplier" })),
         ...(resolvedFinancialYearId ?
           {
             $or: [

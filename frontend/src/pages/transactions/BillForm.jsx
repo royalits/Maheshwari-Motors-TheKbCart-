@@ -4653,7 +4653,7 @@ const BillForm = () => {
       // Create challan
       const challanPayload = {
         is_bill: true,
-        challan_type: "sale",
+        challan_type: resolvedContactType === "supplier" ? "purchase" : "sale",
         date: convertDateToISO(bill.date),
         contact_id: contactId,
         is_gst: effectiveGstType,

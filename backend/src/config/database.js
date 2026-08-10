@@ -38,14 +38,22 @@ const ensureBillIndexes = async () => {
 
     if (isWrongUniqueBillIndex) {
       console.log("[DB] Dropping stale bill unique index:", index.name);
-      await collection.dropIndex(index.name);
+      try {
+        await collection.dropIndex(index.name);
+      } catch (dropErr) {
+        console.warn("[DB] Could not drop index:", index.name, dropErr.message);
+      }
     }
   }
 
-  await collection.createIndex(BILL_UNIQUE_INDEX, {
-    unique: true,
-    name: BILL_UNIQUE_INDEX_NAME,
-  });
+  try {
+    await collection.createIndex(BILL_UNIQUE_INDEX, {
+      unique: true,
+      name: BILL_UNIQUE_INDEX_NAME,
+    });
+  } catch (createErr) {
+    console.warn("[DB] Could not create BILL_UNIQUE_INDEX:", createErr.message);
+  }
 };
 
 const ensureSubscriptionIndexes = async () => {
