@@ -52,7 +52,7 @@ class BackupController {
       .json(new ApiResponse(201, logEntry, "Excel file uploaded successfully"));
   });
 
-  downloadBackup = asyncHandler(async (req, res) => {
+  downloadBackup = asyncHandler(async (req, res, next) => {
     const { logId } = req.params;
     const { stream, buffer, filename, contentType } =
       await backupService.getBackupDownload(req.user._id, logId, req.isGst);
@@ -68,6 +68,9 @@ class BackupController {
     );
 
     if (stream) {
+      stream.on("error", (err) => {
+        if (!res.headersSent) next(err);
+      });
       stream.pipe(res);
     } else if (buffer) {
       res.status(200).send(buffer);

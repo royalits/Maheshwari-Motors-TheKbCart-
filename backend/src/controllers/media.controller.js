@@ -2,7 +2,7 @@ import { s3Service } from "../services/index.js";
 import { asyncHandler, ApiError } from "../utils/index.js";
 
 class MediaController {
-  streamItemImage = asyncHandler(async (req, res) => {
+  streamItemImage = asyncHandler(async (req, res, next) => {
     const { fileName } = req.params;
     if (!fileName || fileName.includes("..")) {
       throw ApiError.badRequest("Invalid file name");
@@ -15,10 +15,13 @@ class MediaController {
       res.setHeader("Content-Length", contentLength);
     }
     res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=3600");
+    stream.on("error", (err) => {
+      if (!res.headersSent) next(err);
+    });
     stream.pipe(res);
   });
 
-  streamSignature = asyncHandler(async (req, res) => {
+  streamSignature = asyncHandler(async (req, res, next) => {
     const { fileName } = req.params;
     if (!fileName || fileName.includes("..")) {
       throw ApiError.badRequest("Invalid file name");
@@ -31,10 +34,13 @@ class MediaController {
       res.setHeader("Content-Length", contentLength);
     }
     res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=3600");
+    stream.on("error", (err) => {
+      if (!res.headersSent) next(err);
+    });
     stream.pipe(res);
   });
 
-  streamFile = asyncHandler(async (req, res) => {
+  streamFile = asyncHandler(async (req, res, next) => {
     const fileKey = req.query.key;
     if (!fileKey || typeof fileKey !== "string" || fileKey.includes("..")) {
       throw ApiError.badRequest("Invalid file key");
@@ -51,6 +57,9 @@ class MediaController {
       res.setHeader("Content-Length", contentLength);
     }
     res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=3600");
+    stream.on("error", (err) => {
+      if (!res.headersSent) next(err);
+    });
     stream.pipe(res);
   });
 }

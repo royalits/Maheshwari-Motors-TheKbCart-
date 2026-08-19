@@ -64,7 +64,7 @@ class ItemController {
       .json(new ApiResponse(200, item, "Item fetched successfully"));
   });
 
-  getItemImage = asyncHandler(async (req, res) => {
+  getItemImage = asyncHandler(async (req, res, next) => {
     const { stream, contentType, contentLength } =
       await itemService.getItemImageStream(req.params.itemId);
 
@@ -76,6 +76,9 @@ class ItemController {
       "Cache-Control",
       "public, max-age=86400, stale-while-revalidate=3600",
     );
+    stream.on("error", (err) => {
+      if (!res.headersSent) next(err);
+    });
     stream.pipe(res);
   });
 
