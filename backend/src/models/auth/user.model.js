@@ -231,6 +231,7 @@ userSchema.methods.toSafeObject = function () {
   if (obj.account_user) delete obj.account_user.password;
   if (obj.client_user) delete obj.client_user.password;
   if (obj.admin) delete obj.admin.password;
+  if (obj.signature) obj.signature = "/api/v1/auth/signature";
   return obj;
 };
 

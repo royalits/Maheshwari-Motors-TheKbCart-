@@ -23,9 +23,11 @@ import itemLedgerRoutes from "./report/itemLedger.routes.js";
 import setupRoutes from "./setup.routes.js";
 import backupRoutes from "./backup.routes.js";
 import financialYearRoutes from "./financialYear.routes.js";
+import mediaRoutes from "./media.routes.js";
 
 const router = Router();
 
+router.use("/media", mediaRoutes);
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
 router.use("/items", itemRoutes);

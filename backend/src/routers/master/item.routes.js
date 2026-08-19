@@ -38,6 +38,8 @@ const excelUpload = multer({
   },
 });
 
+router.get("/:itemId/image", itemController.getItemImage);
+
 router.use(authMiddleware);
 
 router.get("/", itemController.getItems);

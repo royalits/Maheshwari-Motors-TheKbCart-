@@ -834,31 +834,16 @@ const getLogs = async (userId, isGst = null) => {
       return new Date(right).getTime() - new Date(left).getTime();
     });
 
-  const refreshed = await Promise.all(
-    filteredLogs.map(async (log) => {
-      if (log?.status !== "Success" || !log?.s3_key) {
-        return log;
-      }
-
-      try {
-        const downloadUrl = await s3Service.getSignedUrl(
-          log.s3_key,
-          DOWNLOAD_URL_EXPIRY_SECONDS,
-        );
-        return {
-          ...log,
-          download_url: downloadUrl,
-          download_expires_at: new Date(
-            Date.now() + DOWNLOAD_URL_EXPIRY_SECONDS * 1000,
-          ).toISOString(),
-        };
-      } catch {
-        return log;
-      }
-    }),
-  );
-
-  return refreshed;
+  return filteredLogs.map((log) => {
+    const maskedLog = { ...log };
+    if (maskedLog.status === "Success") {
+      maskedLog.download_url = `/api/v1/backup/logs/${log.id}/download`;
+    } else {
+      maskedLog.download_url = null;
+    }
+    delete maskedLog.location;
+    return maskedLog;
+  });
 };
 
 const buildBackupFilename = (type, scope, timestamp) => {
@@ -903,35 +888,18 @@ const createBackup = async (
       buffer,
       filename,
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      `backups/${process.env.AWS_S3_BUCKET_NAME}`,
+      `backups/${process.env.AWS_S3_BUCKET_NAME || "thekbcart"}`,
     );
 
-    let downloadUrl = s3Url;
-    let downloadExpiresAt = null;
-    const s3Key = parseKeyFromS3Url(s3Url);
-
-    if (s3Key) {
-      try {
-        downloadUrl = await s3Service.getSignedUrl(
-          s3Key,
-          DOWNLOAD_URL_EXPIRY_SECONDS,
-        );
-        downloadExpiresAt = new Date(
-          Date.now() + DOWNLOAD_URL_EXPIRY_SECONDS * 1000,
-        ).toISOString();
-      } catch {
-        // Keep public URL fallback when signed URL generation is not available.
-      }
-    }
+    const s3Key = s3Service.extractKey(s3Url);
 
     const logEntry = {
       ...baseLog,
       status: "Success",
       size: formatSize(buffer.length),
       note: `${notePrefix ? `${notePrefix} | ` : ""}${summary.firm_scope} backup | ${summary.total_records} records across ${summary.total_collections} collections`,
-      location: s3Url,
-      download_url: downloadUrl,
-      download_expires_at: downloadExpiresAt,
+      download_url: `/api/v1/backup/logs/${baseLog.id}/download`,
+      download_expires_at: null,
       s3_key: s3Key,
       local_path: filePath,
       backup_id: summary.backup_id,
@@ -1019,32 +987,15 @@ const uploadExcelFile = async (
       "imports/excel",
     );
 
-    let downloadUrl = s3Url;
-    let downloadExpiresAt = null;
-    const s3Key = parseKeyFromS3Url(s3Url);
-
-    if (s3Key) {
-      try {
-        downloadUrl = await s3Service.getSignedUrl(
-          s3Key,
-          DOWNLOAD_URL_EXPIRY_SECONDS,
-        );
-        downloadExpiresAt = new Date(
-          Date.now() + DOWNLOAD_URL_EXPIRY_SECONDS * 1000,
-        ).toISOString();
-      } catch {
-        // Keep public URL fallback when signed URL generation is not available.
-      }
-    }
+    const s3Key = s3Service.extractKey(s3Url);
 
     const logEntry = {
       ...baseLog,
       status: "Success",
       size: formatSize(fileBuffer.length),
       note: `Excel file uploaded successfully`,
-      location: s3Url,
-      download_url: downloadUrl,
-      download_expires_at: downloadExpiresAt,
+      download_url: `/api/v1/backup/logs/${baseLog.id}/download`,
+      download_expires_at: null,
       s3_key: s3Key,
       original_name: originalName,
     };
@@ -1179,6 +1130,56 @@ const deleteLogs = async (userId, logIds = [], isGst = null) => {
   };
 };
 
+const getBackupDownload = async (userId, logId, isGst = null) => {
+  const logs = await readLogs();
+  const uid = String(userId);
+  const scope = normalizeFirmScope(isGst);
+
+  const log = logs.find(
+    (entry) =>
+      String(entry?.id || "") === String(logId).trim() &&
+      String(entry?.user_id || "") === uid &&
+      (scope === null || Number(entry?.is_gst) === scope),
+  );
+
+  if (!log) {
+    throw ApiError.notFound("Backup history entry not found");
+  }
+
+  const filename = log.filename || `${log.type || "backup"}.xlsx`;
+
+  // First try local file if available
+  if (log.local_path) {
+    try {
+      await fs.promises.access(log.local_path);
+      const buffer = await fs.promises.readFile(log.local_path);
+      return {
+        buffer,
+        filename,
+        contentType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      };
+    } catch {
+      // Fallback to S3
+    }
+  }
+
+  // Fallback to S3 storage
+  const s3Key = log.s3_key || s3Service.extractKey(log.location || log.download_url);
+  if (s3Key) {
+    const fileData = await s3Service.getFile(s3Key);
+    return {
+      buffer: fileData.buffer,
+      filename,
+      contentType:
+        fileData.contentType ||
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    };
+  }
+
+  throw ApiError.notFound("Backup file not found in storage");
+};
+
 export default {
   getLogs,
   createBackup,
@@ -1186,4 +1187,5 @@ export default {
   uploadExcelFile,
   deleteLog,
   deleteLogs,
+  getBackupDownload,
 };

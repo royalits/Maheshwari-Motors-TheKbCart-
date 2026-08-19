@@ -8,10 +8,10 @@ class ItemController {
       req.query,
       req.isGst,
     );
-    
+
     // Client role: Return only MRP and images
     if (req.role === "firm" && req.firmRole === "client") {
-      const clientItems = result.data.map(item => ({
+      const clientItems = result.data.map((item) => ({
         _id: item._id,
         id: item.id,
         item_name: item.item_name,
@@ -22,10 +22,14 @@ class ItemController {
         barcode: item.barcode,
       }));
       return res.status(200).json(
-        new ApiResponse(200, { data: clientItems, meta: result.meta }, "Items fetched successfully")
+        new ApiResponse(
+          200,
+          { data: clientItems, meta: result.meta },
+          "Items fetched successfully",
+        ),
       );
     }
-    
+
     res
       .status(200)
       .json(new ApiResponse(200, result, "Items fetched successfully"));
@@ -37,7 +41,7 @@ class ItemController {
       req.user._id,
       req.isGst,
     );
-    
+
     // Client role: Return only MRP and images
     if (req.role === "firm" && req.firmRole === "client") {
       const clientItem = {
@@ -50,14 +54,29 @@ class ItemController {
         hsn: item.hsn,
         barcode: item.barcode,
       };
-      return res.status(200).json(
-        new ApiResponse(200, clientItem, "Item fetched successfully")
-      );
+      return res
+        .status(200)
+        .json(new ApiResponse(200, clientItem, "Item fetched successfully"));
     }
-    
+
     res
       .status(200)
       .json(new ApiResponse(200, item, "Item fetched successfully"));
+  });
+
+  getItemImage = asyncHandler(async (req, res) => {
+    const { stream, contentType, contentLength } =
+      await itemService.getItemImageStream(req.params.itemId);
+
+    res.setHeader("Content-Type", contentType);
+    if (contentLength) {
+      res.setHeader("Content-Length", contentLength);
+    }
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=86400, stale-while-revalidate=3600",
+    );
+    stream.pipe(res);
   });
 
   createItem = asyncHandler(async (req, res) => {
@@ -178,6 +197,7 @@ const itemController = new ItemController();
 
 export const getItems = itemController.getItems;
 export const getItemById = itemController.getItemById;
+export const getItemImage = itemController.getItemImage;
 export const createItem = itemController.createItem;
 export const importItems = itemController.importItems;
 export const exportItems = itemController.exportItems;

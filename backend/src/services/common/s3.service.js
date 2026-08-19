@@ -35,34 +35,35 @@ class S3Service {
     return `${uniqueId}.${ext}`;
   }
 
+  extractKey(fileUrlOrKey) {
+    if (!fileUrlOrKey || typeof fileUrlOrKey !== "string") return "";
+    const trimmed = fileUrlOrKey.trim();
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      try {
+        const url = new URL(trimmed);
+        return decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+      } catch {
+        return trimmed.replace(/^\/+/, "");
+      }
+    }
+    return trimmed.replace(/^\/+/, "");
+  }
+
   async uploadFile(fileBuffer, originalName, mimeType, folder = "items") {
     try {
-      // Get region from environment config, not from client (which is an async function in AWS SDK v3)
       const region = env.AWS_REGION || "ap-south-1";
-      console.log("[S3Service.uploadFile] Starting upload", {
-        bucket: this.bucketName || "",
-        region,
-        folder,
-        originalName,
-        mimeType,
-        bufferSize: Buffer.isBuffer(fileBuffer) ? fileBuffer.length : 0,
-        isBuffer: Buffer.isBuffer(fileBuffer),
-      });
-      
       if (!this.bucketName) {
         console.error("[S3Service.uploadFile] ERROR: Bucket name not configured");
         throw ApiError.internal("S3 bucket is not configured");
       }
-      
+
       if (!this.client) {
         console.error("[S3Service.uploadFile] ERROR: S3 client not initialized");
         throw ApiError.internal("S3 client is not configured");
       }
-      
+
       const fileName = this.generateFileName(originalName);
       const key = `${folder}/${fileName}`;
-
-      console.log("[S3Service.uploadFile] Generated key:", key);
 
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
@@ -70,30 +71,26 @@ class S3Service {
         Body: fileBuffer,
         ContentType: mimeType,
       });
-      
-      console.log("[S3Service.uploadFile] Sending PutObjectCommand to S3");
+
       await this.client.send(command);
 
       const url = `https://${this.bucketName}.s3.${region}.amazonaws.com/${key}`;
-      console.log("[S3Service.uploadFile] SUCCESS: File uploaded", { key, url });
       return url;
     } catch (error) {
       console.error("[S3Service.uploadFile] FAILED:", {
         message: error?.message,
         name: error?.name,
         code: error?.code,
-        state: error?.state,
-        stack: error?.stack?.split('\n').slice(0, 5).join('\n'),
       });
       if (error instanceof ApiError) throw error;
       throw ApiError.internal(`Failed to upload file: ${error?.message}`);
     }
   }
 
-  async deleteFile(fileUrl) {
+  async deleteFile(fileUrlOrKey) {
     try {
-      const url = new URL(fileUrl);
-      const key = url.pathname.substring(1);
+      const key = this.extractKey(fileUrlOrKey);
+      if (!key) return;
 
       const command = new DeleteObjectCommand({
         Bucket: this.bucketName,
@@ -101,27 +98,57 @@ class S3Service {
       });
       await this.client.send(command);
     } catch (error) {
-      console.error("S3 delete error:", error);
+      console.error("S3 delete error:", error?.message);
     }
   }
 
-  async getSignedUrl(key, expiresIn = 3600) {
+  async getSignedUrl(fileUrlOrKey, expiresIn = 3600) {
     try {
+      const key = this.extractKey(fileUrlOrKey);
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
         Key: key,
       });
       return await getSignedUrl(this.client, command, { expiresIn });
     } catch (error) {
-      console.error("S3 signed URL error:", error);
+      console.error("S3 signed URL error:", error?.message);
       throw ApiError.internal("Failed to generate signed URL");
     }
   }
 
-  async getFile(fileUrl) {
+  async getFileStream(fileUrlOrKey) {
     try {
-      const url = new URL(fileUrl);
-      const key = url.pathname.substring(1);
+      const key = this.extractKey(fileUrlOrKey);
+      if (!key) {
+        throw ApiError.notFound("File key is required");
+      }
+      const response = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+        }),
+      );
+      return {
+        stream: response.Body,
+        contentType: response.ContentType || "application/octet-stream",
+        contentLength: response.ContentLength,
+        key,
+      };
+    } catch (error) {
+      if (error?.name === "NoSuchKey" || error?.$metadata?.httpStatusCode === 404) {
+        throw ApiError.notFound("File not found in storage");
+      }
+      console.error("S3 get file stream error:", error?.message);
+      throw ApiError.internal("Failed to load file stream");
+    }
+  }
+
+  async getFile(fileUrlOrKey) {
+    try {
+      const key = this.extractKey(fileUrlOrKey);
+      if (!key) {
+        throw ApiError.notFound("File key is required");
+      }
       const response = await this.client.send(
         new GetObjectCommand({
           Bucket: this.bucketName,
@@ -131,10 +158,14 @@ class S3Service {
       const bytes = await response.Body.transformToByteArray();
       return {
         buffer: Buffer.from(bytes),
-        contentType: response.ContentType || "image/png",
+        contentType: response.ContentType || "application/octet-stream",
+        key,
       };
     } catch (error) {
-      console.error("S3 get file error:", error);
+      if (error?.name === "NoSuchKey" || error?.$metadata?.httpStatusCode === 404) {
+        throw ApiError.notFound("File not found in storage");
+      }
+      console.error("S3 get file error:", error?.message);
       throw ApiError.internal("Failed to load file");
     }
   }

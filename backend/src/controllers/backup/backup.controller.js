@@ -52,6 +52,32 @@ class BackupController {
       .json(new ApiResponse(201, logEntry, "Excel file uploaded successfully"));
   });
 
+  downloadBackup = asyncHandler(async (req, res) => {
+    const { logId } = req.params;
+    const { stream, buffer, filename, contentType } =
+      await backupService.getBackupDownload(req.user._id, logId, req.isGst);
+
+    res.setHeader(
+      "Content-Type",
+      contentType ||
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename || "backup.xlsx"}"`,
+    );
+
+    if (stream) {
+      stream.pipe(res);
+    } else if (buffer) {
+      res.status(200).send(buffer);
+    } else {
+      res
+        .status(404)
+        .json(new ApiResponse(404, null, "Backup file not found in storage"));
+    }
+  });
+
   deleteLog = asyncHandler(async (req, res) => {
     const result = await backupService.deleteLog(
       req.user._id,

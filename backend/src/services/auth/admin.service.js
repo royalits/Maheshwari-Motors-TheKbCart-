@@ -54,6 +54,16 @@ class AdminService {
       delete safe.admin.password;
     }
 
+    if (safe.signature) {
+      safe.signature = `/api/v1/admin/users/${safe._id}/signature`;
+    }
+    if (safe.gst_firm?.signature) {
+      safe.gst_firm.signature = `/api/v1/admin/users/${safe._id}/signature?firm=GST`;
+    }
+    if (safe.nongst_firm?.signature) {
+      safe.nongst_firm.signature = `/api/v1/admin/users/${safe._id}/signature?firm=NON_GST`;
+    }
+
     return safe;
   }
 
@@ -1191,6 +1201,23 @@ class AdminService {
     await user.save();
 
     return this._toSafeUserObject(user.toSafeObject());
+  }
+
+  async getSignature(userId, firmType = null) {
+    const user = await User.findById(userId).lean();
+    if (!user) throw ApiError.notFound("User not found");
+
+    let signatureUrl = null;
+    if (firmType === "GST") {
+      signatureUrl = user.gst_firm?.signature;
+    } else if (firmType === "NON_GST") {
+      signatureUrl = user.nongst_firm?.signature;
+    }
+
+    signatureUrl = signatureUrl || user.signature;
+
+    if (!signatureUrl) throw ApiError.notFound("Signature not found");
+    return s3Service.getFile(signatureUrl);
   }
 }
 

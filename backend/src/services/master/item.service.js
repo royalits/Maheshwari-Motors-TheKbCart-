@@ -296,7 +296,24 @@ class ItemService {
       normalized.qr_code_value ||
       (normalized._id ? `MM_ITEM:${normalized._id}` : "");
 
+    if (normalized.image) {
+      normalized.image = `/api/v1/items/${normalized._id}/image`;
+    }
+
     return normalized;
+  }
+
+  async getItemImageStream(itemId) {
+    let item;
+    if (mongoose.Types.ObjectId.isValid(itemId)) {
+      item = await Item.findById(itemId).select("image").lean();
+    } else if (!Number.isNaN(Number(itemId))) {
+      item = await Item.findOne({ id: Number(itemId) }).select("image").lean();
+    }
+    if (!item || !item.image) {
+      throw ApiError.notFound("Image not found");
+    }
+    return s3Service.getFileStream(item.image);
   }
 
   async getItems(userId, query, isGst) {

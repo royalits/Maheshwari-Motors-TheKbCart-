@@ -37,6 +37,10 @@ router.post(
   adminController.reactivateSecondaryUser,
 );
 
+router.get(
+  "/users/:userId/signature",
+  adminController.getSignature,
+);
 router.post(
   "/users/:userId/signature",
   upload.single("signature"),

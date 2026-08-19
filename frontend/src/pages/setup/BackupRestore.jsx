@@ -24,6 +24,36 @@ const BackupRestore = () => {
   const [filterType, setFilterType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [downloadingBackupId, setDownloadingBackupId] = useState(null);
+
+  const handleDownloadBackup = async (log) => {
+    try {
+      setDownloadingBackupId(log.id);
+      const res = await api.get(`/backup/logs/${log.id}/download`, {
+        responseType: "blob",
+      });
+      const disposition = res.headers?.["content-disposition"] || "";
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/i);
+      const filename =
+        filenameMatch?.[1] || log.filename || `${log.type || "backup"}.xlsx`;
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      showToast("Backup downloaded successfully", "success");
+    } catch (err) {
+      showToast(
+        err?.response?.data?.message || "Failed to download backup",
+        "error",
+      );
+    } finally {
+      setDownloadingBackupId(null);
+    }
+  };
 
   useEffect(() => {
     const loadLogs = async () => {
@@ -139,13 +169,14 @@ const BackupRestore = () => {
     {
       key: "download_url",
       label: "Download",
-      render: (v, row) =>
-        row?.status === "Success" && v ? (
+      render: (_, row) =>
+        row?.status === "Success" ? (
           <button
-            onClick={() => window.open(v, "_blank")}
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 focus:outline-none"
+            onClick={() => handleDownloadBackup(row)}
+            disabled={downloadingBackupId === row.id}
+            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 focus:outline-none cursor-pointer disabled:opacity-50"
           >
-            Download
+            {downloadingBackupId === row.id ? "Downloading..." : "Download"}
             <FaArrowUpRightFromSquare size={10} />
           </button>
         ) : (

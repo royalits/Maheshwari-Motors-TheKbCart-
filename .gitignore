@@ -105,3 +105,12 @@ cloud
 /cloud
 cloud/*
 /cloud/*
+backend/storage/
+storage/
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*accessKeys*
+*credentials*
+

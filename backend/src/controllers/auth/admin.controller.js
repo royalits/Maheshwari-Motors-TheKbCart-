@@ -143,6 +143,19 @@ class AdminController {
       .status(200)
       .json(new ApiResponse(200, result, "Signature updated successfully"));
   });
+
+  getSignature = asyncHandler(async (req, res) => {
+    const { buffer, contentType } = await adminService.getSignature(
+      req.params.userId,
+      req.query.firm,
+    );
+    res.setHeader("Content-Type", contentType || "image/png");
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=86400, stale-while-revalidate=3600",
+    );
+    res.status(200).send(buffer);
+  });
 }
 
 const adminController = new AdminController();
@@ -162,5 +175,6 @@ export const getExpiringToday = adminController.getExpiringToday;
 export const runExpiryCheck = adminController.runExpiryCheck;
 export const uploadSignature = adminController.uploadSignature;
 export const updateSignature = adminController.updateSignature;
+export const getSignature = adminController.getSignature;
 
 export default adminController;
