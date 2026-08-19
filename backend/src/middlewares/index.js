@@ -5,3 +5,4 @@ export {
 } from "./auth.middleware.js";
 export { errorHandler, notFoundHandler } from "./error.middleware.js";
 export { resolveFinancialYear } from "./financialYear.middleware.js";
+export { requirePermission } from "./permission.middleware.js";

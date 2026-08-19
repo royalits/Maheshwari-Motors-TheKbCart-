@@ -4,7 +4,11 @@ import {
   authMiddleware,
   requireFirm,
   resolveFinancialYear,
+  requirePermission,
 } from "../../middlewares/index.js";
+
+const router = Router();
+
 router.use(authMiddleware);
 router.use(requireFirm);
 router.use(resolveFinancialYear);
