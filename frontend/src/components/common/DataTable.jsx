@@ -403,13 +403,41 @@ const DataTable = ({
                                 key={actionIndex}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  !loading && action.onClick(row);
+                                  const isDisabled =
+                                    loading ||
+                                    (typeof action.disabled === "function"
+                                      ? action.disabled(row)
+                                      : action.disabled);
+                                  if (!isDisabled) action.onClick(row);
                                 }}
-                                title={action.title}
-                                className={`${isCompact ? "px-2 py-0.5" : "px-3 py-1"} text-xs rounded ${action.className || "bg-blue-600 text-white hover:bg-blue-700"} ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                                disabled={loading}
+                                title={
+                                  typeof action.title === "function"
+                                    ? action.title(row)
+                                    : action.title
+                                }
+                                className={`${isCompact ? "px-2 py-0.5" : "px-3 py-1"} text-xs rounded ${
+                                  typeof action.className === "function"
+                                    ? action.className(row)
+                                    : action.className ||
+                                      "bg-blue-600 text-white hover:bg-blue-700"
+                                } ${
+                                  loading ||
+                                  (typeof action.disabled === "function"
+                                    ? action.disabled(row)
+                                    : action.disabled)
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                                }`}
+                                disabled={
+                                  loading ||
+                                  (typeof action.disabled === "function"
+                                    ? action.disabled(row)
+                                    : action.disabled)
+                                }
                               >
-                                {action.label}
+                                {typeof action.label === "function"
+                                  ? action.label(row)
+                                  : action.label}
                               </button>
                             ))}
                         </div>

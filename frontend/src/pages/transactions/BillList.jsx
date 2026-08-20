@@ -10,6 +10,7 @@ import {
   FaTrash,
   FaDownload,
   FaPrint,
+  FaSpinner,
   FaPlus,
   FaCamera,
   FaShoppingCart,
@@ -557,6 +558,7 @@ const BillList = () => {
     vehicleNumber: "",
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [downloadingBillId, setDownloadingBillId] = useState(null);
 
   const sortBills = (items) =>
     [...items].sort((a, b) => {
@@ -971,15 +973,20 @@ const BillList = () => {
       return;
     }
 
+    if (action === "download") {
+      setDownloadingBillId(bill.id);
+    }
+
     let billData = bill?.raw || {};
     try {
-      const response = await api.get(`/bills/${bill.id}`);
-      billData = getResponseData(response) || billData;
-    } catch (error) {
-      console.error("Failed to fetch bill details for PDF:", error);
-      showToast("Failed to load bill details for PDF", "error");
-      return;
-    }
+      try {
+        const response = await api.get(`/bills/${bill.id}`);
+        billData = getResponseData(response) || billData;
+      } catch (error) {
+        console.error("Failed to fetch bill details for PDF:", error);
+        showToast("Failed to load bill details for PDF", "error");
+        return;
+      }
 
     const challans =
       Array.isArray(billData?.challan_ids) ?
@@ -2796,7 +2803,15 @@ const BillList = () => {
         );
       }
     }
-  };
+  } catch (error) {
+    console.error("Failed to generate PDF:", error);
+    showToast("Failed to generate PDF", "error");
+  } finally {
+    if (action === "download") {
+      setDownloadingBillId(null);
+    }
+  }
+};
 
   const columns = [
     {
@@ -2882,10 +2897,18 @@ const BillList = () => {
         "bg-red-600 text-white hover:bg-red-700 p-1 sm:p-1.5 md:p-2 text-xs",
     },
     {
-      label: <FaDownload size={10} className="sm:size-3 md:size-4" />,
+      label: (bill) =>
+        downloadingBillId === bill?.id ? (
+          <FaSpinner size={10} className="sm:size-3 md:size-4 animate-spin" />
+        ) : (
+          <FaDownload size={10} className="sm:size-3 md:size-4" />
+        ),
       onClick: (bill) => generateBillPDF(bill, "download"),
+      disabled: (bill) => downloadingBillId === bill?.id,
+      title: (bill) =>
+        downloadingBillId === bill?.id ? "Downloading..." : "Download PDF",
       className:
-        "bg-green-600 text-white hover:bg-green-700 p-1 sm:p-1.5 md:p-2 text-xs",
+        "bg-green-600 text-white hover:bg-green-700 p-1 sm:p-1.5 md:p-2 text-xs flex items-center justify-center",
     },
     {
       label: <FaPrint size={10} className="sm:size-3 md:size-4" />,
