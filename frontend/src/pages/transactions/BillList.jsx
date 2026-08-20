@@ -1827,13 +1827,6 @@ const BillList = () => {
         compactFooterY + 31,
       );
       compactDoc.setTextColor(0, 0, 0);
-      compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(8.5);
-      compactDoc.text(
-        "SUBJECT TO SURAT JURISDICTION",
-        compactX + 1.5,
-        compactFooterY + 34.2,
-      );
 
       compactDoc.setFont("times", "bold");
       compactDoc.setFontSize(10.0);
