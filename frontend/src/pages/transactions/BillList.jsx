@@ -298,6 +298,7 @@ const buildPrintableContact = (contact = {}) => {
   );
   return {
     ...contact,
+    name: contact?.name || contact?.customer_name || "",
     phone:
       contact?.phone ||
       contact?.mobile ||
@@ -1133,7 +1134,13 @@ const BillList = () => {
     }
 
     const receiverName = toMandatoryText(
-      contact?.name || bill?.party || "CASH BOOK",
+      billData?.customer_name ||
+        bill?.customerName ||
+        contact?.name ||
+        contact?.customer_name ||
+        billData?.contact_id?.name ||
+        bill?.party ||
+        "CASH BOOK",
     );
     const receiverAddress = toMandatoryText(contact?.address);
     const receiverCity = toMandatoryText(contact?.city);

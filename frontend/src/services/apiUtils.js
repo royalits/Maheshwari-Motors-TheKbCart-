@@ -210,7 +210,12 @@ export const normalizeBill = (bill = {}) => ({
   date: bill?.date || null,
   createdAt: bill?.createdAt || bill?.created_at || null,
   partyId: getEntityId(bill?.contact_id || bill?.party_id),
-  party: bill?.contact_id?.name || bill?.party_id?.name || "Unknown",
+  party:
+    bill?.customer_name ||
+    bill?.customerName ||
+    bill?.contact_id?.name ||
+    bill?.party_id?.name ||
+    "Unknown",
   amount: (() => {
     const billAmount = toNumber(bill?.amount ?? bill?.total_amount, 0);
     if (billAmount > 0) return billAmount;

@@ -139,6 +139,7 @@ const buildPrintableContact = (
   return {
     ...contact,
     ...normalized,
+    name: contact?.name || normalized?.name || "",
     phone:
       contact?.phone ||
       contact?.mobile ||
@@ -473,7 +474,9 @@ const BillForm = () => {
     if (!contactId) return null;
     return (
       [...loadedParties, ...loadedSuppliers].find(
-        (contact) => contact.id === contactId,
+        (contact) =>
+          String(contact?.id || contact?._id || "") === String(contactId) ||
+          String(getEntityId(contact) || "") === String(contactId),
       ) || null
     );
   };
@@ -3093,7 +3096,13 @@ const BillForm = () => {
       formatDateDDMMYYYY(bill.date) || formatDateDDMMYYYY(new Date());
     const printOption = Number(bill.printOption ?? 2) || 2;
 
-    const receiverName = party?.name || "CASH BOOK";
+    const resolvedContact = getResolvedContact();
+    const receiverName =
+      bill.customerName ||
+      party?.name ||
+      party?.customer_name ||
+      resolvedContact?.name ||
+      "CASH BOOK";
     const receiverAddress = party?.address || "";
     const receiverCity = party?.city || "";
     const receiverPin = party?.pin || "";
