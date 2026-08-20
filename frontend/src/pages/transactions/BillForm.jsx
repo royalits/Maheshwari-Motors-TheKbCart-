@@ -3103,14 +3103,25 @@ const BillForm = () => {
       party?.customer_name ||
       resolvedContact?.name ||
       "CASH BOOK";
-    const receiverAddress = party?.address || "";
-    const receiverCity = party?.city || "";
-    const receiverPin = party?.pin || "";
-    const receiverPhone = party?.phone || "";
-    const receiverGstin = party?.gstin || "";
-    const receiverPan = party?.pan || "";
-    const receiverState = party?.state || "";
-    const receiverStateCode = party?.state_code || "";
+    const receiverAddress = party?.address || resolvedContact?.address || "";
+    const receiverCity = party?.city || resolvedContact?.city || "";
+    const receiverPin =
+      party?.pin ||
+      party?.pincode ||
+      resolvedContact?.pin ||
+      resolvedContact?.pincode ||
+      "";
+    const receiverPhone =
+      party?.phone ||
+      party?.mobile ||
+      resolvedContact?.phone ||
+      resolvedContact?.mobile ||
+      "";
+    const receiverGstin = party?.gstin || resolvedContact?.gstin || "";
+    const receiverPan = party?.pan || resolvedContact?.pan || "";
+    const receiverState = party?.state || resolvedContact?.state || "";
+    const receiverStateCode =
+      party?.state_code || resolvedContact?.state_code || "";
 
     const consigneeName = receiverName;
     const consigneeAddress = receiverAddress;

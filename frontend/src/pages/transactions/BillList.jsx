@@ -1166,7 +1166,11 @@ const BillList = () => {
     );
 
     const consigneeName = toMandatoryText(
-      billData?.customer_name || contact?.name,
+      billData?.customer_name ||
+        bill?.customerName ||
+        contact?.name ||
+        contact?.customer_name ||
+        receiverName,
     );
     const consigneeAddress = toMandatoryText(
       billData?.shipping_address || contact?.address,
