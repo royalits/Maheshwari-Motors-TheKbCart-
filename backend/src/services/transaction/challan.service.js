@@ -680,7 +680,7 @@ class ChallanService {
       });
     }
 
-    if (contact.type !== "supplier") {
+    if (contact.type !== "supplier" && contact.type !== "book") {
       throw ApiError.badRequest("Supplier not found for purchase challan");
     }
 

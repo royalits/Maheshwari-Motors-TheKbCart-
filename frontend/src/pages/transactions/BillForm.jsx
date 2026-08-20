@@ -759,6 +759,16 @@ const BillForm = () => {
       item_id: normalized.item_id || item?.item_id || "",
       amount: normalized.amount,
       sale_rate: normalized.amount,
+      purchase_rate:
+        normalized.purchase_rate ??
+        item?.purchase_rate ??
+        source?.purchase_rate ??
+        0,
+      purchaseRate:
+        normalized.purchase_rate ??
+        item?.purchase_rate ??
+        source?.purchase_rate ??
+        0,
       mrp_rate: normalized.mrp_rate || item?.mrp_rate || source?.mrp_rate || 0,
       barcode: normalized.barcode || item?.barcode || "",
       type: normalized.type,
@@ -1080,6 +1090,9 @@ const BillForm = () => {
             id: normalized.id,
             name: normalized.itemName,
             amount: normalized.amount,
+            sale_rate: normalized.amount,
+            purchase_rate: normalized.purchase_rate,
+            purchaseRate: normalized.purchase_rate,
             barcode: normalized.barcode,
             type: normalized.type, // 1 = GST, 0 = Non-GST
           };
@@ -1752,6 +1765,7 @@ const BillForm = () => {
   };
 
   const buildBillItemDetails = (item, currentBill) => {
+    const isSupplier = currentBill?.contactType === "supplier";
     const activeLabelId = currentBill.labelId;
     const labelDiscountData =
       activeLabelId ? loadedLabelDiscounts[activeLabelId] : null;
@@ -1770,16 +1784,27 @@ const BillForm = () => {
       labelItemDiscounts[brandId]?.[baseItemId] ||
       0;
 
+    const defaultRate = isSupplier ?
+      Number(
+        item?.purchase_rate ??
+        item?.purchaseRate ??
+        item?.purchase_price ??
+        item?.purchasePrice ??
+        item?.amount ??
+        0,
+      )
+    : Number(item?.sale_rate ?? item?.amount ?? 0);
+
     return {
       itemId: baseItemId,
       pcs: 1,
-      rate: item?.amount || 0,
-      disPercent: useDisc.normal || 0,
-      spDis: useDisc.special || 0,
+      rate: defaultRate,
+      disPercent: isSupplier ? 0 : (useDisc.normal || 0),
+      spDis: isSupplier ? 0 : (useDisc.special || 0),
       gstPercent: item?.gst_percent || 0,
-      itemDiscount: Number(item?.discount || 0),
+      itemDiscount: isSupplier ? 0 : Number(item?.discount || 0),
       itemDis2: 0,
-      dis3: itemSpecificDiscount,
+      dis3: isSupplier ? 0 : itemSpecificDiscount,
       stock: resolvePhysicalStock(item),
       physicalStock: resolvePhysicalStock(item),
       logicalStock: resolveLogicalStock(item),
@@ -4682,10 +4707,22 @@ const BillForm = () => {
             Number.isFinite(parsedDis3) && parsedDis3 > 0 ?
               parsedDis3
             : fallbackDis3;
+          const isSupplier = resolvedContactType === "supplier";
+          const fallbackRate = isSupplier ?
+            (item?.purchase_rate ?? item?.purchaseRate ?? item?.amount ?? 0)
+          : (item?.sale_rate ?? item?.amount ?? 0);
+          const resolvedRate = Math.max(
+            0,
+            parseFloat(
+              details.rate !== undefined && details.rate !== "" ?
+                details.rate
+              : fallbackRate,
+            ),
+          );
           return {
             item_id: baseItemId,
             quantity: parseFloat(details.pcs || 1),
-            rate: Math.max(0, parseFloat(details.rate || item?.amount || 0)),
+            rate: resolvedRate,
             discount: Math.max(0, parseFloat(details.disPercent || 0)),
             special_discount: Math.max(0, parseFloat(details.spDis || 0)),
             item_discount: Math.max(0, parseFloat(details.itemDiscount || 0)),
@@ -4812,13 +4849,48 @@ const BillForm = () => {
               value={bill.contactType}
               onChange={(e) => {
                 const newType = e.target.value;
-                setBill((prev) => ({
-                  ...prev,
-                  contactType: newType,
-                  party: "",
-                  billNumber: "",
-                  customerName: newType === "me" ? prev.customerName : "",
-                }));
+                setBill((prev) => {
+                  const isNewTypeSupplier = newType === "supplier";
+                  const nextItemDetails = { ...prev.itemDetails };
+                  prev.items.forEach((rowId) => {
+                    const row = nextItemDetails[rowId];
+                    if (!row) return;
+                    const loaded =
+                      getLoadedItemByRowId(rowId, prev.itemDetails) || {};
+                    const newRate =
+                      isNewTypeSupplier ?
+                        Number(
+                          loaded.purchase_rate ??
+                            loaded.purchaseRate ??
+                            row.rate ??
+                            0,
+                        )
+                      : Number(
+                          loaded.sale_rate ?? loaded.amount ?? row.rate ?? 0,
+                        );
+                    nextItemDetails[rowId] = {
+                      ...row,
+                      rate: newRate,
+                      ...(isNewTypeSupplier ?
+                        {
+                          disPercent: 0,
+                          spDis: 0,
+                          itemDiscount: 0,
+                          itemDis2: 0,
+                          dis3: 0,
+                        }
+                      : {}),
+                    };
+                  });
+                  return {
+                    ...prev,
+                    contactType: newType,
+                    party: "",
+                    billNumber: "",
+                    customerName: newType === "me" ? prev.customerName : "",
+                    itemDetails: nextItemDetails,
+                  };
+                });
               }}
               className="w-full px-3 py-2 border rounded-md text-sm"
             >
@@ -5496,7 +5568,15 @@ const BillForm = () => {
                           <input
                             type="text"
                             inputMode="decimal"
-                            value={details.rate ?? item?.amount ?? ""}
+                            value={
+                              details.rate ??
+                              (bill.contactType === "supplier" ?
+                                (item?.purchase_rate ??
+                                item?.purchaseRate ??
+                                item?.amount ??
+                                "")
+                              : (item?.amount ?? ""))
+                            }
                             onChange={(e) =>
                               updateNumberDraft(itemId, "rate", e.target.value)
                             }
