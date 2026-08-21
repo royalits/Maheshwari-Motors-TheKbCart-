@@ -73,17 +73,22 @@ export const getResolvedFirmMeta = () => {
     ...profileFirm,  // profileFirm (from /auth/me) has highest priority
   };
 
+  const isClient =
+    user?.current_firm_role === "client" ||
+    user?.firm_role === "client" ||
+    user?.role === "client" ||
+    user?.current_credential_key === "client_user";
+
+  const clientName = isClient ? (user?.contact_name || user?.contact?.name || "") : "";
+
   const firmName = toText(
     pickFirstFilled(
+      clientName,
       mergedFirm?.name,
       mergedFirm?.firm_name,
-      firmData?.username,
-      firmData?.credential_key,
-      user?.username,
-      user?.name,
-      user?.email,
+      user?.contact_name,
     ),
-    "Firm",
+    "",
   );
   const address = toText(
     pickFirstFilled(mergedFirm?.address, mergedFirm?.godown_address),

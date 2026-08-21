@@ -57,17 +57,23 @@ export const useFirmBranding = () => {
       firmData?.bank_ids?.[0] ||
       {};
 
+    const isClient =
+      user?.current_firm_role === "client" ||
+      user?.firm_role === "client" ||
+      user?.role === "client" ||
+      user?.current_credential_key === "client_user";
+
+    const clientName = isClient ? (user?.contact_name || user?.contact?.name || "") : "";
+
     return {
       name: pick(
+        clientName,
         profileFirm?.name,
+        profileFirm?.firm_name,
         firmData?.name,
+        firmData?.firm_name,
         selectedFirm?.name,
-        firmData?.username,
-        firmData?.credential_key,
-        user?.username,
-        user?.name,
-        user?.email,
-        'Firm',
+        "",
       ),
       address: pick(
         profileFirm?.address, profileFirm?.godown_address,

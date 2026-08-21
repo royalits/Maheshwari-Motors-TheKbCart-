@@ -155,7 +155,7 @@ const Reports = () => {
     const currentDate = new Date().toLocaleDateString("en-IN");
     const currentTime = new Date().toLocaleTimeString("en-IN");
     const firmMeta = getResolvedFirmMeta();
-    const firmName = firmMeta.firmName || "Firm";
+    const firmName = firmMeta.firmName || "";
     const firmAddress = firmMeta.address || "";
     const firmPhone = firmMeta.phone || "";
     const firmGstin = firmMeta.gstin || "";

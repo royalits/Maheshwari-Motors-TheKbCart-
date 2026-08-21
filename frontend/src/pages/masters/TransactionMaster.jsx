@@ -624,7 +624,7 @@ const TransactionMaster = () => {
       transaction?.contact_id?.name ||
       transaction?.partyName ||
       "";
-    const firmName = firmMeta?.firmName || "Firm";
+    const firmName = firmMeta?.firmName || "";
     const narration =
       transaction?.remarks ||
       transaction?.reference ||
@@ -731,7 +731,7 @@ const TransactionMaster = () => {
     const contentWidth = pageWidth - margin * 2;
 
     const firmMeta = getResolvedFirmMeta();
-    const firmName = firmMeta?.firmName || "MAHESHWARI MOTORS";
+    const firmName = firmMeta?.firmName || "";
     const firmAddress = firmMeta?.address || "";
     const firmPhone = firmMeta?.phone || "";
     const firmGstin = firmMeta?.gstin || "";

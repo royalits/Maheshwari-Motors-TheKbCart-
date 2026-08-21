@@ -55,7 +55,11 @@ vi.mock('react-icons/fa', () => ({
   FaEdit: () => null,
   FaTrash: () => null,
   FaSignOutAlt: () => null,
-  FaSync: () => null // Added missing mock
+  FaSync: () => null,
+  FaEye: () => null,
+  FaKey: () => null,
+  FaSave: () => null,
+  FaDatabase: () => null
 }));
 
 describe('UserMaster Component', () => {
@@ -112,7 +116,8 @@ describe('UserMaster Component', () => {
 
     // Wait for effect to run and fetch loop to complete
     await waitFor(() => {
-      expect(api.get).toHaveBeenCalledTimes(2); // Should call twice for pagination
+      const userCalls = api.get.mock.calls.filter(([url]) => url === '/admin/users');
+      expect(userCalls).toHaveLength(2); // Should call twice for pagination
       expect(setUsersMock).toHaveBeenCalledWith(expect.arrayContaining([
         expect.objectContaining({ username: 'User 1' }),
         expect.objectContaining({ username: 'User 2' })

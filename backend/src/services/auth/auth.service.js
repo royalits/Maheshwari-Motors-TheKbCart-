@@ -229,11 +229,23 @@ class AuthService {
 
       const banks = await this._resolveFirmBanks(user._id, firmObj);
 
+      const safe = user.toSafeObject();
+      const contact =
+        contactId ?
+          await Contact.findById(contactId)
+            .select("name phone address city state gstin")
+            .lean()
+        : null;
+
       const firmData = {
         firm_type: resolvedFirmType,
         firm_role: normalizedFirmRole,
         contact_id: contactId,
-        name: firmObj.name,
+        contact_name: contact?.name || null,
+        name:
+          normalizedFirmRole === "client" && contact?.name ?
+            contact.name
+          : (firmObj.name || ""),
         email: firmObj.email,
         phone: firmObj.phone,
         address: firmObj.address,
@@ -249,15 +261,27 @@ class AuthService {
       };
 
       return {
+        ...safe,
         _id: user._id,
-        name: user.name,
+        name:
+          normalizedFirmRole === "client" && contact?.name ?
+            contact.name
+          : user.name,
         email: user.email,
         phone: user.phone,
         type: user.type,
         is_admin: false,
         role: "firm",
+        current_role: "firm",
+        current_firm_type: resolvedFirmType,
+        current_firm_role: normalizedFirmRole,
+        current_contact_id: contactId || null,
+        current_credential_key: credentialKey || null,
         credential_key: credentialKey || null,
         is_gst: resolvedFirmType === "GST" ? 1 : 0,
+        contact_id: contactId || null,
+        contact_name: contact?.name || null,
+        contact: contact || null,
         firm_data: firmData,
         signature: firmObj.signature || user.signature || null,
         token,
@@ -305,19 +329,30 @@ class AuthService {
         normalizeRole(firmRole || activeFirm?.role || "admin")
       : null;
 
+    const contact =
+      contactId ?
+        await Contact.findById(contactId)
+          .select("name phone address city state gstin")
+          .lean()
+      : null;
+
     const firmData =
       role === "firm" && activeFirm ?
         {
           firm_type: normalizedFirmType,
           firm_role: normalizedFirmRole,
           contact_id: contactId || activeFirm.contact_id || null,
-          name: activeFirm.name,
-          email: activeFirm.email,
-          phone: activeFirm.phone,
-          address: activeFirm.address,
+          contact_name: contact?.name || null,
+          name:
+            normalizedFirmRole === "client" && contact?.name ?
+              contact.name
+            : (activeFirm.name || ""),
+          email: activeFirm.email || "",
+          phone: activeFirm.phone || "",
+          address: activeFirm.address || "",
           godown_address: activeFirm.godown_address || null,
-          city: activeFirm.city,
-          state: activeFirm.state,
+          city: activeFirm.city || "",
+          state: activeFirm.state || "",
           GSTIN: activeFirm.GSTIN || null,
           CIN: activeFirm.CIN || null,
           reg_number: activeFirm.reg_number || null,
@@ -329,11 +364,18 @@ class AuthService {
 
     return {
       ...safe,
+      name:
+        normalizedFirmRole === "client" && contact?.name ?
+          contact.name
+        : (safe.name || ""),
       current_role: role,
       current_firm_type: normalizedFirmType,
       current_firm_role: normalizedFirmRole,
       current_contact_id: contactId || null,
       current_credential_key: credentialKey || null,
+      contact_id: contactId || null,
+      contact_name: contact?.name || null,
+      contact: contact || null,
       firm_data: firmData,
       signature: (role === "firm" && activeFirm?.signature) ? activeFirm.signature : (safe.signature || null),
     };

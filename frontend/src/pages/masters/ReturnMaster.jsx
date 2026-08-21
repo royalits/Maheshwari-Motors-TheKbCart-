@@ -638,7 +638,7 @@ const ReturnMaster = () => {
         format: "a4",
       });
 
-      const firmName = firmBranding.name || selectedFirm?.name || "Firm";
+      const firmName = firmBranding.name || selectedFirm?.name || "";
       const firmAddress = firmBranding.address || selectedFirm?.address || "--";
       const firmPhone = firmBranding.phone || selectedFirm?.phone || "--";
       const firmEmail = firmBranding.email || selectedFirm?.email || "--";
@@ -949,9 +949,9 @@ const ReturnMaster = () => {
 
         doc.setFont("times", "bold");
         doc.setFontSize(8.0);
-        doc.text(`Bank Name : ${resolvedFirm.bank_name || "PRIME CO OP BANK LTD"}`, margin + 2, cursorY + 16);
-        doc.text(`IFS Code  : ${resolvedFirm.ifsc_code || "PMEC0000010"}`, margin + 2, cursorY + 19.5);
-        doc.text(`A/c No.   : ${resolvedFirm.account_number || "10032001002995"}`, margin + 2, cursorY + 23);
+        doc.text(`Bank Name : ${resolvedFirm.bank_name || "--"}`, margin + 2, cursorY + 16);
+        doc.text(`IFS Code  : ${resolvedFirm.ifsc_code || "--"}`, margin + 2, cursorY + 19.5);
+        doc.text(`A/c No.   : ${resolvedFirm.account_number || "--"}`, margin + 2, cursorY + 23);
 
         doc.text(`Total Qty : ${totalQty}`, margin + 2, cursorY + 28);
         doc.text(doc.splitTextToSize(`Amount In Words: ${amountInWords}`, leftSummaryWidth - 4).slice(0, 2), margin + 2, cursorY + 32);

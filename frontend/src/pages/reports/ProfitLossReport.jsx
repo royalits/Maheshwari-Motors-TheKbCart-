@@ -357,7 +357,7 @@ const ProfitLossReport = () => {
   }, [filteredRows]);
 
   const firmMeta = getResolvedFirmMeta();
-  const firmName = firmMeta.firmName || "Firm";
+  const firmName = firmMeta.firmName || "";
   const firm =
     firmMeta.raw || selectedFirm || user?.gst_firm || user?.nongst_firm || null;
   const firmAddress = [

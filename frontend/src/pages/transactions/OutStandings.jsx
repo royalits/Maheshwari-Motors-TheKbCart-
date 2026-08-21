@@ -899,7 +899,7 @@ const OutStandings = ({
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(255, 255, 255);
-    doc.text((firmMeta.firmName || "Firm").toUpperCase(), marginX, cursorY);
+    doc.text((firmMeta.firmName || "").toUpperCase(), marginX, cursorY);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.8);
@@ -1029,7 +1029,7 @@ const OutStandings = ({
     doc.setFontSize(7.5);
     doc.setTextColor(107, 114, 128);
     doc.text("System-generated receipt.", marginX, pageHeight - 10);
-    doc.text(firmMeta.firmName || "Firm", rightX, pageHeight - 10, {
+    doc.text(firmMeta.firmName || "", rightX, pageHeight - 10, {
       align: "right",
     });
 

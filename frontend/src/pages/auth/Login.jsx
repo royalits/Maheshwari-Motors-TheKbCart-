@@ -87,7 +87,10 @@ const Login = () => {
       const { token: _, ...userData } = payload;
       localStorage.setItem('token', token);
       localStorage.setItem('userRole', userData?.role || '');
-      localStorage.setItem('firm_type', userData.firm_data?.firm_type);
+      localStorage.setItem(
+        'firm_type',
+        userData.firm_data?.firm_type || userData.current_firm_type || '',
+      );
       localStorage.setItem(
         'firm_role',
         userData?.current_firm_role || userData?.firm_data?.firm_role || '',

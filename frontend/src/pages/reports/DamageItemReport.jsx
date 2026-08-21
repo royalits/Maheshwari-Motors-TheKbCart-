@@ -266,7 +266,7 @@ const DamageItemReport = () => {
   const formatRs = (value) => `Rs ${toNumber(value, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const firmMeta = getResolvedFirmMeta();
-  const firmName = firmMeta.firmName || "Firm";
+  const firmName = firmMeta.firmName || "";
 
   return (
     <div className="space-y-6">

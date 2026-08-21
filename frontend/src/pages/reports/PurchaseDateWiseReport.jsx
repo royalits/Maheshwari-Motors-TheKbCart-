@@ -1001,7 +1001,7 @@ const PurchaseDateWiseReport = () => {
     activeFirmType === "NON_GST" || activeFirmType === "NONGST" ? "NON GST"
     : activeFirmType === "GST" || activeFirmType === "1" ? "GST"
     : "ALL";
-  const firmName = firmMeta.firmName || "Firm";
+  const firmName = firmMeta.firmName || "";
   const firmAddress = [firmMeta.address, firmMeta.city, firmMeta.state, firmMeta.raw?.pincode]
     .filter(Boolean)
     .join(", ");

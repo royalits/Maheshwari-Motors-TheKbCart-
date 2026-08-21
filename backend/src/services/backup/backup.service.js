@@ -783,7 +783,7 @@ const createWorkbookBackup = async (userId, isGst = null) => {
   ]);
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = `Maheshwari Motors ${firmLabel(isGst)} Backup`;
+  workbook.creator = `TheKbCart ${firmLabel(isGst)} Backup`;
   workbook.created = new Date();
   workbook.modified = new Date();
   const lookups = await buildReferenceLookups(db, userId);

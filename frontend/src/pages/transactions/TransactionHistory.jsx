@@ -267,7 +267,7 @@ const TransactionHistory = () => {
               const currentDate = new Date().toLocaleDateString('en-IN');
               const currentTime = new Date().toLocaleTimeString('en-IN');
               
-              const firmName = firmBranding.name || "Firm";
+              const firmName = firmBranding.name || "";
               printWindow.document.write(`
                 <html>
                   <head>

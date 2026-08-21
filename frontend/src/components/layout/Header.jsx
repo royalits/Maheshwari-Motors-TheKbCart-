@@ -11,20 +11,39 @@ import useStore from "../../store";
 import api, { invalidateClientCache } from "../../services/axiosInstance";
 
 const getFirmName = (user, selectedFirm) => {
+  const isClient =
+    user?.current_firm_role === "client" ||
+    user?.firm_role === "client" ||
+    user?.role === "client" ||
+    user?.current_credential_key === "client_user";
+
+  if (isClient && (user?.contact_name || user?.contact?.name)) {
+    return user.contact_name || user.contact.name;
+  }
+
   const type = String(
-    selectedFirm?.firm_type || user?.current_firm_type || localStorage.getItem("firm_type") || ""
-  ).trim().toUpperCase().replace(/[-\s]/g, "_");
+    selectedFirm?.firm_type ||
+      user?.current_firm_type ||
+      user?.firm_data?.firm_type ||
+      localStorage.getItem("firm_type") ||
+      ""
+  )
+    .trim()
+    .toUpperCase()
+    .replace(/[-\s]/g, "_");
+
   const profileFirm =
     type === "GST" ? user?.gst_firm :
     type === "NON_GST" || type === "NONGST" ? user?.nongst_firm :
     user?.gst_firm || user?.nongst_firm || {};
+
   return (
     profileFirm?.name ||
     profileFirm?.firm_name ||
-    selectedFirm?.name ||
     user?.firm_data?.name ||
     user?.firm_data?.firm_name ||
-    "MAHESHWARI MOTORS"
+    selectedFirm?.name ||
+    ""
   );
 };
 
@@ -155,7 +174,7 @@ const Header = ({ onMenuClick }) => {
           <FaBars className="text-neutral-700" />
         </button>
 
-        {user && (
+        {user && Boolean(firmName?.trim()) && (
           <div
             className="flex max-w-[220px] items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-800"
             title={firmName}

@@ -1076,17 +1076,17 @@ const BillList = () => {
       resolvedFirm.signature,
       resolvedFirm.firm_type,
     );
-    const firmName = toMandatoryText(resolvedFirm.name || "Firm");
+    const firmName = toMandatoryText(resolvedFirm.name || "");
     const firmAddress = toMandatoryText(resolvedFirm.address);
     const firmPhone = toMandatoryText(resolvedFirm.phone);
     const firmEmail = toMandatoryText(resolvedFirm.email);
     const firmGstin = toMandatoryText(resolvedFirm.gstin);
     const firmPan = extractPan(firmGstin);
     const bankName = toMandatoryText(
-      resolvedFirm.bank_name || "PRIME CO OP BANK LTD",
+      resolvedFirm.bank_name || "",
     );
     const bankAccountNo = toMandatoryText(
-      resolvedFirm.account_number || "10032001002995",
+      resolvedFirm.account_number || "",
     );
     const invoiceDateObj =
       billData?.date ? new Date(billData.date) : new Date();
@@ -1527,7 +1527,7 @@ const BillList = () => {
       compactDoc.setFontSize(14.5);
       compactDoc.setTextColor(...compactBlue);
       compactDoc.text(
-        String(firmName || "Firm").toUpperCase(),
+        String(firmName || "").toUpperCase(),
         compactX + compactContentWidth / 2,
         compactY,
         { align: "center" },

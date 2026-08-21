@@ -3081,7 +3081,7 @@ const BillForm = () => {
       resolvedFirm.signature,
       resolvedFirm.firm_type,
     );
-    const firmName = resolvedFirm.name || "Firm";
+    const firmName = resolvedFirm.name || "";
     const firmAddress = resolvedFirm.address || "";
     const firmPhone = resolvedFirm.phone || "";
     const firmEmail = resolvedFirm.email || "";
@@ -3773,7 +3773,7 @@ const BillForm = () => {
       compactDoc.setFontSize(14.5);
       compactDoc.setTextColor(...compactBlue);
       compactDoc.text(
-        String(firmName || "MAHESHWARI MOTORS").toUpperCase(),
+        String(firmName || "").toUpperCase(),
         compactX + compactContentWidth / 2,
         compactY,
         { align: "center" },
