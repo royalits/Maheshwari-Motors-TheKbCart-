@@ -277,8 +277,10 @@ const TransactionMaster = () => {
 
   const fetchParties = async () => {
     try {
-      const list = await fetchAllPages(api, "/contacts/parties");
-      setParties(list);
+      const res = await api.get("/contacts/parties", {
+        params: { page: 1, limit: 200, compact: true },
+      });
+      setParties(getResponseList(res));
     } catch (error) {
       showToast("Failed to fetch parties", "error");
     }
@@ -286,8 +288,10 @@ const TransactionMaster = () => {
 
   const fetchSuppliers = async () => {
     try {
-      const list = await fetchAllPages(api, "/contacts/suppliers");
-      setSuppliers(list);
+      const res = await api.get("/contacts/suppliers", {
+        params: { page: 1, limit: 200, compact: true },
+      });
+      setSuppliers(getResponseList(res));
     } catch (error) {
       showToast("Failed to fetch suppliers", "error");
     }
@@ -295,8 +299,10 @@ const TransactionMaster = () => {
 
   const fetchBooks = async () => {
     try {
-      const list = await fetchAllPages(api, "/contacts/books");
-      setBooks(list);
+      const res = await api.get("/contacts/books", {
+        params: { page: 1, limit: 200, compact: true },
+      });
+      setBooks(getResponseList(res));
     } catch (error) {
       showToast("Failed to fetch books", "error");
     }
@@ -1474,17 +1480,48 @@ const TransactionMaster = () => {
                   {formData.contact_type === "party" ? "Party *" : "Supplier *"}
                 </label>
                 <SearchableSelect
+                  key={`contact-${formData.contact_type}`}
                   value={formData.contact_id}
                   onChange={(value) => handleInputChange("contact_id", value)}
                   placeholder={`Select ${formData.contact_type === "party" ? "Party" : "Supplier"}`}
                   searchPlaceholder={`Search ${formData.contact_type === "party" ? "party" : "supplier"}...`}
-                  options={(formData.contact_type === "party" ?
-                    parties
-                  : suppliers
-                  ).map((contact) => ({
-                    value: String(getEntityId(contact)),
-                    label: contact.name || "",
-                  }))}
+                  fetchOptions={async ({ search, page, limit }) => {
+                    const endpoint =
+                      formData.contact_type === "party"
+                        ? "/contacts/parties"
+                        : "/contacts/suppliers";
+                    const res = await api.get(endpoint, {
+                      params: {
+                        page,
+                        limit: 50,
+                        search: search || undefined,
+                        compact: true,
+                      },
+                    });
+                    const items = getResponseList(res).map((contact) => ({
+                      value: String(getEntityId(contact)),
+                      label: contact.name || "",
+                    }));
+                    const meta = getResponseMeta(res);
+                    return {
+                      options: items,
+                      hasMore:
+                        meta?.hasNextPage ??
+                        (meta?.page < meta?.totalPages) ??
+                        (items.length === 50),
+                      total: meta?.total,
+                    };
+                  }}
+                  selectedLabel={
+                    resolveContact(formData.contact_id)?.name ||
+                    parties.find(
+                      (p) => String(getEntityId(p)) === String(formData.contact_id)
+                    )?.name ||
+                    suppliers.find(
+                      (s) => String(getEntityId(s)) === String(formData.contact_id)
+                    )?.name ||
+                    ""
+                  }
                   buttonClassName="rounded-lg"
                 />
               </div>
@@ -1497,10 +1534,36 @@ const TransactionMaster = () => {
                   onChange={(value) => handleInputChange("contact_id", value)}
                   placeholder="Select Book (CashBook/BankBook)"
                   searchPlaceholder="Search book..."
-                  options={books.map((book) => ({
-                    value: String(getEntityId(book)),
-                    label: book.name || "",
-                  }))}
+                  fetchOptions={async ({ search, page, limit }) => {
+                    const res = await api.get("/contacts/books", {
+                      params: {
+                        page,
+                        limit: 50,
+                        search: search || undefined,
+                        compact: true,
+                      },
+                    });
+                    const items = getResponseList(res).map((book) => ({
+                      value: String(getEntityId(book)),
+                      label: book.name || "",
+                    }));
+                    const meta = getResponseMeta(res);
+                    return {
+                      options: items,
+                      hasMore:
+                        meta?.hasNextPage ??
+                        (meta?.page < meta?.totalPages) ??
+                        (items.length === 50),
+                      total: meta?.total,
+                    };
+                  }}
+                  selectedLabel={
+                    resolveContact(formData.contact_id)?.name ||
+                    books.find(
+                      (b) => String(getEntityId(b)) === String(formData.contact_id)
+                    )?.name ||
+                    ""
+                  }
                   buttonClassName="rounded-lg"
                 />
               </div>

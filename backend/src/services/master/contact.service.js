@@ -188,21 +188,43 @@ class ContactService {
     if (convertedQuery.balance_status === "due") filter[balanceField] = { $lt: 0 };
     if (convertedQuery.balance_status === "overpaid") filter[balanceField] = { $gt: 0 };
 
+    const isCompact =
+      convertedQuery.compact === true ||
+      convertedQuery.compact === "true" ||
+      convertedQuery.compact === 1 ||
+      convertedQuery.compact === "1" ||
+      convertedQuery.minimal === true ||
+      convertedQuery.minimal === "true" ||
+      convertedQuery.minimal === 1 ||
+      convertedQuery.minimal === "1";
+
+    const populate =
+      isCompact ? []
+      : (convertedQuery.populate || [
+          { path: "bank_id" },
+          { path: "label_id", select: "name" },
+          { path: "transport_id", select: "name city pincode phone gstin" },
+          { path: "agent_id", select: "name city pincode phone" },
+          { path: "area_id", select: "city state pincode phone whatsapp" },
+        ]);
+
+    const select =
+      isCompact ?
+        (convertedQuery.select || "_id id name alias type")
+      : (convertedQuery.select || "");
+
     const contacts = await Pagination.paginate(Contact, filter, {
       ...convertedQuery,
-      sort: { createdAt: -1 },
-      populate: [
-        { path: "bank_id" },
-        { path: "label_id", select: "name" },
-        { path: "transport_id", select: "name city pincode phone gstin" },
-        { path: "agent_id", select: "name city pincode phone" },
-        { path: "area_id", select: "city state pincode phone whatsapp" },
-      ],
+      sort: convertedQuery.sort || { name: 1, createdAt: -1 },
+      populate,
+      select,
     });
 
     contacts.data = contacts.data.map((c) => ({
       ...c,
-      balance: isGst === 1 || isGst === true ? (c.gst_balance || 0) : (c.nongst_balance || 0),
+      balance:
+        isCompact ? (c.balance || 0)
+        : (isGst === 1 || isGst === true ? (c.gst_balance || 0) : (c.nongst_balance || 0)),
     }));
 
     return contacts;
