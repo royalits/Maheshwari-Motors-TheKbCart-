@@ -6,7 +6,7 @@ import { Button, SearchableSelect } from '../../components/ui';
 import useStore from '../../store';
 
 import api from '../../services/axiosInstance';
-import { getResponseData, getResponseList, getEntityId, normalizeContact } from '../../services/apiUtils';
+import { getResponseData, getResponseList, getEntityId, normalizeContact, fetchAllPages } from '../../services/apiUtils';
 import useSaveShortcut from '../../hooks/useSaveShortcut';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
 
@@ -156,9 +156,8 @@ const PartyMaster = () => {
     const fetchParties = async () => {
       setLoading(true);
       try {
-        const response = await api.get('/contacts/parties', { params: { page: 1, limit: 200 } });
-        console.log('Party data:', getResponseList(response));
-        const filteredParties = getResponseList(response)
+        const list = await fetchAllPages(api, '/contacts/parties');
+        const filteredParties = list
           .filter(party => {
             const name = party.name?.toLowerCase();
             return name !== 'cashbook' && name !== 'bankbook';
@@ -448,18 +447,18 @@ const PartyMaster = () => {
       }
       
       // Refresh lists so UI always shows latest linked bank details
-      const [partyResponse, bankResponse] = await Promise.all([
-        api.get('/contacts/parties', { params: { page: 1, limit: 200 } }),
-        api.get('/banks', { params: { page: 1, limit: 500 } })
+      const [partyList, bankList] = await Promise.all([
+        fetchAllPages(api, '/contacts/parties'),
+        fetchAllPages(api, '/banks')
       ]);
-      const filteredParties = getResponseList(partyResponse)
+      const filteredParties = partyList
         .filter(party => {
           const name = party.name?.toLowerCase();
           return name !== 'cashbook' && name !== 'bankbook';
         })
         .map(mapParty);
       setParties(filteredParties);
-      setBanks(getResponseList(bankResponse));
+      setBanks(bankList);
       
       // after a successful save we reset form; when adding we keep the modal open so user can add more
       resetForm();

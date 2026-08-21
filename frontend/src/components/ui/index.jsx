@@ -306,6 +306,8 @@ export const SearchableSelect = React.forwardRef(({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [visibleLimit, setVisibleLimit] = useState(50);
+  const [placement, setPlacement] = useState("bottom");
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
   const listRef = useRef(null);
@@ -337,6 +339,8 @@ export const SearchableSelect = React.forwardRef(({
     return haystack.includes(searchTerm.toLowerCase());
   });
 
+  const visibleOptions = filteredOptions.slice(0, visibleLimit);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!containerRef.current?.contains(event.target)) {
@@ -348,11 +352,25 @@ export const SearchableSelect = React.forwardRef(({
   }, []);
 
   useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+      setPlacement("top");
+    } else {
+      setPlacement("bottom");
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) {
       setSearchTerm("");
       setFocusedIndex(-1);
+      setVisibleLimit(50);
       return;
     }
+    setVisibleLimit(50);
     const timer = window.setTimeout(() => {
       searchInputRef.current?.focus();
       searchInputRef.current?.select?.();
@@ -362,6 +380,7 @@ export const SearchableSelect = React.forwardRef(({
 
   useEffect(() => {
     setFocusedIndex(-1);
+    setVisibleLimit(50);
   }, [searchTerm]);
 
   useEffect(() => {
@@ -371,10 +390,23 @@ export const SearchableSelect = React.forwardRef(({
     }
   }, [focusedIndex]);
 
+  const handleListScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 60) {
+      setVisibleLimit((prev) => Math.min(prev + 50, filteredOptions.length));
+    }
+  };
+
   const handleSearchKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setFocusedIndex((i) => Math.min(i + 1, filteredOptions.length - 1));
+      setFocusedIndex((i) => {
+        const next = Math.min(i + 1, filteredOptions.length - 1);
+        if (next >= visibleLimit) {
+          setVisibleLimit((prev) => Math.min(prev + 50, filteredOptions.length));
+        }
+        return next;
+      });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setFocusedIndex((i) => Math.max(i - 1, 0));
@@ -416,7 +448,9 @@ export const SearchableSelect = React.forwardRef(({
       </button>
 
       {isOpen && (
-        <div className={`absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg ${dropdownClassName}`}>
+        <div
+          className={`absolute z-50 ${placement === "top" ? "bottom-full mb-1" : "top-full mt-1"} w-full rounded-md border border-gray-200 bg-white shadow-xl ${dropdownClassName}`}
+        >
           <div className="border-b p-2">
             <input
               ref={searchInputRef}
@@ -428,29 +462,40 @@ export const SearchableSelect = React.forwardRef(({
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div ref={listRef} className="max-h-64 overflow-y-auto py-1">
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((option, idx) => (
-                <button
-                  key={`${option.value}`}
-                  type="button"
-                  disabled={option.disabled}
-                  onClick={() => {
-                    if (option.disabled) return;
-                    onChange?.(option.value);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full px-3 py-2 text-left text-sm ${
-                    idx === focusedIndex
-                      ? 'bg-blue-100 text-blue-800'
-                      : String(option.value) === String(value)
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  } ${option.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
-                >
-                  {option.label}
-                </button>
-              ))
+          <div
+            ref={listRef}
+            onScroll={handleListScroll}
+            className="max-h-60 sm:max-h-64 overflow-y-auto py-1"
+          >
+            {visibleOptions.length > 0 ? (
+              <>
+                {visibleOptions.map((option, idx) => (
+                  <button
+                    key={`${option.value}-${idx}`}
+                    type="button"
+                    disabled={option.disabled}
+                    onClick={() => {
+                      if (option.disabled) return;
+                      onChange?.(option.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left text-sm ${
+                      idx === focusedIndex
+                        ? 'bg-blue-100 text-blue-800'
+                        : String(option.value) === String(value)
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    } ${option.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                {visibleLimit < filteredOptions.length && (
+                  <div className="py-1.5 px-3 text-center text-xs text-gray-500 bg-gray-50 border-t">
+                    Showing {visibleOptions.length} of {filteredOptions.length} — scroll down for more
+                  </div>
+                )}
+              </>
             ) : (
               <div className="px-3 py-2 text-sm text-gray-500">{emptyText}</div>
             )}
@@ -503,7 +548,7 @@ export const Modal = ({
           onClick={onClose}
         />
         
-        <div className={`inline-block w-full ${sizeClasses[size]} p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg ${className}`}>
+        <div className={`inline-block w-full ${sizeClasses[size]} p-6 my-8 overflow-visible text-left align-middle transition-all transform bg-white shadow-xl rounded-lg ${className}`}>
           {title && (
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">{title}</h3>

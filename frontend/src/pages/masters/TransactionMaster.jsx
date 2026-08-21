@@ -6,7 +6,7 @@ import { Button, Input, SearchableSelect } from "../../components/ui";
 import jsPDF from "jspdf";
 import useStore from "../../store";
 import api from "../../services/axiosInstance";
-import { getEntityId } from "../../services/apiUtils";
+import { getEntityId, fetchAllPages, getResponseList } from "../../services/apiUtils";
 import useSaveShortcut from "../../hooks/useSaveShortcut";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import {
@@ -277,8 +277,8 @@ const TransactionMaster = () => {
 
   const fetchParties = async () => {
     try {
-      const res = await api.get("/contacts/parties");
-      setParties(getResponseList(res));
+      const list = await fetchAllPages(api, "/contacts/parties");
+      setParties(list);
     } catch (error) {
       showToast("Failed to fetch parties", "error");
     }
@@ -286,8 +286,8 @@ const TransactionMaster = () => {
 
   const fetchSuppliers = async () => {
     try {
-      const res = await api.get("/contacts/suppliers");
-      setSuppliers(getResponseList(res));
+      const list = await fetchAllPages(api, "/contacts/suppliers");
+      setSuppliers(list);
     } catch (error) {
       showToast("Failed to fetch suppliers", "error");
     }
@@ -295,8 +295,8 @@ const TransactionMaster = () => {
 
   const fetchBooks = async () => {
     try {
-      const res = await api.get("/contacts/books");
-      setBooks(getResponseList(res));
+      const list = await fetchAllPages(api, "/contacts/books");
+      setBooks(list);
     } catch (error) {
       showToast("Failed to fetch books", "error");
     }
@@ -304,8 +304,8 @@ const TransactionMaster = () => {
 
   const fetchBanks = async () => {
     try {
-      const res = await api.get("/banks");
-      setBanks(getResponseList(res));
+      const list = await fetchAllPages(api, "/banks");
+      setBanks(list);
     } catch (error) {
       showToast("Failed to fetch banks", "error");
     }
@@ -313,9 +313,9 @@ const TransactionMaster = () => {
 
   const fetchChequeSetups = async () => {
     try {
-      const res = await api.get("/setup/cheque-setup");
+      const list = await fetchAllPages(api, "/setup/cheque-setup");
       const setupMap = {};
-      getResponseList(res).forEach((setup) => {
+      list.forEach((setup) => {
         const bankId = getEntityId(setup?.bank_id);
         if (bankId) setupMap[String(bankId)] = setup;
       });
@@ -360,7 +360,14 @@ const TransactionMaster = () => {
   }, []);
 
   useEffect(() => {
-    if (isAddModalOpen) focusFirstField();
+    if (isAddModalOpen) {
+      fetchParties();
+      fetchSuppliers();
+      fetchBooks();
+      fetchBanks();
+      fetchChequeSetups();
+      focusFirstField();
+    }
   }, [isAddModalOpen]);
 
   const getBookTransactionTypes = (book) => {
@@ -1475,8 +1482,8 @@ const TransactionMaster = () => {
                     parties
                   : suppliers
                   ).map((contact) => ({
-                    value: contact._id,
-                    label: contact.name,
+                    value: String(getEntityId(contact)),
+                    label: contact.name || "",
                   }))}
                   buttonClassName="rounded-lg"
                 />
@@ -1491,8 +1498,8 @@ const TransactionMaster = () => {
                   placeholder="Select Book (CashBook/BankBook)"
                   searchPlaceholder="Search book..."
                   options={books.map((book) => ({
-                    value: book._id,
-                    label: book.name,
+                    value: String(getEntityId(book)),
+                    label: book.name || "",
                   }))}
                   buttonClassName="rounded-lg"
                 />

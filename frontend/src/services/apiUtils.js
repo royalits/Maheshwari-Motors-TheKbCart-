@@ -23,6 +23,32 @@ export const getEntityId = (value) => {
   return value?._id || value?.id || "";
 };
 
+export const fetchAllPages = async (apiClient, url, params = {}, maxPages = 200) => {
+  let all = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore && page <= maxPages) {
+    const res = await apiClient.get(url, {
+      params: { page, limit: 200, ...params },
+    });
+    const list = getResponseList(res);
+    const meta = getResponseMeta(res);
+
+    all = [...all, ...list];
+
+    if (meta?.hasNextPage) {
+      page = Number(meta.page || page) + 1;
+    } else if (meta?.totalPages && page < meta.totalPages) {
+      page += 1;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return all;
+};
+
 export const toNumber = (value, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;

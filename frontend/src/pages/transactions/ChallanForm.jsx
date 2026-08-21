@@ -418,8 +418,8 @@ const ChallanForm = () => {
           transportRes,
           areaRes,
         ] = await Promise.all([
-          api.get("/contacts/parties", { params: { page: 1, limit: 200 } }),
-          api.get("/contacts/suppliers", { params: { page: 1, limit: 200 } }),
+          api.get("/contacts/parties", { params: { page: 1, limit: 2000 } }),
+          api.get("/contacts/suppliers", { params: { page: 1, limit: 2000 } }),
           api.get("/items", { params: { page: 1, limit: 50, search: "" } }),
           api.get("/brands", { params: { page: 1, limit: 200 } }),
           api.get("/banks", { params: { page: 1, limit: 200 } }),

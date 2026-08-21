@@ -10,6 +10,7 @@ import {
   getResponseList,
   getEntityId,
   normalizeContact,
+  fetchAllPages,
 } from "../../services/apiUtils";
 
 const INDIAN_STATES = [
@@ -163,10 +164,8 @@ const AddSupplier = () => {
     const fetchSuppliers = async () => {
       setLoading(true);
       try {
-        const response = await api.get("/contacts/suppliers", {
-          params: { page: 1, limit: 200 },
-        });
-        const filteredSuppliers = getResponseList(response)
+        const list = await fetchAllPages(api, "/contacts/suppliers");
+        const filteredSuppliers = list
           .filter(supplier => {
             const name = supplier.name?.toLowerCase();
             return name !== 'cashbook' && name !== 'bankbook';
@@ -409,10 +408,8 @@ const AddSupplier = () => {
         showToast("Supplier created successfully", "success");
       }
 
-      const response = await api.get("/contacts/suppliers", {
-        params: { page: 1, limit: 200 },
-      });
-      const filteredSuppliers = getResponseList(response)
+      const list = await fetchAllPages(api, "/contacts/suppliers");
+      const filteredSuppliers = list
         .filter(supplier => {
           const name = supplier.name?.toLowerCase();
           return name !== 'cashbook' && name !== 'bankbook';

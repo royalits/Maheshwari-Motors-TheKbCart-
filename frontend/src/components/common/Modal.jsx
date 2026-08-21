@@ -151,7 +151,7 @@ const Modal = ({
           ref={contentRef}
           onInputCapture={handleInputCapture}
           onKeyDownCapture={handleKeyDownCapture}
-          className={`relative z-10 inline-block w-full ${sizeClasses[size]} p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg`}
+          className={`relative z-10 inline-block w-full ${sizeClasses[size]} p-6 my-8 overflow-visible text-left align-middle transition-all transform bg-white shadow-xl rounded-lg`}
         >
           {/* Header */}
           {(title || showCloseButton) && (

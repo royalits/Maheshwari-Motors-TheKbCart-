@@ -11,6 +11,7 @@ import {
   getResponseList,
   normalizeContact,
   toNumber,
+  fetchAllPages,
 } from "../../services/apiUtils";
 import { getResolvedFirmMeta } from "../../utils/reportPdf";
 import { FaCalculator, FaLayerGroup, FaMoneyBillWave } from "react-icons/fa";
@@ -278,13 +279,13 @@ const OutStandings = ({
   useEffect(() => {
     const loadBaseData = async () => {
       try {
-        const [partyRes, supplierRes, bankRes] = await Promise.all([
-          api.get("/contacts/parties", { params: { page: 1, limit: 200 } }),
-          api.get("/contacts/suppliers", { params: { page: 1, limit: 200 } }),
-          api.get("/banks"),
+        const [partyList, supplierList, bankList] = await Promise.all([
+          fetchAllPages(api, "/contacts/parties"),
+          fetchAllPages(api, "/contacts/suppliers"),
+          fetchAllPages(api, "/banks"),
         ]);
 
-        const mappedParties = getResponseList(partyRes).map((contact) => {
+        const mappedParties = partyList.map((contact) => {
           const normalized = normalizeContact(contact);
           return {
             id: normalized.id,
