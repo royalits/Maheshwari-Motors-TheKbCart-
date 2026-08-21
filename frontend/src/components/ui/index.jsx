@@ -261,11 +261,21 @@ export const Input = React.forwardRef(({
 });
 Input.displayName = "Input";
 
-const normalizeOptionValue = (option) =>
-  option && typeof option === "object" ? option.value : option;
+const normalizeOptionValue = (option) => {
+  if (option === null || option === undefined) return "";
+  if (typeof option === "object") {
+    return String(option.value ?? option._id ?? option.id ?? "");
+  }
+  return String(option);
+};
 
-const normalizeOptionLabel = (option) =>
-  option && typeof option === "object" ? option.label : option;
+const normalizeOptionLabel = (option) => {
+  if (option === null || option === undefined) return "";
+  if (typeof option === "object") {
+    return String(option.label ?? option.name ?? option.title ?? option.value ?? "");
+  }
+  return String(option);
+};
 
 const buildOptionsFromChildren = (children, placeholder) => {
   const parsed = [];
@@ -290,8 +300,6 @@ export const SearchableSelect = React.forwardRef(({
   value,
   onChange,
   options = [],
-  fetchOptions,
-  selectedLabel = "",
   placeholder = "",
   disabled,
   name,
@@ -308,30 +316,18 @@ export const SearchableSelect = React.forwardRef(({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const [visibleLimit, setVisibleLimit] = useState(50);
   const [placement, setPlacement] = useState("bottom");
-  
-  // Async pagination state
-  const [asyncOptions, setAsyncOptions] = useState([]);
-  const [asyncPage, setAsyncPage] = useState(1);
-  const [hasMoreAsync, setHasMoreAsync] = useState(false);
-  const [isAsyncLoading, setIsAsyncLoading] = useState(false);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [cachedSelectedOption, setCachedSelectedOption] = useState(null);
 
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
   const listRef = useRef(null);
-  const searchDebounceRef = useRef(null);
-
-  const rawOptions = fetchOptions ? asyncOptions : options;
 
   const normalizedOptions =
     children ?
       buildOptionsFromChildren(children, placeholder)
     : [
         ...(placeholder ? [{ value: "", label: placeholder }] : []),
-        ...rawOptions.map((option) => ({
+        ...options.map((option) => ({
           value: normalizeOptionValue(option),
           label: normalizeOptionLabel(option),
           disabled: option?.disabled || false,
@@ -344,20 +340,14 @@ export const SearchableSelect = React.forwardRef(({
 
   const selectedOption =
     normalizedOptions.find((option) => String(option.value) === String(value)) ||
-    cachedSelectedOption ||
-    (selectedLabel && value ? { value, label: selectedLabel } : null) ||
     null;
 
-  const filteredOptions = fetchOptions ?
-    normalizedOptions
-  : normalizedOptions.filter((option) => {
-      const haystack = String(
-        option.searchText ?? option.label ?? option.value ?? "",
-      ).toLowerCase();
-      return haystack.includes(searchTerm.toLowerCase());
-    });
-
-  const visibleOptions = fetchOptions ? filteredOptions : filteredOptions.slice(0, visibleLimit);
+  const filteredOptions = normalizedOptions.filter((option) => {
+    const haystack = String(
+      option.searchText ?? option.label ?? option.value ?? "",
+    ).toLowerCase();
+    return haystack.includes(searchTerm.toLowerCase());
+  });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -381,72 +371,21 @@ export const SearchableSelect = React.forwardRef(({
     }
   }, [isOpen]);
 
-  // Initial load or reset when opening
   useEffect(() => {
     if (!isOpen) {
       setSearchTerm("");
       setFocusedIndex(-1);
-      setVisibleLimit(50);
       return;
     }
-    setVisibleLimit(50);
     const timer = window.setTimeout(() => {
       searchInputRef.current?.focus();
       searchInputRef.current?.select?.();
     }, 20);
-
-    if (fetchOptions) {
-      setIsAsyncLoading(true);
-      setAsyncPage(1);
-      fetchOptions({ search: "", page: 1, limit: 50 })
-        .then((res) => {
-          const items = res?.options || res?.data || (Array.isArray(res) ? res : []);
-          const hasMore =
-            res?.hasMore ??
-            res?.meta?.hasNextPage ??
-            (res?.meta?.page < res?.meta?.totalPages) ??
-            (items.length === 50);
-          setAsyncOptions(items);
-          setHasMoreAsync(hasMore);
-        })
-        .catch((err) => console.error("Error fetching options:", err))
-        .finally(() => setIsAsyncLoading(false));
-    }
-
     return () => window.clearTimeout(timer);
-  }, [isOpen, fetchOptions]);
+  }, [isOpen]);
 
-  // Debounced search for async mode
   useEffect(() => {
     setFocusedIndex(-1);
-    setVisibleLimit(50);
-
-    if (fetchOptions && isOpen) {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-      searchDebounceRef.current = setTimeout(() => {
-        setIsAsyncLoading(true);
-        setAsyncPage(1);
-        fetchOptions({ search: searchTerm, page: 1, limit: 50 })
-          .then((res) => {
-            const items = res?.options || res?.data || (Array.isArray(res) ? res : []);
-            const hasMore =
-              res?.hasMore ??
-              res?.meta?.hasNextPage ??
-              (res?.meta?.page < res?.meta?.totalPages) ??
-              (items.length === 50);
-            setAsyncOptions(items);
-            setHasMoreAsync(hasMore);
-          })
-          .catch((err) => console.error("Error searching options:", err))
-          .finally(() => setIsAsyncLoading(false));
-      }, 250);
-
-      return () => {
-        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-      };
-    }
   }, [searchTerm]);
 
   useEffect(() => {
@@ -456,46 +395,10 @@ export const SearchableSelect = React.forwardRef(({
     }
   }, [focusedIndex]);
 
-  const handleListScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop - clientHeight < 60) {
-      if (fetchOptions && hasMoreAsync && !isFetchingMore && !isAsyncLoading) {
-        setIsFetchingMore(true);
-        const nextPage = asyncPage + 1;
-        fetchOptions({ search: searchTerm, page: nextPage, limit: 50 })
-          .then((res) => {
-            const newItems = res?.options || res?.data || (Array.isArray(res) ? res : []);
-            const hasMore =
-              res?.hasMore ??
-              res?.meta?.hasNextPage ??
-              (res?.meta?.page < res?.meta?.totalPages) ??
-              (newItems.length === 50);
-            setAsyncOptions((prev) => {
-              const seen = new Set(prev.map((opt) => String(normalizeOptionValue(opt))));
-              const deduped = newItems.filter((opt) => !seen.has(String(normalizeOptionValue(opt))));
-              return [...prev, ...deduped];
-            });
-            setAsyncPage(nextPage);
-            setHasMoreAsync(hasMore);
-          })
-          .catch((err) => console.error("Error loading more options:", err))
-          .finally(() => setIsFetchingMore(false));
-      } else if (!fetchOptions) {
-        setVisibleLimit((prev) => Math.min(prev + 50, filteredOptions.length));
-      }
-    }
-  };
-
   const handleSearchKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setFocusedIndex((i) => {
-        const next = Math.min(i + 1, filteredOptions.length - 1);
-        if (!fetchOptions && next >= visibleLimit) {
-          setVisibleLimit((prev) => Math.min(prev + 50, filteredOptions.length));
-        }
-        return next;
-      });
+      setFocusedIndex((i) => Math.min(i + 1, filteredOptions.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setFocusedIndex((i) => Math.max(i - 1, 0));
@@ -503,7 +406,6 @@ export const SearchableSelect = React.forwardRef(({
       e.preventDefault();
       const opt = filteredOptions[focusedIndex];
       if (opt && !opt.disabled) {
-        setCachedSelectedOption(opt);
         onChange?.(opt.value);
         setIsOpen(false);
       }
@@ -554,63 +456,30 @@ export const SearchableSelect = React.forwardRef(({
           </div>
           <div
             ref={listRef}
-            onScroll={handleListScroll}
             className="max-h-60 sm:max-h-64 overflow-y-auto py-1"
           >
-            {isAsyncLoading ? (
-              <div className="flex items-center justify-center py-6 text-sm text-gray-500 gap-2">
-                <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Loading...</span>
-              </div>
-            ) : visibleOptions.length > 0 ? (
-              <>
-                {visibleOptions.map((option, idx) => (
-                  <button
-                    key={`${option.value}-${idx}`}
-                    type="button"
-                    disabled={option.disabled}
-                    onClick={() => {
-                      if (option.disabled) return;
-                      setCachedSelectedOption(option);
-                      onChange?.(option.value);
-                      setIsOpen(false);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-sm ${
-                      idx === focusedIndex
-                        ? 'bg-blue-100 text-blue-800'
-                        : String(option.value) === String(value)
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-50'
-                    } ${option.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-                
-                {/* Async scroll loader / indicator */}
-                {fetchOptions && isFetchingMore && (
-                  <div className="flex items-center justify-center py-2 text-xs text-blue-600 gap-2 bg-blue-50/50">
-                    <svg className="animate-spin h-3.5 w-3.5 text-blue-600" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    <span>Loading next 50 items...</span>
-                  </div>
-                )}
-                {fetchOptions && hasMoreAsync && !isFetchingMore && (
-                  <div className="py-1 px-3 text-center text-xs text-gray-400 bg-gray-50/50 border-t">
-                    Scroll down for more results
-                  </div>
-                )}
-                {!fetchOptions && visibleLimit < filteredOptions.length && (
-                  <div className="py-1.5 px-3 text-center text-xs text-gray-500 bg-gray-50 border-t">
-                    Showing {visibleOptions.length} of {filteredOptions.length} — scroll down for more
-                  </div>
-                )}
-              </>
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, idx) => (
+                <button
+                  key={`${option.value}-${idx}`}
+                  type="button"
+                  disabled={option.disabled}
+                  onClick={() => {
+                    if (option.disabled) return;
+                    onChange?.(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm ${
+                    idx === focusedIndex
+                      ? 'bg-blue-100 text-blue-800'
+                      : String(option.value) === String(value)
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  } ${option.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+                >
+                  {option.label}
+                </button>
+              ))
             ) : (
               <div className="px-3 py-4 text-center text-sm text-gray-500">{emptyText}</div>
             )}

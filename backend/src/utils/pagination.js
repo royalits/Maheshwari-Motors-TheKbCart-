@@ -3,7 +3,13 @@ import env from "../config/env.js";
 class Pagination {
   static getParams(query) {
     const raw = parseInt(query.limit);
-    const all = raw === -1;
+    const all =
+      raw === -1 ||
+      raw === 0 ||
+      query.all === true ||
+      query.all === "true" ||
+      query.all === 1 ||
+      query.all === "1";
     const page = all ? 1 : Math.max(1, parseInt(query.page) || 1);
     const limit =
       all ? 0 : (
