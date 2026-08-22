@@ -220,12 +220,26 @@ class ContactService {
       select,
     });
 
-    contacts.data = contacts.data.map((c) => ({
-      ...c,
-      balance:
-        isCompact ? (c.balance || 0)
-        : (isGst === 1 || isGst === true ? (c.gst_balance || 0) : (c.nongst_balance || 0)),
-    }));
+    contacts.data = contacts.data
+      .map((c) => ({
+        ...c,
+        balance:
+          isCompact ? (c.balance || 0)
+          : (isGst === 1 || isGst === true ? (c.gst_balance || 0) : (c.nongst_balance || 0)),
+      }))
+      .sort((a, b) => {
+        const aName = (a.name || "").trim().toUpperCase();
+        const bName = (b.name || "").trim().toUpperCase();
+        const getRank = (name) => {
+          if (name === "CASHBOOK") return 1;
+          if (name === "BANKBOOK") return 2;
+          return 3;
+        };
+        const rankA = getRank(aName);
+        const rankB = getRank(bName);
+        if (rankA !== rankB) return rankA - rankB;
+        return aName.localeCompare(bName, undefined, { numeric: true, sensitivity: "base" });
+      });
 
     return contacts;
   }

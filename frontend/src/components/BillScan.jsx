@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { FaCamera, FaTimes, FaSpinner, FaCheckCircle, FaTrash, FaPlus, FaFileImage } from 'react-icons/fa';
+import { Input } from './ui';
 import useStore from '../store';
 import { normalizeItemScanValue } from '../utils/itemScan';
 
@@ -785,11 +786,10 @@ const BillScan = ({ onScanComplete, onClose, initialStep = 'upload' }) => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                    <input
+                    <Input
                       type="date"
                       value={extractedData.date}
-                      onChange={(e) => handleInputChange('date', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={(val) => handleInputChange('date', val)}
                     />
                   </div>
                   

@@ -22,6 +22,7 @@ import {
   Area,
 } from "recharts";
 import { exportToPDF } from "../../utils/pdfExport";
+import { Input } from "../../components/ui";
 import api from "../../services/axiosInstance";
 import { getFinancialYearStartDate } from "../../utils/dateHelpers";
 import { getResponseData, toNumber } from "../../services/apiUtils";
@@ -233,24 +234,19 @@ const GSTReport = () => {
           </select>
           {selectedPeriod === "custom" && (
             <>
-              <input
+              <Input
                 type="date"
-                placeholder="From"
+                placeholder="From Date"
                 value={dateFrom}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  console.log("Date input value:", newValue);
-                  console.log("Setting date from:", newValue);
+                onChange={(newValue) => {
                   setDateFrom(newValue);
                 }}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
-              <input
+              <Input
                 type="date"
-                placeholder="To"
+                placeholder="To Date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                onChange={(newValue) => setDateTo(newValue)}
               />
             </>
           )}

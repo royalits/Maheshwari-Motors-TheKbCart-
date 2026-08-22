@@ -1216,17 +1216,16 @@ const OutStandings = ({
                 Payment Date
               </label>
               <Input
+                type="date"
                 value={payment.date}
                 disabled={!!selectedTxnId}
                 onChange={(value) =>
                   setPayment((prev) => ({
                     ...prev,
-                    date: formatDateInput(value),
+                    date: formatDateForDisplay(value),
                   }))
                 }
                 placeholder="dd/mm/yyyy"
-                inputMode="numeric"
-                maxLength={10}
               />
             </div>
             <div className="md:col-span-2">

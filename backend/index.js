@@ -1,9 +1,10 @@
+import dns from "node:dns";
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+
 import initializeApp from "./src/app.js";
 console.log("Starting application from:", process.cwd());
 
 import { connectDB } from "./src/config/database.js";
-import dns from "node:dns";
-dns.setServers(["1.1.1.1"]);
 
 class Server {
   async start() {

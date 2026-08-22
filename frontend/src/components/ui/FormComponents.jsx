@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { SearchableSelect } from './index';
+import { FaCalendarAlt } from 'react-icons/fa';
 import {
   normalizeDisplayDateInput,
   toDisplayDate,
@@ -20,6 +21,94 @@ export const FormField = ({ label, error, required, children, className = "" }) 
 );
 
 export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = true, allowNegative = false, trimSpaces = true, ...props }, ref) => {
+  const hiddenDateRef = useRef(null);
+
+  if (props.type === 'date') {
+    const isoValue = toISODate(props.value) || '';
+    const displayValue = toDisplayDate(props.value) || props.value || '';
+
+    const handleTextChange = (e) => {
+      if (!props.onChange) return;
+      const rawText = e.target.value;
+      const normalized = normalizeDisplayDateInput(rawText);
+      const iso = toISODate(normalized);
+      props.onChange(iso || normalized, e);
+    };
+
+    const handlePickerChange = (e) => {
+      if (!props.onChange) return;
+      const iso = e.target.value;
+      props.onChange(iso || '', e);
+    };
+
+    const openPickerSafely = () => {
+      if (props.disabled) return;
+      if (hiddenDateRef.current && typeof hiddenDateRef.current.showPicker === 'function') {
+        try {
+          hiddenDateRef.current.showPicker();
+        } catch (err) {
+          // Handled silently if browser restricts showPicker invocation
+        }
+      }
+    };
+
+    const handleFocus = (e) => {
+      if (props.onFocus) props.onFocus(e);
+      openPickerSafely();
+    };
+
+    const handleKeyDownInternal = (e) => {
+      if (props.onKeyDown) props.onKeyDown(e);
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+        openPickerSafely();
+      }
+    };
+
+    const handleOpenPicker = (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      openPickerSafely();
+    };
+
+    return (
+      <div className={`relative inline-flex items-center w-full ${props.disabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
+        <input
+          {...props}
+          ref={ref}
+          type="text"
+          value={displayValue}
+          onChange={handleTextChange}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDownInternal}
+          placeholder={props.placeholder || 'dd/mm/yyyy'}
+          className={`w-full pl-3 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            error ? 'border-red-300' : 'border-gray-300'
+          } ${props.className || ''}`}
+        />
+        <input
+          ref={hiddenDateRef}
+          type="date"
+          tabIndex={-1}
+          aria-hidden="true"
+          value={isoValue}
+          onChange={handlePickerChange}
+          disabled={props.disabled}
+          className="absolute right-0 top-0 w-8 h-full opacity-0 pointer-events-none"
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={handleOpenPicker}
+          disabled={props.disabled}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-blue-600 focus:outline-none transition-colors"
+          title="Choose date"
+        >
+          <FaCalendarAlt className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
   const handleWheel = (e) => {
     if (props.type === 'number') {
       e.target.blur();
@@ -30,34 +119,25 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
     if (!props.onChange) return;
     const value = e.target.value;
 
-    if (props.type === 'date') {
-      const displayValue = normalizeDisplayDateInput(value);
-      props.onChange(toISODate(displayValue) || displayValue);
-      return;
-    }
-
     if (props.type !== 'number') {
       if (!allowSpaces) {
         e.target.value = value.replace(/\s/g, '');
       }
-      props.onChange(value);
+      props.onChange(value, e);
       return;
     }
 
     // number type
-    if (value === '') { props.onChange(value); return; }
+    if (value === '') { props.onChange(value, e); return; }
     const numValue = parseFloat(value);
     if (!allowZero && numValue === 0) return;
     if (!allowNegative && numValue < 0) e.target.value = Math.abs(numValue).toString();
-    props.onChange(e.target.value);
+    props.onChange(e.target.value, e);
   };
   
   return (
     <input
       {...props}
-      type={props.type === 'date' ? 'text' : props.type}
-      value={props.type === 'date' ? toDisplayDate(props.value) || props.value || '' : props.value}
-      placeholder={props.type === 'date' ? props.placeholder || 'dd/mm/yyyy' : props.placeholder}
       ref={ref}
       onChange={handleChange}
       onWheel={handleWheel}
@@ -67,6 +147,7 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
     />
   );
 });
+Input.displayName = 'Input';
 
 export const Select = ({ error, children, ...props }) => (
   <SearchableSelect

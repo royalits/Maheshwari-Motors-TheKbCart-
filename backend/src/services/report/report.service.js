@@ -138,8 +138,8 @@ class ReportService {
     const dr = this._dateRange(query.from_date, query.to_date);
     if (dr) filter.date = dr;
 
-    if (contactType === "party" && (query.agent_id || query.area_id)) {
-      const cf = { user_id: uid, type: "party" };
+    if (query.agent_id || query.area_id) {
+      const cf = { user_id: uid, type: contactType };
       if (query.agent_id)
         cf.agent_id = new mongoose.Types.ObjectId(query.agent_id);
       if (query.area_id)
@@ -155,9 +155,7 @@ class ReportService {
     const bills = await Bill.find(filter)
       .populate(
         "contact_id",
-        contactType === "party"
-          ? "name city gstin phone agent_id area_id"
-          : "name city gstin",
+        "name city gstin phone agent_id area_id",
       )
       .populate({
         path: "challan_ids",

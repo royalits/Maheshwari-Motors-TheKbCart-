@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {  FaSort, FaSortUp, FaSortDown, FaTrash, FaPlus } from 'react-icons/fa';
+import {  FaSort, FaSortUp, FaSortDown, FaTrash, FaPlus, FaCalendarAlt } from 'react-icons/fa';
 import {
   normalizeDisplayDateInput,
   toDisplayDate,
@@ -219,6 +219,8 @@ export const Input = React.forwardRef(({
   value,
   onChange,
   onBlur,
+  onFocus,
+  onKeyDown,
   placeholder,
   disabled,
   className = "",
@@ -228,31 +230,110 @@ export const Input = React.forwardRef(({
   trimSpaces = true,
   error,
   ...props
-	}, ref) => {
-	  const handleChange = (e) => {
-	    if (!onChange) return;
-	    if (type === "date") {
-	      const displayValue = normalizeDisplayDateInput(e.target.value);
-	      onChange(toISODate(displayValue) || displayValue, e);
-	      return;
-	    }
-	    // If onChange expects a plain value (AddItem style), detect by checking arity hint
-    // We always call with the event so callers using e.target.value still work,
-    // but we also support callers expecting a plain string by passing e.target.value.
-    // To stay backward-compatible with both patterns, call onChange with the event
-    // AND provide e.target.value as second arg — but the real fix is:
-    // Call onChange(e.target.value) so all callers get a plain string.
+}, ref) => {
+  const hiddenDateRef = useRef(null);
+
+  if (type === "date") {
+    const isoValue = toISODate(value) || "";
+    const displayValue = toDisplayDate(value) || value || "";
+
+    const handleTextChange = (e) => {
+      if (!onChange) return;
+      const rawText = e.target.value;
+      const normalized = normalizeDisplayDateInput(rawText);
+      const iso = toISODate(normalized);
+      onChange(iso || normalized, e);
+    };
+
+    const handlePickerChange = (e) => {
+      if (!onChange) return;
+      const iso = e.target.value;
+      onChange(iso || "", e);
+    };
+
+    const openPickerSafely = () => {
+      if (disabled) return;
+      if (hiddenDateRef.current && typeof hiddenDateRef.current.showPicker === "function") {
+        try {
+          hiddenDateRef.current.showPicker();
+        } catch (err) {
+          // Handled silently if browser restricts showPicker invocation
+        }
+      }
+    };
+
+    const handleFocus = (e) => {
+      if (onFocus) onFocus(e);
+      openPickerSafely();
+    };
+
+    const handleKeyDownInternal = (e) => {
+      if (onKeyDown) onKeyDown(e);
+      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+        openPickerSafely();
+      }
+    };
+
+    const handleOpenPicker = (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      openPickerSafely();
+    };
+
+    return (
+      <div className={`relative inline-flex items-center w-full ${disabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
+        <input
+          ref={ref}
+          type="text"
+          value={displayValue}
+          onChange={handleTextChange}
+          onFocus={handleFocus}
+          onBlur={onBlur}
+          onKeyDown={handleKeyDownInternal}
+          placeholder={placeholder || "dd/mm/yyyy"}
+          disabled={disabled}
+          className={`w-full pl-3 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 ${
+            error ? 'border-red-300' : 'border-gray-300'
+          } ${className}`}
+          {...props}
+        />
+        <input
+          ref={hiddenDateRef}
+          type="date"
+          tabIndex={-1}
+          aria-hidden="true"
+          value={isoValue}
+          onChange={handlePickerChange}
+          disabled={disabled}
+          className="absolute right-0 top-0 w-8 h-full opacity-0 pointer-events-none"
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={handleOpenPicker}
+          disabled={disabled}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-blue-600 focus:outline-none transition-colors"
+          title="Choose date"
+        >
+          <FaCalendarAlt className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
+  const handleChange = (e) => {
+    if (!onChange) return;
     onChange(e.target.value, e);
   };
 
   return (
-	    <input
-	      ref={ref}
-	      type={type === "date" ? "text" : type}
-	      value={type === "date" ? toDisplayDate(value) || value || "" : value}
-	      onChange={handleChange}
-	      onBlur={onBlur}
-	      placeholder={type === "date" ? placeholder || "dd/mm/yyyy" : placeholder}
+    <input
+      ref={ref}
+      type={type}
+      value={value}
+      onChange={handleChange}
+      onBlur={onBlur}
+      placeholder={placeholder}
       disabled={disabled}
       className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 ${error ? 'border-red-300' : ''} ${className}`}
       {...props}

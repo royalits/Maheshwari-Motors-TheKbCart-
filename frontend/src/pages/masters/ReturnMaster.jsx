@@ -9,7 +9,7 @@ import {
   FaPrint,
 } from "react-icons/fa";
 import { DataTable, DeleteConfirmDialog, Modal } from "../../components/common";
-import { Button } from "../../components/ui";
+import { Button, Input } from "../../components/ui";
 import useSaveShortcut from "../../hooks/useSaveShortcut";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import useStore from "../../store";
@@ -24,7 +24,7 @@ import {
   normalizeItem,
   toNumber,
 } from "../../services/apiUtils";
-import { normalizeDisplayDateInput } from "../../utils/dateHelpers";
+import { normalizeDisplayDateInput, toDisplayDate } from "../../utils/dateHelpers";
 import useFirmBranding from "../../hooks/useFirmBranding";
 
 import jsPDF from "jspdf";
@@ -1729,17 +1729,16 @@ const ReturnMaster = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Date
               </label>
-              <input
-                type="text"
+              <Input
+                type="date"
                 placeholder="dd/mm/yyyy"
                 value={formData.date}
-                onChange={(event) => {
+                onChange={(val) => {
                   setFormData((prev) => ({
                     ...prev,
-                    date: normalizeDisplayDateInput(event.target.value),
+                    date: toDisplayDate(val) || val,
                   }));
                 }}
-                className="w-full px-3 py-2 border rounded-md text-sm"
               />
             </div>
 

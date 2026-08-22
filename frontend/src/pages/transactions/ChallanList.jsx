@@ -10,7 +10,7 @@ import {
   FaPrint,
 } from "react-icons/fa";
 import { DataTable, Modal, DeleteConfirmDialog } from "../../components/common";
-import { Button } from "../../components/ui";
+import { Button, Input } from "../../components/ui";
 import useStore from "../../store";
 import useFirmBranding from "../../hooks/useFirmBranding";
 import api from "../../services/axiosInstance";
@@ -1163,28 +1163,26 @@ const ChallanList = () => {
             <label className="block text-xs font-medium text-gray-600 mb-1">
               From Date
             </label>
-            <input
-              type="text"
+            <Input
+              type="date"
               value={inputFilters.fromDate}
-              onChange={(e) => {
-                updateInputFilters({ fromDate: normalizeDisplayDateInput(e.target.value) });
+              onChange={(val) => {
+                updateInputFilters({ fromDate: val });
               }}
               placeholder="dd/mm/yyyy"
-              className="w-full px-2 py-2 border rounded-md text-xs sm:text-sm"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
               To Date
             </label>
-            <input
-              type="text"
+            <Input
+              type="date"
               value={inputFilters.toDate}
-              onChange={(e) => {
-                updateInputFilters({ toDate: normalizeDisplayDateInput(e.target.value) });
+              onChange={(val) => {
+                updateInputFilters({ toDate: val });
               }}
               placeholder="dd/mm/yyyy"
-              className="w-full px-2 py-2 border rounded-md text-xs sm:text-sm"
             />
           </div>
           <div className="lg:col-span-2">

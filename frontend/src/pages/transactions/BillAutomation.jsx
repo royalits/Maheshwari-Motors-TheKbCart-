@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaPlus, FaPenToSquare, FaTrash, FaMoneyBillTransfer } from "react-icons/fa6";
-import { Button } from "../../components/ui";
+import { Button, Input } from "../../components/ui";
 import { DataTable, Modal, DeleteConfirmDialog } from "../../components/common";
 import useStore from "../../store";
 import api from "../../services/axiosInstance";
@@ -561,9 +561,6 @@ const BillAutomation = () => {
               placeholder="Enter target amount for bill generation"
               required
             />
-            {/* <p className="text-xs text-gray-500 mt-1">
-              Bills will be generated to match this amount
-            </p> */}
           </div>
 
           {/* Date Range */}
@@ -572,17 +569,16 @@ const BillAutomation = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 From Date <span className="text-red-500">*</span>
               </label>
-              <input
+              <Input
                 type="date"
                 placeholder="dd/mm/yyyy"
-                value={toISO(formData.from_date)}
-                onChange={(e) =>
+                value={formData.from_date}
+                onChange={(val) =>
                   setFormData((prev) => ({
                     ...prev,
-                    from_date: toDisplay(e.target.value),
+                    from_date: toDisplay(val) || val,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
@@ -590,17 +586,16 @@ const BillAutomation = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 To Date <span className="text-red-500">*</span>
               </label>
-              <input
+              <Input
                 type="date"
                 placeholder="dd/mm/yyyy"
-                value={toISO(formData.to_date)}
-                onChange={(e) =>
+                value={formData.to_date}
+                onChange={(val) =>
                   setFormData((prev) => ({
                     ...prev,
-                    to_date: toDisplay(e.target.value),
+                    to_date: toDisplay(val) || val,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
@@ -623,10 +618,6 @@ const BillAutomation = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0 = Disabled, 1-100 = Bills per day"
             />
-            {/* <p className="text-xs text-gray-500 mt-1">
-              Set to 0 to disable per-day billing. Set to 3, 4, 5, etc. to generate that many bills per day.
-              Rule will auto-disable when stock runs out.
-            </p> */}
           </div>
 
           {/* Auto Convert Toggle */}

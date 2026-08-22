@@ -12,8 +12,22 @@ import {
 } from "../../services/apiUtils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { FaPrint, FaSyncAlt, FaDownload, FaFileAlt } from "react-icons/fa";
+import {
+  FaPrint,
+  FaSyncAlt,
+  FaDownload,
+  FaFileAlt,
+  FaChartLine,
+  FaShoppingCart,
+  FaCashRegister,
+  FaBalanceScale,
+  FaCalendarAlt,
+  FaAngleDown,
+  FaAngleUp,
+  FaArrowRight,
+} from "react-icons/fa";
 import { getFinancialYearStartDate, getTodayDate } from "../../utils/dateHelpers";
+import { formatCurrency } from "../../utils";
 import {
   addBrandedReportFooters,
   drawBrandedReportHeader,
@@ -46,6 +60,14 @@ const PurchaseDateWiseReport = () => {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+
+  // Top Dashboard Metrics State
+  const [dashboardSales, setDashboardSales] = useState([]);
+  const [dashboardPurchases, setDashboardPurchases] = useState([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardMonth, setDashboardMonth] = useState("all");
+  const [showMonthlyBreakdown, setShowMonthlyBreakdown] = useState(false);
+
   const fetchPagedList = async (url, params = {}, maxPages = 200) => {
     let all = [];
     let page = 1;
@@ -74,6 +96,32 @@ const PurchaseDateWiseReport = () => {
 
     return all;
   };
+
+  const loadDashboardData = async () => {
+    setDashboardLoading(true);
+    try {
+      const [salesData, purchaseData] = await Promise.all([
+        fetchPagedList("/reports/sales/details", {
+          from_date: getFinancialYearStartDate(),
+          to_date: getTodayDate(),
+        }),
+        fetchPagedList("/reports/purchase/details", {
+          from_date: getFinancialYearStartDate(),
+          to_date: getTodayDate(),
+        }),
+      ]);
+      setDashboardSales(salesData);
+      setDashboardPurchases(purchaseData);
+    } catch (err) {
+      console.error("Failed to load dashboard metrics data", err);
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
   useEffect(() => {
     const loadMasters = async () => {
@@ -225,33 +273,218 @@ const PurchaseDateWiseReport = () => {
 
   const viewModes = useMemo(() => {
     const contactLabel = filters.reportType === "sale" ? "Party" : "Supplier";
-    const modes = [
-      { value: "detail", label: "Detail" },
+    return [
+      { value: "detail", label: "Detail (Item Wise Lines)" },
+      { value: "bill", label: "Bill / Date Wise (Amount Only)" },
+      { value: "month", label: "Monthly Summary (Amount Only)" },
       { value: "party", label: `${contactLabel} Wise` },
       { value: "item", label: "Item Wise" },
       { value: "brand", label: "Brand Wise" },
+      { value: "agent", label: "Agent Wise" },
+      { value: "area", label: "Area Wise" },
     ];
-    if (filters.reportType === "sale") {
-      modes.push({ value: "agent", label: "Agent Wise" });
-      modes.push({ value: "area", label: "Area Wise" });
-    }
-    return modes;
   }, [filters.reportType]);
 
   const appliedViewModes = useMemo(() => {
     const contactLabel = applied.reportType === "sale" ? "Party" : "Supplier";
-    const modes = [
-      { value: "detail", label: "Detail" },
+    return [
+      { value: "detail", label: "Detail (Item Wise Lines)" },
+      { value: "bill", label: "Bill / Date Wise (Amount Only)" },
+      { value: "month", label: "Monthly Summary (Amount Only)" },
       { value: "party", label: `${contactLabel} Wise` },
       { value: "item", label: "Item Wise" },
       { value: "brand", label: "Brand Wise" },
+      { value: "agent", label: "Agent Wise" },
+      { value: "area", label: "Area Wise" },
     ];
-    if (applied.reportType === "sale") {
-      modes.push({ value: "agent", label: "Agent Wise" });
-      modes.push({ value: "area", label: "Area Wise" });
-    }
-    return modes;
   }, [applied.reportType]);
+
+  const availableMonths = useMemo(() => {
+    const monthSet = new Map();
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1; // 1 to 12
+    const currentKey = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+
+    const addMonth = (y, m) => {
+      // Strictly prevent future months
+      if (y > currentYear || (y === currentYear && m > currentMonth)) return;
+      const key = `${y}-${String(m).padStart(2, "0")}`;
+      if (!monthSet.has(key)) {
+        const isCurrent = key === currentKey;
+        monthSet.set(key, {
+          key,
+          label: `${monthNames[m - 1]} ${y}${isCurrent ? " (Current)" : ""}`,
+          year: y,
+          month: m,
+        });
+      }
+    };
+
+    // 1. Process all months present in transaction records
+    const processBillDate = (dateVal) => {
+      if (!dateVal) return;
+      const d = new Date(dateVal);
+      if (Number.isNaN(d.getTime())) return;
+      addMonth(d.getFullYear(), d.getMonth() + 1);
+    };
+
+    dashboardSales.forEach((b) => processBillDate(b?.date || b?.createdAt));
+    dashboardPurchases.forEach((b) => processBillDate(b?.date || b?.createdAt));
+
+    // 2. Ensure all months from Financial Year Start (or past months) up to today's month are included
+    const fyStart = getFinancialYearStartDate();
+    let startYear = currentYear;
+    let startMonth = 4;
+    if (fyStart) {
+      const parts = fyStart.split("-").map(Number);
+      if (parts.length >= 2 && !Number.isNaN(parts[0])) {
+        startYear = parts[0];
+        startMonth = parts[1] || 4;
+      }
+    } else {
+      startYear = currentMonth >= 4 ? currentYear : currentYear - 1;
+      startMonth = 4;
+    }
+
+    let iterDate = new Date(startYear, startMonth - 1, 1);
+    const endDate = new Date(currentYear, currentMonth - 1, 1);
+
+    while (iterDate <= endDate) {
+      addMonth(iterDate.getFullYear(), iterDate.getMonth() + 1);
+      iterDate.setMonth(iterDate.getMonth() + 1);
+    }
+
+    // Always include current month
+    addMonth(currentYear, currentMonth);
+
+    // Return sorted newest month first (descending: current month -> previous months)
+    return Array.from(monthSet.values()).sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+  }, [dashboardSales, dashboardPurchases]);
+
+  const dashboardMetrics = useMemo(() => {
+    const filterByMonth = (bills, targetMonthKey) => {
+      if (targetMonthKey === "all") return bills;
+      return bills.filter((b) => {
+        const dateVal = b?.date || b?.createdAt;
+        if (!dateVal) return false;
+        const d = new Date(dateVal);
+        if (Number.isNaN(d.getTime())) return false;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        return `${y}-${m}` === targetMonthKey;
+      });
+    };
+
+    const aggregateBills = (bills) => {
+      let billCount = bills.length;
+      let lineCount = 0;
+      let qty = 0;
+      let taxable = 0;
+      let gst = 0;
+      let settlementDiscount = 0;
+      let amount = 0;
+
+      bills.forEach((bill) => {
+        settlementDiscount += toNumber(
+          bill?.settlement_discount ?? bill?.settlementDiscount,
+          0,
+        );
+        amount += toNumber(
+          bill?.net_amount ?? bill?.total_amount ?? bill?.amount,
+          0,
+        );
+
+        const items = bill?.items || [];
+        lineCount += items.length;
+        items.forEach((item) => {
+          qty += toNumber(item?.quantity ?? item?.pcs, 0);
+          taxable += toNumber(item?.taxable_amount, 0);
+          gst += toNumber(item?.gst_amount, 0);
+        });
+      });
+
+      return {
+        billCount,
+        lineCount,
+        qty,
+        taxable,
+        gst,
+        settlementDiscount,
+        amount,
+      };
+    };
+
+    const filteredSales = filterByMonth(dashboardSales, dashboardMonth);
+    const filteredPurchases = filterByMonth(dashboardPurchases, dashboardMonth);
+
+    const salesAgg = aggregateBills(filteredSales);
+    const purchaseAgg = aggregateBills(filteredPurchases);
+
+    const netDiff = salesAgg.amount - purchaseAgg.amount;
+    const marginPercent =
+      salesAgg.amount > 0 ? (netDiff / salesAgg.amount) * 100 : 0;
+    const netGstLiability = salesAgg.gst - purchaseAgg.gst;
+
+    const monthlyBreakdown = availableMonths.map((m) => {
+      const sBills = filterByMonth(dashboardSales, m.key);
+      const pBills = filterByMonth(dashboardPurchases, m.key);
+      const sAgg = aggregateBills(sBills);
+      const pAgg = aggregateBills(pBills);
+      const diff = sAgg.amount - pAgg.amount;
+      const margin = sAgg.amount > 0 ? (diff / sAgg.amount) * 100 : 0;
+      return {
+        ...m,
+        sales: sAgg,
+        purchases: pAgg,
+        netDiff: diff,
+        marginPercent: margin,
+      };
+    });
+
+    return {
+      sales: salesAgg,
+      purchases: purchaseAgg,
+      netDiff,
+      marginPercent,
+      netGstLiability,
+      monthlyBreakdown,
+    };
+  }, [dashboardSales, dashboardPurchases, dashboardMonth, availableMonths]);
+
+  const handleApplyMonthToReport = (monthKey) => {
+    if (monthKey === "all") {
+      const newFrom = getFinancialYearStartDate();
+      const newTo = getTodayDate();
+      const updatedFilters = {
+        ...filters,
+        dateFrom: newFrom,
+        dateTo: newTo,
+      };
+      setFilters(updatedFilters);
+      handleView(updatedFilters);
+    } else {
+      const [y, m] = monthKey.split("-").map(Number);
+      const start = `${y}-${String(m).padStart(2, "0")}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const end = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const updatedFilters = {
+        ...filters,
+        dateFrom: start,
+        dateTo: end,
+      };
+      setFilters(updatedFilters);
+      handleView(updatedFilters);
+    }
+  };
 
   const handleReportTypeChange = (type) => {
     setFilters((prev) => ({
@@ -264,27 +497,22 @@ const PurchaseDateWiseReport = () => {
     }));
   };
 
-  const handleView = async () => {
+  const handleView = async (overrideFilters = null) => {
+    const activeFilters = overrideFilters || filters;
     setLoading(true);
     try {
       const endpoint =
-        filters.reportType === "sale"
+        activeFilters.reportType === "sale"
           ? "/reports/sales/details"
           : "/reports/purchase/details";
       const bills = await fetchPagedList(endpoint, {
-        from_date: filters.dateFrom || undefined,
-        to_date: filters.dateTo || undefined,
-        contact_id: filters.contactId || undefined,
-        item_id: filters.itemId || undefined,
-        brand_id: filters.brandId || undefined,
-        agent_id:
-          filters.reportType === "sale"
-            ? filters.agentId || undefined
-            : undefined,
-        area_id:
-          filters.reportType === "sale"
-            ? filters.areaId || undefined
-            : undefined,
+        from_date: activeFilters.dateFrom || undefined,
+        to_date: activeFilters.dateTo || undefined,
+        contact_id: activeFilters.contactId || undefined,
+        item_id: activeFilters.itemId || undefined,
+        brand_id: activeFilters.brandId || undefined,
+        agent_id: activeFilters.agentId || undefined,
+        area_id: activeFilters.areaId || undefined,
       });
 
       const mapped = bills.flatMap((bill) => {
@@ -293,11 +521,11 @@ const PurchaseDateWiseReport = () => {
         const billDate = bill?.date || bill?.createdAt || null;
         const contact = bill?.contact || bill?.contact_id || {};
         const contactId = getEntityId(contact);
-        const contactName = contact?.name || "Unknown";
-        const agentId = getEntityId(contact?.agent_id);
-        const areaId = getEntityId(contact?.area_id);
-        const agentName = agentMap[String(agentId)] || "-";
-        const areaName = areaMap[String(areaId)] || "-";
+        const contactName = contact?.name || bill?.contact_name || "Unknown";
+        const agentId = getEntityId(contact?.agent_id) || getEntityId(bill?.agent_id);
+        const areaId = getEntityId(contact?.area_id) || getEntityId(bill?.area_id);
+        const agentName = agentMap[String(agentId)] || contact?.agent_name || "-";
+        const areaName = areaMap[String(areaId)] || contact?.area_name || "-";
         const billSettlementDiscount = toNumber(
           bill?.settlement_discount ?? bill?.settlementDiscount,
           0,
@@ -343,8 +571,10 @@ const PurchaseDateWiseReport = () => {
       });
 
       setRows(mapped);
+      setApplied(activeFilters);
+      setCurrentPage(1);
     } catch (error) {
-      console.error("Failed to load purchase report", error);
+      console.error("Failed to load report", error);
     } finally {
       setLoading(false);
     }
@@ -354,74 +584,75 @@ const PurchaseDateWiseReport = () => {
     setFilters(INITIAL_FILTERS);
     setApplied(INITIAL_FILTERS);
     setRows([]);
+    setDashboardMonth("all");
+    loadDashboardData();
   };
 
-  const detailColumnLabels = useMemo(() => (
-    applied.reportType === "sale"
-      ? ["Date", "Bill No", "Party", "Item", "Brand", "Agent", "Area", "Qty", "Rate", "Dis%", "SpDis%", "Taxable", "GST%", "GST Amt", "Cumm Balance", "Sett. Disc", "Net Amt"]
-      : ["Date", "Bill No", "Supplier", "Item", "Brand", "Qty", "Rate", "Dis%", "SpDis%", "Taxable", "GST%", "GST Amt", "Cumm Balance", "Sett. Disc", "Net Amt"]
-  ), [applied.reportType]);
+  const detailColumnLabels = useMemo(() => {
+    const contactLabel = applied.reportType === "sale" ? "Party" : "Supplier";
+    return [
+      "Date",
+      "Bill No",
+      contactLabel,
+      "Item",
+      "Brand",
+      "Agent",
+      "Area",
+      "Qty",
+      "Rate",
+      "Dis%",
+      "SpDis%",
+      "Taxable",
+      "GST%",
+      "GST Amt",
+      "Cumm Balance",
+      "Sett. Disc",
+      "Net Amt",
+    ];
+  }, [applied.reportType]);
 
-  const detailPdfColumnStyles = useMemo(() => (
-    applied.reportType === "sale"
-      ? {
-          0: { cellWidth: 10 },
-          1: { cellWidth: 13 },
-          2: { cellWidth: 18 },
-          3: { cellWidth: 21 },
-          4: { cellWidth: 13 },
-          5: { cellWidth: 11 },
-          6: { cellWidth: 11 },
-          7: { cellWidth: 7, halign: "right" },
-          8: { cellWidth: 9, halign: "right" },
-          9: { cellWidth: 8, halign: "right" },
-          10: { cellWidth: 9, halign: "right" },
-          11: { cellWidth: 11, halign: "right" },
-          12: { cellWidth: 7, halign: "right" },
-          13: { cellWidth: 9, halign: "right" },
-          14: { cellWidth: 11, halign: "right" },
-          15: { cellWidth: 11, halign: "right" },
-          16: { cellWidth: 11, halign: "right" },
-        }
-      : {
-          0: { cellWidth: 12 },
-          1: { cellWidth: 14 },
-          2: { cellWidth: 22 },
-          3: { cellWidth: 24 },
-          4: { cellWidth: 14 },
-          5: { cellWidth: 8, halign: "right" },
-          6: { cellWidth: 11, halign: "right" },
-          7: { cellWidth: 9, halign: "right" },
-          8: { cellWidth: 10, halign: "right" },
-          9: { cellWidth: 13, halign: "right" },
-          10: { cellWidth: 8, halign: "right" },
-          11: { cellWidth: 11, halign: "right" },
-          12: { cellWidth: 12, halign: "right" },
-          13: { cellWidth: 11, halign: "right" },
-          14: { cellWidth: 11, halign: "right" },
-        }
-  ), [applied.reportType]);
+  const detailPdfColumnStyles = useMemo(() => ({
+    0: { cellWidth: 10 },
+    1: { cellWidth: 13 },
+    2: { cellWidth: 18 },
+    3: { cellWidth: 21 },
+    4: { cellWidth: 13 },
+    5: { cellWidth: 11 },
+    6: { cellWidth: 11 },
+    7: { cellWidth: 7, halign: "right" },
+    8: { cellWidth: 9, halign: "right" },
+    9: { cellWidth: 8, halign: "right" },
+    10: { cellWidth: 9, halign: "right" },
+    11: { cellWidth: 11, halign: "right" },
+    12: { cellWidth: 7, halign: "right" },
+    13: { cellWidth: 9, halign: "right" },
+    14: { cellWidth: 11, halign: "right" },
+    15: { cellWidth: 11, halign: "right" },
+    16: { cellWidth: 11, halign: "right" },
+  }), []);
 
   const summaryGroupLabel = useMemo(() => (
-    applied.viewMode === "party" ? (applied.reportType === "sale" ? "Party" : "Supplier")
+    applied.viewMode === "month" ? "Month / Period"
+    : applied.viewMode === "party" ? (applied.reportType === "sale" ? "Party" : "Supplier")
     : applied.viewMode === "item" ? "Item"
     : applied.viewMode === "brand" ? "Brand"
-    : applied.viewMode === "agent" ? "Agent" : "Area"
+    : applied.viewMode === "agent" ? "Agent"
+    : applied.viewMode === "area" ? "Area"
+    : "Group"
   ), [applied.viewMode, applied.reportType]);
 
   const buildDetailExportRows = () => {
     let runningAmount = 0;
     return filteredRows.map((row) => {
       runningAmount += toNumber(row.amount, 0);
-      const base = [
+      return [
         formatDate(row.billDate),
         row.billNo || "-",
         row.contactName || "-",
         row.itemName || "-",
         row.brandName || "-",
-      ];
-      if (applied.reportType === "sale") base.push(row.agentName || "-", row.areaName || "-");
-      base.push(
+        row.agentName || "-",
+        row.areaName || "-",
         toNumber(row.quantity, 0).toLocaleString(),
         toNumber(row.rate, 0).toLocaleString(),
         toNumber(row.discount, 0).toLocaleString(),
@@ -432,8 +663,28 @@ const PurchaseDateWiseReport = () => {
         toNumber(runningAmount, 0).toLocaleString(),
         toNumber(row.settlementDiscount, 0).toLocaleString(),
         toNumber(row.amount, 0).toLocaleString(),
-      );
-      return base;
+      ];
+    });
+  };
+
+  const buildBillExportRows = () => {
+    let runningAmount = 0;
+    return summaryRows.map((row) => {
+      runningAmount += toNumber(row.amount, 0);
+      return [
+        formatDate(row.billDate),
+        row.billNo || "-",
+        row.contactName || "-",
+        row.agentName || "-",
+        row.areaName || "-",
+        row.lineCount,
+        toNumber(row.quantity, 0).toLocaleString(),
+        toNumber(row.taxableAmount, 0).toLocaleString(),
+        toNumber(row.gstAmount, 0).toLocaleString(),
+        toNumber(runningAmount, 0).toLocaleString(),
+        toNumber(row.settlementDiscount, 0).toLocaleString(),
+        toNumber(row.amount, 0).toLocaleString(),
+      ];
     });
   };
 
@@ -458,6 +709,7 @@ const PurchaseDateWiseReport = () => {
   const handleDownloadReport = () => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const reportLabel = applied.reportType === "sale" ? "Sale" : "Purchase";
+    const contactLabel = applied.reportType === "sale" ? "Party" : "Supplier";
     const viewLabel = appliedViewModes.find((m) => m.value === applied.viewMode)?.label || "Detail";
     const pdfMarginX = 10;
     const startY = drawBrandedReportHeader(doc, {
@@ -469,14 +721,14 @@ const PurchaseDateWiseReport = () => {
 
     if (applied.viewMode === "detail") {
       const body = buildDetailExportRows();
-      // Totals row
       const totalCols = detailColumnLabels.length;
       const totalsRow = Array(totalCols).fill("");
-      totalsRow[0] = "TOTAL";
+      totalsRow[0] = "GRAND TOTAL";
       const setTotal = (label, value) => {
         const index = detailColumnLabels.indexOf(label);
         if (index >= 0) totalsRow[index] = value;
       };
+      setTotal("Qty", totals.qty.toLocaleString());
       setTotal("Taxable", totals.taxable.toLocaleString());
       setTotal("GST Amt", totals.gst.toLocaleString());
       setTotal("Cumm Balance", totals.amount.toLocaleString());
@@ -488,7 +740,7 @@ const PurchaseDateWiseReport = () => {
         head: [detailColumnLabels],
         body: [...body, totalsRow],
         styles: {
-          fontSize: applied.reportType === "sale" ? 5 : 5.8,
+          fontSize: 5,
           cellPadding: { top: 1.0, right: 0.8, bottom: 1.0, left: 0.8 },
           lineColor: [156, 163, 175],
           lineWidth: 0.2,
@@ -506,14 +758,46 @@ const PurchaseDateWiseReport = () => {
         columnStyles: detailPdfColumnStyles,
         margin: { left: pdfMarginX, right: pdfMarginX },
       });
-    } else {
+    } else if (applied.viewMode === "bill") {
+      const body = buildBillExportRows();
+      const billHeaders = ["Date", "Bill No", contactLabel, "Agent", "Area", "Lines", "Qty", "Taxable Amt", "GST Amt", "Cumm Balance", "Sett. Disc", "Net Amt"];
+      const totalsRow = ["GRAND TOTAL", "", "", "", "", stats.lineCount, totals.qty.toLocaleString(), totals.taxable.toLocaleString(), totals.gst.toLocaleString(), totals.amount.toLocaleString(), totals.settlementDiscount.toLocaleString(), totals.amount.toLocaleString()];
+
       autoTable(doc, {
         startY,
-        head: [[summaryGroupLabel, "Bills", "Lines", "Qty", "Taxable Amt", "GST Amt", "Cumm Balance", "Sett. Disc", "Net Amt"]],
-        body: [
-          ...buildSummaryExportRows(),
-          ["TOTAL", "", "", totals.qty.toLocaleString(), totals.taxable.toLocaleString(), totals.gst.toLocaleString(), totals.amount.toLocaleString(), totals.settlementDiscount.toLocaleString(), totals.amount.toLocaleString()],
-        ],
+        head: [billHeaders],
+        body: [...body, totalsRow],
+        styles: {
+          fontSize: 6,
+          cellPadding: { top: 1.2, right: 1.0, bottom: 1.2, left: 1.0 },
+          lineColor: [156, 163, 175],
+          lineWidth: 0.2,
+          overflow: "linebreak",
+          valign: "middle",
+        },
+        headStyles: { fillColor: [235, 235, 235], textColor: 0, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 248, 248] },
+        didParseCell: (data) => {
+          if (data.section === "body" && data.row.index === body.length) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fillColor = [235, 235, 235];
+          }
+        },
+        columnStyles: {
+          5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" },
+          8: { halign: "right" }, 9: { halign: "right" }, 10: { halign: "right" }, 11: { halign: "right" },
+        },
+        margin: { left: pdfMarginX, right: pdfMarginX },
+      });
+    } else {
+      const body = buildSummaryExportRows();
+      const summaryHeaders = [summaryGroupLabel, "Bills", "Lines", "Qty", "Taxable Amt", "GST Amt", "Cumm Balance", "Sett. Disc", "Net Amt"];
+      const totalsRow = ["GRAND TOTAL", stats.billCount, stats.lineCount, totals.qty.toLocaleString(), totals.taxable.toLocaleString(), totals.gst.toLocaleString(), totals.amount.toLocaleString(), totals.settlementDiscount.toLocaleString(), totals.amount.toLocaleString()];
+
+      autoTable(doc, {
+        startY,
+        head: [summaryHeaders],
+        body: [...body, totalsRow],
         styles: {
           fontSize: 7,
           cellPadding: { top: 1.2, right: 1.0, bottom: 1.2, left: 1.0 },
@@ -525,7 +809,7 @@ const PurchaseDateWiseReport = () => {
         headStyles: { fillColor: [235, 235, 235], textColor: 0, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [248, 248, 248] },
         didParseCell: (data) => {
-          if (data.section === "body" && data.row.index === summaryRows.length) {
+          if (data.section === "body" && data.row.index === body.length) {
             data.cell.styles.fontStyle = "bold";
             data.cell.styles.fillColor = [235, 235, 235];
           }
@@ -546,38 +830,48 @@ const PurchaseDateWiseReport = () => {
 
   const handlePrint = () => {
     const reportLabel = applied.reportType === "sale" ? "Sale" : "Purchase";
+    const contactLabel = applied.reportType === "sale" ? "Party" : "Supplier";
     const viewLabel = appliedViewModes.find((m) => m.value === applied.viewMode)?.label || "Detail";
-    const printRows = applied.viewMode === "detail" ? buildDetailExportRows() : buildSummaryExportRows();
-    const printHeaders = applied.viewMode === "detail"
-      ? detailColumnLabels
-      : [summaryGroupLabel, "Bills", "Lines", "Qty", "Taxable Amt", "GST Amt", "Cumm Balance", "Sett. Disc", "Net Amt"];
-    const totalsRow = applied.viewMode === "detail"
-      ? (() => {
-          const row = Array(detailColumnLabels.length).fill("");
-          row[0] = "TOTAL";
-          const setTotal = (label, value) => {
-            const index = detailColumnLabels.indexOf(label);
-            if (index >= 0) row[index] = value;
-          };
-          setTotal("Taxable", totals.taxable.toLocaleString());
-          setTotal("GST Amt", totals.gst.toLocaleString());
-          setTotal("Cumm Balance", totals.amount.toLocaleString());
-          setTotal("Sett. Disc", totals.settlementDiscount.toLocaleString());
-          setTotal("Net Amt", totals.amount.toLocaleString());
-          return row;
-        })()
-      : ["TOTAL", "", "", totals.qty.toLocaleString(), totals.taxable.toLocaleString(), totals.gst.toLocaleString(), totals.amount.toLocaleString(), totals.settlementDiscount.toLocaleString(), totals.amount.toLocaleString()];
-    const detailLeftCount =
-      applied.viewMode === "detail"
-        ? applied.reportType === "sale" ? 7 : 5
-        : 1;
-    const colgroupHtml = applied.viewMode === "detail"
-      ? (
-          applied.reportType === "sale"
-            ? [7, 8, 13, 15, 9, 8, 8, 6, 7, 7, 8, 9, 6, 7, 9, 9]
-            : [8, 9, 16, 17, 10, 7, 8, 8, 8, 10, 7, 8, 9, 9]
-        ).map((width) => `<col style="width:${width}%">`).join("")
-      : [30, 9, 9, 10, 12, 10, 10, 10].map((width) => `<col style="width:${width}%">`).join("");
+    
+    let printRows = [];
+    let printHeaders = [];
+    let totalsRow = [];
+    let detailLeftCount = 1;
+    let colgroupHtml = "";
+
+    if (applied.viewMode === "detail") {
+      printRows = buildDetailExportRows();
+      printHeaders = detailColumnLabels;
+      totalsRow = (() => {
+        const row = Array(detailColumnLabels.length).fill("");
+        row[0] = "GRAND TOTAL";
+        const setTotal = (label, value) => {
+          const index = detailColumnLabels.indexOf(label);
+          if (index >= 0) row[index] = value;
+        };
+        setTotal("Qty", totals.qty.toLocaleString());
+        setTotal("Taxable", totals.taxable.toLocaleString());
+        setTotal("GST Amt", totals.gst.toLocaleString());
+        setTotal("Cumm Balance", totals.amount.toLocaleString());
+        setTotal("Sett. Disc", totals.settlementDiscount.toLocaleString());
+        setTotal("Net Amt", totals.amount.toLocaleString());
+        return row;
+      })();
+      detailLeftCount = 7;
+      colgroupHtml = [7, 8, 13, 15, 9, 8, 8, 6, 7, 7, 8, 9, 6, 7, 9, 9].map((width) => `<col style="width:${width}%">`).join("");
+    } else if (applied.viewMode === "bill") {
+      printRows = buildBillExportRows();
+      printHeaders = ["Date", "Bill No", contactLabel, "Agent", "Area", "Lines", "Qty", "Taxable Amt", "GST Amt", "Cumm Balance", "Sett. Disc", "Net Amt"];
+      totalsRow = ["GRAND TOTAL", "", "", "", "", stats.lineCount, totals.qty.toLocaleString(), totals.taxable.toLocaleString(), totals.gst.toLocaleString(), totals.amount.toLocaleString(), totals.settlementDiscount.toLocaleString(), totals.amount.toLocaleString()];
+      detailLeftCount = 5;
+      colgroupHtml = [9, 10, 15, 10, 10, 6, 7, 9, 8, 9, 7, 10].map((width) => `<col style="width:${width}%">`).join("");
+    } else {
+      printRows = buildSummaryExportRows();
+      printHeaders = [summaryGroupLabel, "Bills", "Lines", "Qty", "Taxable Amt", "GST Amt", "Cumm Balance", "Sett. Disc", "Net Amt"];
+      totalsRow = ["GRAND TOTAL", stats.billCount, stats.lineCount, totals.qty.toLocaleString(), totals.taxable.toLocaleString(), totals.gst.toLocaleString(), totals.amount.toLocaleString(), totals.settlementDiscount.toLocaleString(), totals.amount.toLocaleString()];
+      detailLeftCount = 1;
+      colgroupHtml = [28, 8, 8, 9, 12, 10, 10, 8, 11].map((width) => `<col style="width:${width}%">`).join("");
+    }
 
     const headerHtml = printHeaders
       .map((label, index) => `<th class="${index === 0 || index < detailLeftCount ? "text-left" : "text-right"}">${label}</th>`)
@@ -624,7 +918,7 @@ const PurchaseDateWiseReport = () => {
             </div>
             <div class="title">${activeFirmTypeLabel} Selected Date Wise ${reportLabel} Report</div>
             <div class="meta">Period: ${formatDate(applied.dateFrom)} to ${formatDate(applied.dateTo)} | View: ${viewLabel} | Records: ${filteredRows.length}</div>
-            <div class="meta">${applied.reportType === "sale" ? "Party" : "Supplier"}: ${appliedContactOptions.find((c) => String(c.id) === String(applied.contactId))?.name || "All"} | Item: ${itemMap[String(applied.itemId)]?.name || "All"} | Brand: ${brandMap[String(applied.brandId)] || "All"}</div>
+            <div class="meta">${applied.reportType === "sale" ? "Party" : "Supplier"}: ${appliedContactOptions.find((c) => String(c.id) === String(applied.contactId))?.name || "All"} | Agent: ${agentMap[String(applied.agentId)] || "All"} | Area: ${areaMap[String(applied.areaId)] || "All"}</div>
           </div>
           <div class="table-wrap">
             <table>
@@ -673,14 +967,8 @@ const PurchaseDateWiseReport = () => {
             <div class="row"><span class="label">${applied.reportType === "sale" ? "Party" : "Supplier"}:</span><span class="value">${row.contactName}</span></div>
             <div class="row"><span class="label">Item:</span><span class="value">${row.itemName}</span></div>
             <div class="row"><span class="label">Brand:</span><span class="value">${row.brandName}</span></div>
-            ${
-              applied.reportType === "sale"
-                ? `
             <div class="row"><span class="label">Agent:</span><span class="value">${row.agentName}</span></div>
             <div class="row"><span class="label">Area:</span><span class="value">${row.areaName}</span></div>
-            `
-                : ""
-            }
           </div>
 
           <table>
@@ -739,7 +1027,6 @@ const PurchaseDateWiseReport = () => {
     });
     yPos += 3;
 
-    // Transaction Details
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     const details = [
@@ -751,12 +1038,9 @@ const PurchaseDateWiseReport = () => {
       ],
       ["Item:", row.itemName],
       ["Brand:", row.brandName],
+      ["Agent:", row.agentName],
+      ["Area:", row.areaName],
     ];
-
-    if (applied.reportType === "sale") {
-      details.push(["Agent:", row.agentName]);
-      details.push(["Area:", row.areaName]);
-    }
 
     details.forEach(([label, value]) => {
       doc.text(label, 20, yPos);
@@ -768,7 +1052,6 @@ const PurchaseDateWiseReport = () => {
 
     yPos += 10;
 
-    // Amount Details Table
     const tableData = [
       ["Quantity", row.quantity.toString()],
       ["Rate", formatCurrencyText(row.rate)],
@@ -816,7 +1099,6 @@ const PurchaseDateWiseReport = () => {
 
     addBrandedReportFooters(doc);
 
-    // Save PDF
     const fileName = `${activeFirmTypeLabel.replace(/\s+/g, "_")}_${reportLabel}_Report_${row.billNo || "Unknown"}_${new Date().toISOString().split("T")[0]}.pdf`;
     doc.save(fileName);
   };
@@ -831,7 +1113,7 @@ const PurchaseDateWiseReport = () => {
   useEffect(() => {
     handleViewRef.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.reportType, filters.dateFrom, filters.dateTo, filters.contactId]);
+  }, [filters.reportType, filters.dateFrom, filters.dateTo, filters.contactId, filters.agentId, filters.areaId]);
 
   const formatDate = (value) =>
     value ? new Date(value).toLocaleDateString() : "-";
@@ -842,6 +1124,16 @@ const PurchaseDateWiseReport = () => {
       if (
         applied.contactId &&
         String(row.contactId) !== String(applied.contactId)
+      )
+        return false;
+      if (
+        applied.agentId &&
+        String(row.agentId) !== String(applied.agentId)
+      )
+        return false;
+      if (
+        applied.areaId &&
+        String(row.areaId) !== String(applied.areaId)
       )
         return false;
       if (
@@ -857,6 +1149,9 @@ const PurchaseDateWiseReport = () => {
       )
         return false;
       if (term) {
+        const monthStr = row.billDate
+          ? new Date(row.billDate).toLocaleDateString("en-US", { month: "long", year: "numeric" }).toLowerCase()
+          : "";
         const haystack = [
           row.billNo,
           row.contactName,
@@ -864,6 +1159,7 @@ const PurchaseDateWiseReport = () => {
           row.brandName,
           row.agentName,
           row.areaName,
+          monthStr,
         ]
           .filter(Boolean)
           .join(" ")
@@ -874,19 +1170,95 @@ const PurchaseDateWiseReport = () => {
     });
   }, [rows, applied]);
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedRows = filteredRows.slice(startIndex, endIndex);
-
-  // Reset to first page when filters change
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [applied]);
-
   const summaryRows = useMemo(() => {
     if (applied.viewMode === "detail") return [];
+
+    if (applied.viewMode === "bill") {
+      const map = new Map();
+      filteredRows.forEach((row) => {
+        const key = row.billId || `${row.billNo}-${row.billDate}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            billId: row.billId,
+            billNo: row.billNo || "-",
+            billDate: row.billDate,
+            contactName: row.contactName || "-",
+            agentName: row.agentName || "-",
+            areaName: row.areaName || "-",
+            quantity: 0,
+            taxableAmount: 0,
+            gstAmount: 0,
+            settlementDiscount: 0,
+            amount: 0,
+            lineCount: 0,
+            itemNames: new Set(),
+          });
+        }
+        const entry = map.get(key);
+        entry.quantity += toNumber(row.quantity, 0);
+        entry.taxableAmount += toNumber(row.taxableAmount, 0);
+        entry.gstAmount += toNumber(row.gstAmount, 0);
+        entry.settlementDiscount = Math.max(entry.settlementDiscount, toNumber(row.settlementDiscount, 0));
+        entry.amount += toNumber(row.amount, 0);
+        entry.lineCount += 1;
+        if (row.itemName) entry.itemNames.add(row.itemName);
+      });
+
+      return Array.from(map.values()).sort((a, b) => {
+        const dateA = a.billDate ? new Date(a.billDate).getTime() : 0;
+        const dateB = b.billDate ? new Date(b.billDate).getTime() : 0;
+        return dateB - dateA;
+      });
+    }
+
+    if (applied.viewMode === "month") {
+      const map = new Map();
+      filteredRows.forEach((row) => {
+        const d = row.billDate ? new Date(row.billDate) : null;
+        let key = "unknown";
+        let label = "Unknown Month";
+        let sortKey = 0;
+        if (d && !isNaN(d.getTime())) {
+          const y = d.getFullYear();
+          const m = d.getMonth() + 1;
+          key = `${y}-${String(m).padStart(2, "0")}`;
+          label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+          sortKey = y * 100 + m;
+        }
+
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            label,
+            sortKey,
+            quantity: 0,
+            taxableAmount: 0,
+            gstAmount: 0,
+            settlementDiscount: 0,
+            amount: 0,
+            lineCount: 0,
+            billIds: new Set(),
+          });
+        }
+        const entry = map.get(key);
+        entry.quantity += toNumber(row.quantity, 0);
+        entry.taxableAmount += toNumber(row.taxableAmount, 0);
+        entry.gstAmount += toNumber(row.gstAmount, 0);
+        entry.settlementDiscount += toNumber(row.settlementDiscount, 0);
+        entry.amount += toNumber(row.amount, 0);
+        entry.lineCount += 1;
+        if (row.billId) entry.billIds.add(row.billId);
+      });
+
+      return Array.from(map.values())
+        .map((e) => ({
+          ...e,
+          billCount: e.billIds.size,
+        }))
+        .sort((a, b) => b.sortKey - a.sortKey);
+    }
+
     const map = new Map();
     filteredRows.forEach((row) => {
       let key = "";
@@ -945,21 +1317,34 @@ const PurchaseDateWiseReport = () => {
     }));
   }, [filteredRows, applied.viewMode]);
 
+  // Active rows for pagination and display
+  const activeDisplayRows = applied.viewMode === "detail" ? filteredRows : summaryRows;
+
+  // Pagination logic
+  const totalPages = Math.ceil(activeDisplayRows.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRows = activeDisplayRows.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [applied]);
+
   const totals = useMemo(() => {
-    const list = applied.viewMode === "detail" ? filteredRows : summaryRows;
-    const qty = list.reduce((sum, row) => sum + toNumber(row.quantity, 0), 0);
-    const taxable = list.reduce(
+    const qty = filteredRows.reduce((sum, row) => sum + toNumber(row.quantity, 0), 0);
+    const taxable = filteredRows.reduce(
       (sum, row) => sum + toNumber(row.taxableAmount, 0),
       0,
     );
-    const gst = list.reduce((sum, row) => sum + toNumber(row.gstAmount, 0), 0);
-    const settlementDiscount = list.reduce(
+    const gst = filteredRows.reduce((sum, row) => sum + toNumber(row.gstAmount, 0), 0);
+    const settlementDiscount = filteredRows.reduce(
       (sum, row) => sum + toNumber(row.settlementDiscount, 0),
       0,
     );
-    const amount = list.reduce((sum, row) => sum + toNumber(row.amount, 0), 0);
+    const amount = filteredRows.reduce((sum, row) => sum + toNumber(row.amount, 0), 0);
     return { qty, taxable, gst, settlementDiscount, amount };
-  }, [filteredRows, summaryRows, applied.viewMode]);
+  }, [filteredRows]);
 
   const stats = useMemo(() => {
     const billsSet = new Set(
@@ -1015,6 +1400,8 @@ const PurchaseDateWiseReport = () => {
     .filter(Boolean)
     .join(" | ");
 
+  const contactLabel = applied.reportType === "sale" ? "Party" : "Supplier";
+
   return (
     <div className="space-y-6">
       <style>{`
@@ -1043,7 +1430,7 @@ const PurchaseDateWiseReport = () => {
           </h1>
           <p className="text-gray-600">
             Filter {filters.reportType === "sale" ? "sales" : "purchases"} by
-            date, party, item, and brand.
+            date, party/supplier, agent, area, item, brand, or view by monthly/bill summary.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1072,13 +1459,13 @@ const PurchaseDateWiseReport = () => {
           variant={filters.reportType === "purchase" ? "primary" : "outline"}
           onClick={() => handleReportTypeChange("purchase")}
         >
-          Purchase
+          Purchase Report
         </Button>
         <Button
           variant={filters.reportType === "sale" ? "primary" : "outline"}
           onClick={() => handleReportTypeChange("sale")}
         >
-          Sale
+          Sale Report
         </Button>
       </div>
 
@@ -1109,23 +1496,357 @@ const PurchaseDateWiseReport = () => {
           {appliedContactOptions.find(
             (c) => String(c.id) === String(applied.contactId),
           )?.name || "All"}{" "}
-          <span className="font-semibold ml-3">Item:</span>{" "}
-          {itemMap[String(applied.itemId)]?.name || "All"}{" "}
-          <span className="font-semibold ml-3">Brand:</span>{" "}
-          {brandMap[String(applied.brandId)] || "All"}
+          <span className="font-semibold ml-3">Agent:</span>{" "}
+          {agentMap[String(applied.agentId)] || "All"}{" "}
+          <span className="font-semibold ml-3">Area:</span>{" "}
+          {areaMap[String(applied.areaId)] || "All"}
         </div>
-        {applied.reportType === "sale" && (
-          <div className="mt-1 text-xs text-gray-700">
-            <span className="font-semibold">Agent:</span>{" "}
-            {agentMap[String(applied.agentId)] || "All"}{" "}
-            <span className="font-semibold ml-3">Area:</span>{" "}
-            {areaMap[String(applied.areaId)] || "All"}
+      </div>
+
+      {/* ── TOP METRICS & MONTHLY DASHBOARD SECTION ── */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 shadow-sm purchase-print-hide">
+        {/* Dashboard Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center border border-blue-100 flex-shrink-0">
+              <FaChartLine className="text-lg" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900">
+                Monthly Performance & Cost Overview
+              </h2>
+              <p className="text-xs text-gray-500">
+                Compare monthly sales revenue vs. purchase costs and gross margins
+              </p>
+            </div>
+          </div>
+
+          {/* Month Selector Controls */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-gray-700 whitespace-nowrap flex items-center gap-1.5">
+                <FaCalendarAlt className="text-blue-600 text-xs" />
+                Select Month:
+              </label>
+              <select
+                value={dashboardMonth}
+                onChange={(e) => setDashboardMonth(e.target.value)}
+                style={{ colorScheme: "light", backgroundColor: "#ffffff", color: "#111827" }}
+                className="bg-white text-gray-900 font-semibold text-xs sm:text-sm border border-gray-300 rounded-lg px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+              >
+                <option value="all" className="bg-white text-gray-900 py-1">
+                  All Months (Full Financial Year)
+                </option>
+                {availableMonths.map((m) => (
+                  <option
+                    key={m.key}
+                    value={m.key}
+                    className="bg-white text-gray-900 py-1"
+                    style={{ backgroundColor: "#ffffff", color: "#111827" }}
+                  >
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleApplyMonthToReport(dashboardMonth)}
+              className="text-xs flex items-center gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+              title="Apply this month's date range to the report table below"
+            >
+              Filter Report <FaArrowRight className="text-[10px]" />
+            </Button>
+
+            <button
+              onClick={() => setShowMonthlyBreakdown((prev) => !prev)}
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium border border-gray-200 flex items-center gap-1.5 transition-colors"
+              title="Toggle month-by-month comparative table"
+            >
+              {showMonthlyBreakdown ? <FaAngleUp /> : <FaAngleDown />}
+              <span>{showMonthlyBreakdown ? "Hide Table" : "Compare Months"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dashboard Metric KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+          {/* Total Sales Card */}
+          <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-l-green-500 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                  Total Sales
+                </p>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mt-1">
+                  {formatCurrency(dashboardMetrics.sales.amount)}
+                </h3>
+                <p className="text-[11px] text-green-700 font-medium mt-0.5 flex items-center gap-2">
+                  <span>{dashboardMetrics.sales.billCount} Bills</span>
+                  <span>•</span>
+                  <span>{dashboardMetrics.sales.qty.toLocaleString()} Qty</span>
+                </p>
+              </div>
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-green-50 rounded-lg flex items-center justify-center text-green-600 border border-green-100 flex-shrink-0">
+                <FaCashRegister className="text-sm sm:text-base" />
+              </div>
+            </div>
+          </div>
+
+          {/* Total Purchase Card */}
+          <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-l-blue-500 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                  Total Purchases
+                </p>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mt-1">
+                  {formatCurrency(dashboardMetrics.purchases.amount)}
+                </h3>
+                <p className="text-[11px] text-blue-700 font-medium mt-0.5 flex items-center gap-2">
+                  <span>{dashboardMetrics.purchases.billCount} Bills</span>
+                  <span>•</span>
+                  <span>{dashboardMetrics.purchases.qty.toLocaleString()} Qty</span>
+                </p>
+              </div>
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 border border-blue-100 flex-shrink-0">
+                <FaShoppingCart className="text-sm sm:text-base" />
+              </div>
+            </div>
+          </div>
+
+          {/* Net Margin Card */}
+          <div
+            className={`bg-white p-3 sm:p-4 rounded-xl border-l-4 ${
+              dashboardMetrics.netDiff >= 0
+                ? "border-l-emerald-500"
+                : "border-l-red-500"
+            } border border-gray-200 shadow-sm hover:shadow-md transition-shadow`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    Gross Difference
+                  </p>
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      dashboardMetrics.marginPercent >= 0
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {dashboardMetrics.marginPercent >= 0 ? "+" : ""}
+                    {dashboardMetrics.marginPercent.toFixed(1)}%
+                  </span>
+                </div>
+                <h3
+                  className={`text-base sm:text-lg font-bold mt-1 ${
+                    dashboardMetrics.netDiff >= 0
+                      ? "text-emerald-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {formatCurrency(dashboardMetrics.netDiff)}
+                </h3>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  Sale - Purchase Cost
+                </p>
+              </div>
+              <div
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center border flex-shrink-0 ${
+                  dashboardMetrics.netDiff >= 0
+                    ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                    : "bg-red-50 text-red-600 border-red-100"
+                }`}
+              >
+                <FaBalanceScale className="text-sm sm:text-base" />
+              </div>
+            </div>
+          </div>
+
+          {/* Taxable Comparison */}
+          <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-l-purple-500 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div className="w-full">
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                  Taxable Value
+                </p>
+                <div className="mt-1 space-y-0.5 text-xs">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Sale:</span>
+                    <span className="font-bold text-gray-900">
+                      {formatCurrency(dashboardMetrics.sales.taxable)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Purch:</span>
+                    <span className="font-bold text-gray-900">
+                      {formatCurrency(dashboardMetrics.purchases.taxable)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* GST Amount Comparison */}
+          <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-l-amber-500 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div className="w-full">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                    GST Breakdown
+                  </p>
+                  <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1 py-0.5 rounded border border-amber-200">
+                    Net: {formatCurrency(dashboardMetrics.netGstLiability)}
+                  </span>
+                </div>
+                <div className="mt-1 space-y-0.5 text-xs">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Output:</span>
+                    <span className="font-bold text-gray-900">
+                      {formatCurrency(dashboardMetrics.sales.gst)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Input:</span>
+                    <span className="font-bold text-gray-900">
+                      {formatCurrency(dashboardMetrics.purchases.gst)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Settlement Discounts */}
+          <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-l-teal-500 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div className="w-full">
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                  Sett. Discounts
+                </p>
+                <div className="mt-1 space-y-0.5 text-xs">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Allowed:</span>
+                    <span className="font-bold text-gray-900">
+                      {formatCurrency(dashboardMetrics.sales.settlementDiscount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Recv:</span>
+                    <span className="font-bold text-gray-900">
+                      {formatCurrency(dashboardMetrics.purchases.settlementDiscount)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Collapsible Month-by-Month Comparative Table */}
+        {showMonthlyBreakdown && (
+          <div className="mt-4 pt-4 border-t border-gray-100 overflow-x-auto">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                Month-by-Month Comparative Summary
+              </span>
+              <span className="text-xs text-gray-500">
+                Click on any row to filter dashboard & table
+              </span>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden text-xs">
+              <thead className="bg-gray-50 text-gray-700 font-semibold uppercase">
+                <tr>
+                  <th className="px-3 py-2.5 text-left">Month / Period</th>
+                  <th className="px-3 py-2.5 text-right">Sale Bills</th>
+                  <th className="px-3 py-2.5 text-right">Sale Amount</th>
+                  <th className="px-3 py-2.5 text-right">Purchase Bills</th>
+                  <th className="px-3 py-2.5 text-right">Purchase Cost</th>
+                  <th className="px-3 py-2.5 text-right">Net Margin</th>
+                  <th className="px-3 py-2.5 text-right">Margin %</th>
+                  <th className="px-3 py-2.5 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {dashboardMetrics.monthlyBreakdown.map((row) => {
+                  const isSelected = dashboardMonth === row.key;
+                  return (
+                    <tr
+                      key={row.key}
+                      onClick={() => setDashboardMonth(row.key)}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected
+                          ? "bg-blue-50/80 font-semibold"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <td className="px-3 py-2 text-gray-900 font-medium flex items-center gap-1.5">
+                        {isSelected && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                        )}
+                        {row.label}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-600">
+                        {row.sales.billCount}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-green-700">
+                        {formatCurrency(row.sales.amount)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-600">
+                        {row.purchases.billCount}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-blue-700">
+                        {formatCurrency(row.purchases.amount)}
+                      </td>
+                      <td
+                        className={`px-3 py-2 text-right font-bold ${
+                          row.netDiff >= 0
+                            ? "text-emerald-700"
+                            : "text-red-700"
+                        }`}
+                      >
+                        {formatCurrency(row.netDiff)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            row.marginPercent >= 0
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {row.marginPercent >= 0 ? "+" : ""}
+                          {row.marginPercent.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDashboardMonth(row.key);
+                            handleApplyMonthToReport(row.key);
+                          }}
+                          className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-semibold border border-blue-200 transition-colors"
+                        >
+                          Filter
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
       <div className="bg-white border rounded-lg p-4 purchase-print-hide">
-        <h3 className="font-medium text-gray-900 mb-3">Filters</h3>
+        <h3 className="font-medium text-gray-900 mb-3">Filters & View Modes</h3>
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1190,83 +1911,43 @@ const PurchaseDateWiseReport = () => {
               ))}
             </Select>
           </div>
-          {/* <div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Brand
+              Agent
             </label>
             <Select
-              value={filters.brandId}
+              value={filters.agentId}
               onChange={(value) =>
-                setFilters((prev) => ({ ...prev, brandId: value, itemId: "" }))
+                setFilters((prev) => ({ ...prev, agentId: value }))
               }
             >
-              <option value="">All Brands</option>
-              {brands.map((brand) => (
-                <option key={brand.id} value={brand.id}>
-                  {brand.name}
+              <option value="">All Agents</option>
+              {agents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.name}
                 </option>
               ))}
             </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Item
+              Area
             </label>
             <Select
-              value={filters.itemId}
+              value={filters.areaId}
               onChange={(value) =>
-                setFilters((prev) => ({ ...prev, itemId: value }))
+                setFilters((prev) => ({ ...prev, areaId: value }))
               }
             >
-              <option value="">All Items</option>
-              {filteredItemOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
+              <option value="">All Areas</option>
+              {areas.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.name}
                 </option>
               ))}
             </Select>
-          </div> */}
-          {filters.reportType === "sale" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Agent
-                </label>
-                <Select
-                  value={filters.agentId}
-                  onChange={(value) =>
-                    setFilters((prev) => ({ ...prev, agentId: value }))
-                  }
-                >
-                  <option value="">All Agents</option>
-                  {agents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Area
-                </label>
-                <Select
-                  value={filters.areaId}
-                  onChange={(value) =>
-                    setFilters((prev) => ({ ...prev, areaId: value }))
-                  }
-                >
-                  <option value="">All Areas</option>
-                  {areas.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </>
-          )}
-          <div className="md:col-span-3">
+          </div>
+          <div className="md:col-span-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Search
             </label>
@@ -1275,31 +1956,25 @@ const PurchaseDateWiseReport = () => {
               onChange={(value) =>
                 setFilters((prev) => ({ ...prev, search: value }))
               }
-              placeholder="Bill no, party, item, brand"
+              placeholder="Search bill no, party/supplier, item, brand, agent, area, month..."
             />
           </div>
         </div>
       </div>
 
-      <div className="bg-white border rounded-lg p-4">
+      <div className="bg-white border rounded-lg p-4 shadow-sm">
         <div className="overflow-x-auto">
           {applied.viewMode === "detail" ? (
             <table className="w-full text-xs purchase-print-table">
-              <thead className="bg-gray-50 text-gray-600">
+              <thead className="bg-gray-50 text-gray-700 font-semibold">
                 <tr>
                   <th className="px-2 py-2 text-left">Date</th>
                   <th className="px-2 py-2 text-left">Bill No</th>
-                  <th className="px-2 py-2 text-left">
-                    {applied.reportType === "sale" ? "Party" : "Supplier"}
-                  </th>
+                  <th className="px-2 py-2 text-left">{contactLabel}</th>
                   <th className="px-2 py-2 text-left">Item</th>
                   <th className="px-2 py-2 text-left">Brand</th>
-                  {applied.reportType === "sale" && (
-                    <>
-                      <th className="px-2 py-2 text-left">Agent</th>
-                      <th className="px-2 py-2 text-left">Area</th>
-                    </>
-                  )}
+                  <th className="px-2 py-2 text-left">Agent</th>
+                  <th className="px-2 py-2 text-left">Area</th>
                   <th className="px-2 py-2 text-right">Qty</th>
                   <th className="px-2 py-2 text-right">Rate</th>
                   <th className="px-2 py-2 text-right">Dis%</th>
@@ -1316,56 +1991,55 @@ const PurchaseDateWiseReport = () => {
                 {loading ? (
                   <tr>
                     <td
-                      className="px-3 py-6 text-center text-gray-500"
-                      colSpan={applied.reportType === "sale" ? 17 : 15}
+                      className="px-3 py-8 text-center text-gray-500"
+                      colSpan={17}
                     >
-                      Loading report...
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Loading {applied.reportType === "sale" ? "sales" : "purchase"} report...</span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   paginatedRows.map((row) => (
-                    <tr key={row.id} className="border-b last:border-b-0">
-                      <td className="px-2 py-1">
+                    <tr key={row.id} className="border-b last:border-b-0 hover:bg-gray-50/80">
+                      <td className="px-2 py-1.5 whitespace-nowrap">
                         {formatDate(row.billDate)}
                       </td>
-                      <td className="px-2 py-1">{row.billNo || "-"}</td>
-                      <td className="px-2 py-1">{row.contactName}</td>
-                      <td className="px-2 py-1">{row.itemName}</td>
-                      <td className="px-2 py-1">{row.brandName}</td>
-                      {applied.reportType === "sale" && (
-                        <>
-                          <td className="px-2 py-1">{row.agentName}</td>
-                          <td className="px-2 py-1">{row.areaName}</td>
-                        </>
-                      )}
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 font-medium">{row.billNo || "-"}</td>
+                      <td className="px-2 py-1.5 font-medium">{row.contactName}</td>
+                      <td className="px-2 py-1.5">{row.itemName}</td>
+                      <td className="px-2 py-1.5">{row.brandName}</td>
+                      <td className="px-2 py-1.5">{row.agentName}</td>
+                      <td className="px-2 py-1.5">{row.areaName}</td>
+                      <td className="px-2 py-1.5 text-right font-medium">
                         {toNumber(row.quantity, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.rate, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.discount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.specialDiscount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.taxableAmount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.gstPercent, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.gstAmount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right text-gray-600">
                         {toNumber(row.settlementDiscount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right font-bold text-gray-900">
                         {toNumber(row.amount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-center purchase-print-hide">
+                      <td className="px-2 py-1.5 text-center purchase-print-hide">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleIndividualPrint(row)}
@@ -1389,32 +2063,234 @@ const PurchaseDateWiseReport = () => {
                 {!loading && paginatedRows.length === 0 && (
                   <tr>
                     <td
-                      className="px-3 py-6 text-center text-gray-500"
-                      colSpan={applied.reportType === "sale" ? 17 : 15}
+                      className="px-3 py-8 text-center text-gray-500"
+                      colSpan={17}
                     >
-                      No entries found
+                      No entries found for the selected filters.
                     </td>
                   </tr>
                 )}
               </tbody>
+              {!loading && filteredRows.length > 0 && (
+                <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-400">
+                  <tr>
+                    <td className="px-2 py-2 text-left" colSpan={7}>
+                      GRAND TOTAL ({filteredRows.length} Items, {stats.billCount} Bills)
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      {totals.qty.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2" colSpan={3}></td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.taxable.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2"></td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.gst.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.settlementDiscount.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right text-blue-700 font-extrabold text-sm whitespace-nowrap">
+                      Rs. {totals.amount.toLocaleString()}
+                    </td>
+                    <td className="purchase-print-hide"></td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          ) : applied.viewMode === "bill" ? (
+            <table className="w-full text-xs purchase-print-table">
+              <thead className="bg-gray-50 text-gray-700 font-semibold">
+                <tr>
+                  <th className="px-2 py-2 text-left">Date</th>
+                  <th className="px-2 py-2 text-left">Bill No</th>
+                  <th className="px-2 py-2 text-left">{contactLabel}</th>
+                  <th className="px-2 py-2 text-left">Agent</th>
+                  <th className="px-2 py-2 text-left">Area</th>
+                  <th className="px-2 py-2 text-right">Lines</th>
+                  <th className="px-2 py-2 text-right">Total Qty</th>
+                  <th className="px-2 py-2 text-right">Taxable Amt</th>
+                  <th className="px-2 py-2 text-right">GST Amt</th>
+                  <th className="px-2 py-2 text-right">Sett. Disc</th>
+                  <th className="px-2 py-2 text-right">Net Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      className="px-3 py-8 text-center text-gray-500"
+                      colSpan={11}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Loading bill-wise report...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedRows.map((row) => (
+                    <tr key={row.key} className="border-b last:border-b-0 hover:bg-gray-50/80">
+                      <td className="px-2 py-1.5 whitespace-nowrap">
+                        {formatDate(row.billDate)}
+                      </td>
+                      <td className="px-2 py-1.5 font-medium">{row.billNo}</td>
+                      <td className="px-2 py-1.5 font-medium">{row.contactName}</td>
+                      <td className="px-2 py-1.5">{row.agentName}</td>
+                      <td className="px-2 py-1.5">{row.areaName}</td>
+                      <td className="px-2 py-1.5 text-right">{row.lineCount}</td>
+                      <td className="px-2 py-1.5 text-right font-medium">
+                        {toNumber(row.quantity, 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {toNumber(row.taxableAmount, 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {toNumber(row.gstAmount, 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-gray-600">
+                        {toNumber(row.settlementDiscount, 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-bold text-gray-900">
+                        {toNumber(row.amount, 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+                {!loading && paginatedRows.length === 0 && (
+                  <tr>
+                    <td
+                      className="px-3 py-8 text-center text-gray-500"
+                      colSpan={11}
+                    >
+                      No entries found for the selected filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              {!loading && summaryRows.length > 0 && (
+                <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-400">
+                  <tr>
+                    <td className="px-2 py-2 text-left" colSpan={5}>
+                      GRAND TOTAL ({stats.billCount} Bills)
+                    </td>
+                    <td className="px-2 py-2 text-right">{stats.lineCount}</td>
+                    <td className="px-2 py-2 text-right">
+                      {totals.qty.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.taxable.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.gst.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.settlementDiscount.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right text-blue-700 font-extrabold text-sm whitespace-nowrap">
+                      Rs. {totals.amount.toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          ) : applied.viewMode === "month" ? (
+            <table className="w-full text-xs purchase-print-table">
+              <thead className="bg-gray-50 text-gray-700 font-semibold">
+                <tr>
+                  <th className="px-2 py-2 text-left">Month / Period</th>
+                  <th className="px-2 py-2 text-right">Total Bills</th>
+                  <th className="px-2 py-2 text-right">Total Lines</th>
+                  <th className="px-2 py-2 text-right">Total Qty</th>
+                  <th className="px-2 py-2 text-right">Taxable Amt</th>
+                  <th className="px-2 py-2 text-right">GST Amt</th>
+                  <th className="px-2 py-2 text-right">Sett. Disc</th>
+                  <th className="px-2 py-2 text-right">Net Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      className="px-3 py-8 text-center text-gray-500"
+                      colSpan={8}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Loading monthly summary report...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedRows.map((row) => (
+                    <tr key={row.key} className="border-b last:border-b-0 hover:bg-gray-50/80">
+                      <td className="px-2 py-2 font-semibold text-gray-900">{row.label}</td>
+                      <td className="px-2 py-2 text-right font-medium">
+                        {row.billCount}
+                      </td>
+                      <td className="px-2 py-2 text-right">{row.lineCount}</td>
+                      <td className="px-2 py-2 text-right font-medium">
+                        {toNumber(row.quantity, 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        {toNumber(row.taxableAmount, 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        {toNumber(row.gstAmount, 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-2 text-right text-gray-600">
+                        {toNumber(row.settlementDiscount, 0).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-2 text-right font-bold text-gray-900 text-xs sm:text-sm">
+                        {toNumber(row.amount, 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+                {!loading && summaryRows.length === 0 && (
+                  <tr>
+                    <td
+                      className="px-3 py-8 text-center text-gray-500"
+                      colSpan={8}
+                    >
+                      No entries found for the selected filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              {!loading && summaryRows.length > 0 && (
+                <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-400">
+                  <tr>
+                    <td className="px-2 py-2 text-left">
+                      GRAND TOTAL ({summaryRows.length} Months)
+                    </td>
+                    <td className="px-2 py-2 text-right">{stats.billCount}</td>
+                    <td className="px-2 py-2 text-right">{stats.lineCount}</td>
+                    <td className="px-2 py-2 text-right">
+                      {totals.qty.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.taxable.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.gst.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.settlementDiscount.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right text-blue-700 font-extrabold text-sm whitespace-nowrap">
+                      Rs. {totals.amount.toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           ) : (
             <table className="w-full text-xs purchase-print-table">
-              <thead className="bg-gray-50 text-gray-600">
+              <thead className="bg-gray-50 text-gray-700 font-semibold">
                 <tr>
-                  <th className="px-2 py-2 text-left">
-                    {applied.viewMode === "party"
-                      ? applied.reportType === "sale"
-                        ? "Party"
-                        : "Supplier"
-                      : applied.viewMode === "item"
-                        ? "Item"
-                        : applied.viewMode === "brand"
-                          ? "Brand"
-                          : applied.viewMode === "agent"
-                            ? "Agent"
-                            : "Area"}
-                  </th>
+                  <th className="px-2 py-2 text-left">{summaryGroupLabel}</th>
                   <th className="px-2 py-2 text-right">Bills</th>
                   <th className="px-2 py-2 text-right">Lines</th>
                   <th className="px-2 py-2 text-right">Qty</th>
@@ -1428,33 +2304,36 @@ const PurchaseDateWiseReport = () => {
                 {loading ? (
                   <tr>
                     <td
-                      className="px-3 py-6 text-center text-gray-500"
-                      colSpan={7}
+                      className="px-3 py-8 text-center text-gray-500"
+                      colSpan={8}
                     >
-                      Loading report...
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Loading summary report...</span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  summaryRows.map((row) => (
-                    <tr key={row.key} className="border-b last:border-b-0">
-                      <td className="px-2 py-1">{row.label}</td>
-                      <td className="px-2 py-1 text-right">
+                  paginatedRows.map((row) => (
+                    <tr key={row.key} className="border-b last:border-b-0 hover:bg-gray-50/80">
+                      <td className="px-2 py-1.5 font-medium">{row.label}</td>
+                      <td className="px-2 py-1.5 text-right font-medium">
                         {row.billCount}
                       </td>
-                      <td className="px-2 py-1 text-right">{row.lineCount}</td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">{row.lineCount}</td>
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.quantity, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.taxableAmount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         {toNumber(row.gstAmount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right text-gray-600">
                         {toNumber(row.settlementDiscount, 0).toLocaleString()}
                       </td>
-                      <td className="px-2 py-1 text-right">
+                      <td className="px-2 py-1.5 text-right font-bold text-gray-900">
                         {toNumber(row.amount, 0).toLocaleString()}
                       </td>
                     </tr>
@@ -1463,14 +2342,40 @@ const PurchaseDateWiseReport = () => {
                 {!loading && summaryRows.length === 0 && (
                   <tr>
                     <td
-                      className="px-3 py-6 text-center text-gray-500"
+                      className="px-3 py-8 text-center text-gray-500"
                       colSpan={8}
                     >
-                      No entries found
+                      No entries found for the selected filters.
                     </td>
                   </tr>
                 )}
               </tbody>
+              {!loading && summaryRows.length > 0 && (
+                <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-400">
+                  <tr>
+                    <td className="px-2 py-2 text-left">
+                      GRAND TOTAL ({summaryRows.length} Groups)
+                    </td>
+                    <td className="px-2 py-2 text-right">{stats.billCount}</td>
+                    <td className="px-2 py-2 text-right">{stats.lineCount}</td>
+                    <td className="px-2 py-2 text-right">
+                      {totals.qty.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.taxable.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.gst.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      Rs. {totals.settlementDiscount.toLocaleString()}
+                    </td>
+                    <td className="px-2 py-2 text-right text-blue-700 font-extrabold text-sm whitespace-nowrap">
+                      Rs. {totals.amount.toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           )}
         </div>
@@ -1480,7 +2385,7 @@ const PurchaseDateWiseReport = () => {
           <div className="flex items-center justify-between mt-4 pt-4 border-t purchase-print-hide">
             <div className="flex items-center text-sm text-gray-700">
               <span>
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredRows.length)} of {filteredRows.length} entries
+                Showing {startIndex + 1} to {Math.min(endIndex, activeDisplayRows.length)} of {activeDisplayRows.length} entries
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -1531,66 +2436,46 @@ const PurchaseDateWiseReport = () => {
           </div>
         )}
 
-        {/* <div className="mt-4 border-t pt-3 text-xs text-gray-700 purchase-print-summary"> */}
-        {/* <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              Bills:{" "}
-              <span className="font-semibold">{stats.billCount}</span>
-            </div>
-            <div>
-              Lines: <span className="font-semibold">{stats.lineCount}</span>
-            </div>
-            <div>
-              Items: <span className="font-semibold">{stats.itemCount}</span>
-            </div>
-            <div>
-              Brands: <span className="font-semibold">{stats.brandCount}</span>
-            </div>
-            <div>
-              {applied.reportType === "sale" ? "Parties" : "Suppliers"}:{" "}
-              <span className="font-semibold">{stats.contactCount}</span>
-            </div>
-            {applied.reportType === "sale" && (
-              <>
-                <div>
-                  Agents:{" "}
-                  <span className="font-semibold">{stats.agentCount}</span>
+        {/* Prominent Bottom Grand Total Cards */}
+        {!loading && filteredRows.length > 0 && (
+          <div className="mt-6 pt-4 border-t-2 border-gray-200 purchase-print-summary">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+              Overall Report Summary & Grand Totals
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3">
+              <div className="p-3 bg-gray-50 border rounded-lg">
+                <div className="text-[11px] text-gray-500 font-medium">Total Bills</div>
+                <div className="text-base font-bold text-gray-900 mt-0.5">{stats.billCount}</div>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded-lg">
+                <div className="text-[11px] text-gray-500 font-medium">Total Item Lines</div>
+                <div className="text-base font-bold text-gray-900 mt-0.5">{stats.lineCount}</div>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded-lg">
+                <div className="text-[11px] text-gray-500 font-medium">Total Quantity</div>
+                <div className="text-base font-bold text-gray-900 mt-0.5">{totals.qty.toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded-lg">
+                <div className="text-[11px] text-gray-500 font-medium">Taxable Amount</div>
+                <div className="text-base font-bold text-gray-900 mt-0.5">Rs. {totals.taxable.toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded-lg">
+                <div className="text-[11px] text-gray-500 font-medium">GST Amount</div>
+                <div className="text-base font-bold text-gray-900 mt-0.5">Rs. {totals.gst.toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-gray-50 border rounded-lg">
+                <div className="text-[11px] text-gray-500 font-medium">Sett. Discount</div>
+                <div className="text-base font-bold text-gray-900 mt-0.5">Rs. {totals.settlementDiscount.toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg col-span-2 sm:col-span-1">
+                <div className="text-[11px] text-blue-700 font-bold uppercase">Grand Total Net</div>
+                <div className="text-base sm:text-lg font-extrabold text-blue-800 mt-0.5">
+                  Rs. {totals.amount.toLocaleString()}
                 </div>
-                <div>
-                  Areas:{" "}
-                  <span className="font-semibold">{stats.areaCount}</span>
-                </div>
-              </>
-            )}
-            <div>
-              Total Qty:{" "}
-              <span className="font-semibold">
-                {totals.qty.toLocaleString()}
-              </span>
-            </div>
-            <div>
-              Taxable:{" "}
-              <span className="font-semibold">
-                {totals.taxable.toLocaleString()}
-              </span>
-            </div>
-            <div>
-              GST:{" "}
-              <span className="font-semibold">
-                {totals.gst.toLocaleString()}
-              </span>
-            </div>
-            <div>
-              Net:{" "}
-              <span className="font-semibold">
-                Rs. {totals.amount.toLocaleString()}
-              </span>
+              </div>
             </div>
           </div>
-          {/* <div className="mt-2 text-center text-gray-500 purchase-print-hide">
-            <small>💡 Tip: Use the action buttons in each row to print or download individual reports</small>
-          </div> */}
-        {/* </div> */}
+        )}
       </div>
     </div>
   );

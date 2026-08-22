@@ -3081,32 +3081,28 @@ const BillList = () => {
             <option value="party">Party</option>
             <option value="supplier">Supplier</option>
           </select>
-          <input
-            type="text"
-            value={toDisplayDate(filters.dateFrom) || filters.dateFrom}
-            onChange={(e) => {
-              const value = normalizeDisplayDateInput(e.target.value);
+          <Input
+            type="date"
+            value={filters.dateFrom}
+            onChange={(val) => {
               setFilters((prev) => ({
                 ...prev,
-                dateFrom: toISODate(value) || value,
+                dateFrom: val,
               }));
             }}
             placeholder="dd/mm/yyyy"
-            className="px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
             title="From Date"
           />
-          <input
-            type="text"
-            value={toDisplayDate(filters.dateTo) || filters.dateTo}
-            onChange={(e) => {
-              const value = normalizeDisplayDateInput(e.target.value);
+          <Input
+            type="date"
+            value={filters.dateTo}
+            onChange={(val) => {
               setFilters((prev) => ({
                 ...prev,
-                dateTo: toISODate(value) || value,
+                dateTo: val,
               }));
             }}
             placeholder="dd/mm/yyyy"
-            className="px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
             title="To Date"
           />
           <Button

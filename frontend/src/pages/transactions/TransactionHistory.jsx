@@ -13,7 +13,7 @@ import { getResponseList, normalizeBill } from "../../services/apiUtils";
 import { formatDate } from "../../utils";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import useFirmBranding from "../../hooks/useFirmBranding";
-import { getFinancialYearStartDisplayDate } from "../../utils/dateHelpers";
+import { getFinancialYearStartDisplayDate, toDisplayDate } from "../../utils/dateHelpers";
 
 const formatDisplayDate = (value) => {
   if (!value) return "-";
@@ -555,55 +555,25 @@ const TransactionHistory = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">From Date</label>
-            <input
+            <Input
               type="date"
-              value={(() => {
-                if (!filters.dateFrom) return '';
-                const parts = filters.dateFrom.split('/');
-                if (parts.length !== 3) return '';
-                const [dd, mm, yyyy] = parts;
-                return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-              })()}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (!value) {
-                  setFilters((prev) => ({ ...prev, dateFrom: '' }));
-                  return;
-                }
-                const date = new Date(value);
-                const dd = String(date.getDate()).padStart(2, '0');
-                const mm = String(date.getMonth() + 1).padStart(2, '0');
-                const yyyy = String(date.getFullYear());
-                setFilters((prev) => ({ ...prev, dateFrom: `${dd}/${mm}/${yyyy}` }));
+              placeholder="dd/mm/yyyy"
+              value={filters.dateFrom}
+              onChange={(val) => {
+                setFilters((prev) => ({ ...prev, dateFrom: toDisplayDate(val) || val }));
               }}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">To Date</label>
-            <input
+            <Input
               type="date"
-              value={(() => {
-                if (!filters.dateTo) return '';
-                const parts = filters.dateTo.split('/');
-                if (parts.length !== 3) return '';
-                const [dd, mm, yyyy] = parts;
-                return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-              })()}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (!value) {
-                  setFilters((prev) => ({ ...prev, dateTo: '' }));
-                  return;
-                }
-                const date = new Date(value);
-                const dd = String(date.getDate()).padStart(2, '0');
-                const mm = String(date.getMonth() + 1).padStart(2, '0');
-                const yyyy = String(date.getFullYear());
-                setFilters((prev) => ({ ...prev, dateTo: `${dd}/${mm}/${yyyy}` }));
+              placeholder="dd/mm/yyyy"
+              value={filters.dateTo}
+              onChange={(val) => {
+                setFilters((prev) => ({ ...prev, dateTo: toDisplayDate(val) || val }));
               }}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 

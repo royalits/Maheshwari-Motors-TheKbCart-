@@ -38,6 +38,28 @@ const convertDateFromISO = (isoDate) => {
   return `${dd}/${mm}/${yyyy}`;
 };
 
+const sortContactsWithBooksOnTop = (contacts = []) => {
+  return [...contacts].sort((a, b) => {
+    const aName = (a?.name || "").trim().toUpperCase();
+    const bName = (b?.name || "").trim().toUpperCase();
+
+    const getRank = (name) => {
+      if (name === "CASHBOOK") return 1;
+      if (name === "BANKBOOK") return 2;
+      return 3;
+    };
+
+    const rankA = getRank(aName);
+    const rankB = getRank(bName);
+
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    return aName.localeCompare(bName, undefined, { numeric: true, sensitivity: "base" });
+  });
+};
+
 const formatDate = (value) => {
   if (!value) return "-";
   const date = new Date(value);
@@ -1172,52 +1194,26 @@ const TransactionMaster = () => {
             <label className="block text-xs font-medium text-gray-600 mb-1">
               From Date
             </label>
-            <input
+            <Input
               type="date"
-              value={(() => {
-                if (!fromDate) return "";
-                const parts = fromDate.split("/");
-                if (parts.length !== 3) return "";
-                const [dd, mm, yyyy] = parts;
-                const fullYear = yyyy.length === 2 ? `20${yyyy}` : yyyy;
-                return `${fullYear}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
-              })()}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (!value) {
-                  setFromDate("");
-                  return;
-                }
-                const [yyyy, mm, dd] = value.split("-");
-                setFromDate(`${dd}/${mm}/${yyyy}`);
+              value={fromDate}
+              onChange={(val) => {
+                setFromDate(toDisplayDate(val) || val);
               }}
-              className="px-3 py-2 border rounded-md text-sm"
+              placeholder="dd/mm/yyyy"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
               To Date
             </label>
-            <input
+            <Input
               type="date"
-              value={(() => {
-                if (!toDate) return "";
-                const parts = toDate.split("/");
-                if (parts.length !== 3) return "";
-                const [dd, mm, yyyy] = parts;
-                const fullYear = yyyy.length === 2 ? `20${yyyy}` : yyyy;
-                return `${fullYear}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
-              })()}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (!value) {
-                  setToDate("");
-                  return;
-                }
-                const [yyyy, mm, dd] = value.split("-");
-                setToDate(`${dd}/${mm}/${yyyy}`);
+              value={toDate}
+              onChange={(val) => {
+                setToDate(toDisplayDate(val) || val);
               }}
-              className="px-3 py-2 border rounded-md text-sm"
+              placeholder="dd/mm/yyyy"
             />
           </div>
           <Button
@@ -1436,36 +1432,15 @@ const TransactionMaster = () => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Date *</label>
-              <input
-                type="text"
+              <Input
+                type="date"
                 name="date"
                 placeholder="dd/mm/yyyy"
                 value={formData.date}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const filtered = value.replace(/[^0-9/]/g, "");
-                  let formatted = filtered;
-                  if (filtered.length >= 2 && !filtered.includes("/")) {
-                    formatted = filtered.slice(0, 2) + "/" + filtered.slice(2);
-                  }
-                  if (
-                    filtered.replace(/\//g, "").length >= 4 &&
-                    filtered.split("/").length === 2
-                  ) {
-                    const parts = filtered.split("/");
-                    formatted =
-                      parts[0] +
-                      "/" +
-                      parts[1].slice(0, 2) +
-                      "/" +
-                      parts[1].slice(2);
-                  }
-                  if (formatted.length <= 10) {
-                    setFormData({ ...formData, date: formatted });
-                  }
+                onChange={(val) => {
+                  setFormData((prev) => ({ ...prev, date: toDisplayDate(val) || val }));
                 }}
                 required
-                className="w-full px-3 py-2 border rounded-lg"
               />
             </div>
             {showContactDropdown && formData.contact_type !== "book" && (
@@ -1479,9 +1454,8 @@ const TransactionMaster = () => {
                   onChange={(value) => handleInputChange("contact_id", value)}
                   placeholder={`Select ${formData.contact_type === "party" ? "Party" : "Supplier"}`}
                   searchPlaceholder={`Search ${formData.contact_type === "party" ? "party" : "supplier"}...`}
-                  options={(formData.contact_type === "party" ?
-                    parties
-                  : suppliers
+                  options={sortContactsWithBooksOnTop(
+                    formData.contact_type === "party" ? parties : suppliers
                   ).map((contact) => ({
                     value: String(getEntityId(contact)),
                     label: contact.name || "",
@@ -1498,7 +1472,7 @@ const TransactionMaster = () => {
                   onChange={(value) => handleInputChange("contact_id", value)}
                   placeholder="Select Book (CashBook/BankBook)"
                   searchPlaceholder="Search book..."
-                  options={books.map((book) => ({
+                  options={sortContactsWithBooksOnTop(books).map((book) => ({
                     value: String(getEntityId(book)),
                     label: book.name || "",
                   }))}
