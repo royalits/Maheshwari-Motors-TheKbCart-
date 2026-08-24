@@ -67,6 +67,7 @@ const PurchaseDateWiseReport = () => {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardMonth, setDashboardMonth] = useState("all");
   const [showMonthlyBreakdown, setShowMonthlyBreakdown] = useState(false);
+  const [showDashboardMetrics, setShowDashboardMetrics] = useState(false);
 
   const fetchPagedList = async (url, params = {}, maxPages = 200) => {
     let all = [];
@@ -1521,7 +1522,7 @@ const PurchaseDateWiseReport = () => {
             </div>
           </div>
 
-          {/* Month Selector Controls */}
+          {/* Month Selector & Action Controls */}
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="flex items-center gap-2">
               <label className="text-xs font-bold text-gray-700 whitespace-nowrap flex items-center gap-1.5">
@@ -1568,10 +1569,24 @@ const PurchaseDateWiseReport = () => {
               {showMonthlyBreakdown ? <FaAngleUp /> : <FaAngleDown />}
               <span>{showMonthlyBreakdown ? "Hide Table" : "Compare Months"}</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDashboardMetrics((prev) => !prev)}
+              className="px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold border border-gray-300 shadow-sm flex items-center gap-1.5 transition-colors"
+            >
+              <span>{showDashboardMetrics ? "Hide Metrics" : "Show Metrics"}</span>
+              {showDashboardMetrics ? (
+                <FaChevronUp className="text-gray-500 text-[11px]" />
+              ) : (
+                <FaChevronDown className="text-gray-500 text-[11px]" />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Dashboard Metric KPI Cards */}
+        {/* Dashboard Metric KPI Cards (Default Hidden) */}
+        {showDashboardMetrics && (
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
           {/* Total Sales Card */}
           <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-l-green-500 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
@@ -1747,6 +1762,7 @@ const PurchaseDateWiseReport = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Collapsible Month-by-Month Comparative Table */}
         {showMonthlyBreakdown && (

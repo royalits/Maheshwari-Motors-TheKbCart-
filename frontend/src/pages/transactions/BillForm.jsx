@@ -4821,6 +4821,24 @@ const BillForm = () => {
 
   useSaveShortcut(handleSave);
 
+  useEffect(() => {
+    const handleGlobalSaveKeyDown = (e) => {
+      const isSKey =
+        e.key === "s" ||
+        e.key === "S" ||
+        e.code === "KeyS" ||
+        e.keyCode === 83;
+      if ((e.ctrlKey || e.metaKey) && isSKey && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalSaveKeyDown, true);
+    return () =>
+      window.removeEventListener("keydown", handleGlobalSaveKeyDown, true);
+  }, [handleSave]);
+
   return (
     <div
       className="space-y-4"

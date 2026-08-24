@@ -7,15 +7,27 @@ export const SaveShortcutProvider = ({ children }) => {
 
   useEffect(() => {
     const handleKeyDown = async (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      const isSKey =
+        e.key === "s" ||
+        e.key === "S" ||
+        e.code === "KeyS" ||
+        e.keyCode === 83;
+
+      if ((e.ctrlKey || e.metaKey) && isSKey) {
         e.preventDefault();
+        e.stopPropagation();
         if (typeof handlerRef.current === "function") {
-          await handlerRef.current();
+          try {
+            await handlerRef.current(e);
+          } catch (err) {
+            console.error("Save shortcut execution error:", err);
+          }
         }
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, []);
 
   return (
@@ -30,9 +42,13 @@ export const useRegisterSaveShortcut = (handler) => {
 
   useEffect(() => {
     if (!handlerRef) return;
-    handlerRef.current = typeof handler === "function" ? handler : null;
+    if (typeof handler === "function") {
+      handlerRef.current = handler;
+    }
     return () => {
-      handlerRef.current = null;
+      if (handlerRef.current === handler) {
+        handlerRef.current = null;
+      }
     };
   }, [handler, handlerRef]);
 };

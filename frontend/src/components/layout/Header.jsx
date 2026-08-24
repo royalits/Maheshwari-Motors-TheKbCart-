@@ -165,22 +165,24 @@ const Header = ({ onMenuClick }) => {
   return (
     <header className="flex flex-col  sm:flex-row sm:items-center sm:justify-between h-auto sm:h-16 px-4 sm:px-6 py-4 sm:py-0 bg-white border-b border-neutral-200">
       {/* Top row on mobile, left section on desktop */}
-      <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
+      <div className="flex flex-1 items-center justify-between sm:justify-start gap-2 sm:gap-4 min-w-0 mr-2 sm:mr-4">
         {/* Menu toggle button - visible on all screens */}
         <button
           onClick={onMenuClick}
-          className="p-2 rounded-md hover:bg-neutral-100"
+          className="p-2 rounded-md hover:bg-neutral-100 shrink-0"
         >
           <FaBars className="text-neutral-700" />
         </button>
 
         {user && Boolean(firmName?.trim()) && (
           <div
-            className="flex max-w-[220px] items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-800"
+            className="flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs sm:text-sm text-neutral-800 max-w-full"
             title={firmName}
           >
             <FaBuilding className="shrink-0 text-neutral-500" />
-            <span className="truncate font-medium">{firmName}</span>
+            <span className="font-semibold text-neutral-800 whitespace-normal sm:whitespace-nowrap">
+              {firmName}
+            </span>
           </div>
         )}
 

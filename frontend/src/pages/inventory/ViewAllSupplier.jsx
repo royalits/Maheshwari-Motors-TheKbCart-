@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FaPlus } from 'react-icons/fa';
 import { DataTable } from '../../components/common';
+import { Button } from '../../components/ui';
 import api from '../../services/axiosInstance';
 
 const ViewAllSupplier = () => {
+  const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -55,12 +59,19 @@ const ViewAllSupplier = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">View All Creditors</h1>
-          {/* <p className="text-gray-600">View all supplier</p> */}
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">View All Creditors</h1>
+          <p className="text-gray-600 text-xs sm:text-sm">Manage suppliers & creditors</p>
         </div>
+        <Button
+          onClick={() => navigate('/inventory/add-creditors')}
+          className="flex items-center gap-2 text-xs sm:text-sm"
+        >
+          <FaPlus className="text-sm sm:text-base" />
+          Add Supplier
+        </Button>
       </div>
 
       <DataTable loading={loading} columns={columns} data={suppliers} searchable sortable pagination />

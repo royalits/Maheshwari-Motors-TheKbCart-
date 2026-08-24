@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,6 +14,10 @@ import {
   FaPlus,
   FaCamera,
   FaShoppingCart,
+  FaChevronDown,
+  FaChevronUp,
+  FaChartBar,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { DataTable, Modal, DeleteConfirmDialog } from "../../components/common";
 import { Button, Input, Select } from "../../components/ui";
@@ -559,6 +563,8 @@ const BillList = () => {
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [downloadingBillId, setDownloadingBillId] = useState(null);
+  const [showSummaryMetrics, setShowSummaryMetrics] = useState(false);
+  const [summaryScope, setSummaryScope] = useState("current_month");
 
   const sortBills = (items) =>
     [...items].sort((a, b) => {
@@ -2973,6 +2979,67 @@ const BillList = () => {
       100,
   );
 
+  const summaryMetrics = useMemo(() => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0 to 11
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const currentMonthName = `${monthNames[currentMonth]} ${currentYear}`;
+
+    const isCurrentMonthBill = (bill) => {
+      const dateVal = bill.date || bill.createdAt;
+      if (!dateVal) return false;
+      const d = new Date(dateVal);
+      if (Number.isNaN(d.getTime())) return false;
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    };
+
+    const currentMonthBillsList = bills.filter(isCurrentMonthBill);
+
+    const currentMonthBillsCount = currentMonthBillsList.length;
+    const currentMonthTotalAmount = currentMonthBillsList.reduce(
+      (sum, b) => sum + (Number(b.amount) || 0),
+      0,
+    );
+    const currentMonthSaleAmount = currentMonthBillsList
+      .filter((b) => String(b.raw?.contact_type || "").toLowerCase() === "party")
+      .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const currentMonthPurchaseAmount = currentMonthBillsList
+      .filter((b) => String(b.raw?.contact_type || "").toLowerCase() === "supplier")
+      .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+
+    const overallBillsCount = filteredBills.length;
+    const overallTotalAmount = filteredBills.reduce(
+      (sum, b) => sum + (Number(b.amount) || 0),
+      0,
+    );
+    const overallSaleAmount = filteredBills
+      .filter((b) => String(b.raw?.contact_type || "").toLowerCase() === "party")
+      .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const overallPurchaseAmount = filteredBills
+      .filter((b) => String(b.raw?.contact_type || "").toLowerCase() === "supplier")
+      .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+
+    return {
+      currentMonthName,
+      currentMonth: {
+        totalBills: currentMonthBillsCount,
+        totalAmount: currentMonthTotalAmount,
+        saleAmount: currentMonthSaleAmount,
+        purchaseAmount: currentMonthPurchaseAmount,
+      },
+      overall: {
+        totalBills: overallBillsCount,
+        totalAmount: overallTotalAmount,
+        saleAmount: overallSaleAmount,
+        purchaseAmount: overallPurchaseAmount,
+      },
+    };
+  }, [bills, filteredBills]);
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -3004,61 +3071,195 @@ const BillList = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border-l-2 sm:border-l-4 border-l-blue-500">
-          <h3 className="text-xs sm:text-sm font-medium text-blue-800">
-            Total Bills
-          </h3>
-          <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-900">
-            {bills.length}
-          </p>
-        </div>
-        <div className="bg-green-50 p-3 sm:p-4 rounded-lg border-l-2 sm:border-l-4 border-l-green-500">
-          <h3 className="text-xs sm:text-sm font-medium text-green-800">
-            Total Amount
-          </h3>
-          <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-900">
-            ₹
-            {Math.round(
-              bills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0),
-            ).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-green-50 p-3 sm:p-4 rounded-lg border-l-2 sm:border-l-4 border-l-green-500">
-          <h3 className="text-xs sm:text-sm font-medium text-green-800">
-            Total Sale Amount
-          </h3>
-          <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-900">
-            ₹
-            {Math.round(
-              bills
-                .filter(
-                  (b) =>
-                    String(b.raw?.contact_type || "").toLowerCase() === "party",
-                )
-                .reduce((sum, b) => sum + (Number(b.amount) || 0), 0),
-            ).toLocaleString()}
-          </p>
+      {/* Collapsible Summary Metrics (Default: Closed for Privacy) */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <div
+          onClick={() => setShowSummaryMetrics((prev) => !prev)}
+          className="flex items-center justify-between p-3 sm:p-3.5 bg-gray-50/90 hover:bg-gray-100/90 cursor-pointer select-none transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 text-xs flex-shrink-0">
+              <FaChartBar />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-bold text-gray-800">
+                  {summaryScope === "current_month"
+                    ? `Current Month Summary (${summaryMetrics.currentMonthName})`
+                    : "Filtered Period Summary"}
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                  {summaryScope === "current_month" ? "Current Month" : "Total Range"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {showSummaryMetrics && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="hidden sm:flex items-center bg-white border border-gray-300 rounded-md p-0.5 text-xs shadow-inner"
+              >
+                <button
+                  type="button"
+                  onClick={() => setSummaryScope("current_month")}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    summaryScope === "current_month"
+                      ? "bg-blue-600 text-white shadow-sm font-semibold"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  Current Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSummaryScope("all_filtered")}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    summaryScope === "all_filtered"
+                      ? "bg-blue-600 text-white shadow-sm font-semibold"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  All Filtered
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-md border border-gray-300 shadow-sm transition-colors"
+            >
+              {showSummaryMetrics ? (
+                <>
+                  <span>Hide</span>
+                  <FaChevronUp className="text-gray-500 text-[11px]" />
+                </>
+              ) : (
+                <>
+                  <span>Show Metrics</span>
+                  <FaChevronDown className="text-gray-500 text-[11px]" />
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="bg-green-50 p-3 sm:p-4 rounded-lg border-l-2 sm:border-l-4 border-l-green-500">
-          <h3 className="text-xs sm:text-sm font-medium text-green-800">
-            Total Purchase Amount
-          </h3>
-          <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-900">
-            ₹
-            {Math.round(
-              bills
-                .filter(
-                  (b) =>
-                    String(b.raw?.contact_type || "").toLowerCase() ===
-                    "supplier",
-                )
-                .reduce((sum, b) => sum + (Number(b.amount) || 0), 0),
-            ).toLocaleString()}
-          </p>
-        </div>
+        {/* Expanded Metric Cards */}
+        {showSummaryMetrics && (
+          <div className="p-3 sm:p-4 bg-white border-t border-gray-200">
+            {/* Mobile Scope Selector */}
+            <div className="flex sm:hidden items-center justify-center bg-gray-100 border border-gray-200 rounded-md p-1 mb-3 text-xs">
+              <button
+                type="button"
+                onClick={() => setSummaryScope("current_month")}
+                className={`flex-1 py-1 rounded text-xs font-medium transition-colors text-center ${
+                  summaryScope === "current_month"
+                    ? "bg-blue-600 text-white font-semibold"
+                    : "text-gray-600"
+                }`}
+              >
+                Current Month
+              </button>
+              <button
+                type="button"
+                onClick={() => setSummaryScope("all_filtered")}
+                className={`flex-1 py-1 rounded text-xs font-medium transition-colors text-center ${
+                  summaryScope === "all_filtered"
+                    ? "bg-blue-600 text-white font-semibold"
+                    : "text-gray-600"
+                }`}
+              >
+                All Filtered
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {/* Total Bills Card */}
+              <div className="bg-blue-50/80 p-3 sm:p-4 rounded-lg border-l-4 border-l-blue-500 border border-blue-100 shadow-sm">
+                <h3 className="text-xs sm:text-sm font-semibold text-blue-800 uppercase tracking-wider">
+                  {summaryScope === "current_month"
+                    ? "Month Bills"
+                    : "Total Bills"}
+                </h3>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-900 mt-1">
+                  {summaryScope === "current_month"
+                    ? summaryMetrics.currentMonth.totalBills
+                    : summaryMetrics.overall.totalBills}
+                </p>
+                <p className="text-[11px] text-blue-700 mt-0.5">
+                  {summaryScope === "current_month"
+                    ? `In ${summaryMetrics.currentMonthName}`
+                    : "Across selected dates"}
+                </p>
+              </div>
+
+              {/* Total Amount Card */}
+              <div className="bg-green-50/80 p-3 sm:p-4 rounded-lg border-l-4 border-l-green-500 border border-green-100 shadow-sm">
+                <h3 className="text-xs sm:text-sm font-semibold text-green-800 uppercase tracking-wider">
+                  {summaryScope === "current_month"
+                    ? "Month Total Amount"
+                    : "Total Amount"}
+                </h3>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-900 mt-1">
+                  ₹
+                  {Math.round(
+                    summaryScope === "current_month"
+                      ? summaryMetrics.currentMonth.totalAmount
+                      : summaryMetrics.overall.totalAmount,
+                  ).toLocaleString()}
+                </p>
+                <p className="text-[11px] text-green-700 mt-0.5">
+                  Combined Sales + Purchases
+                </p>
+              </div>
+
+              {/* Current Month Sale Amount Card */}
+              <div className="bg-emerald-50/80 p-3 sm:p-4 rounded-lg border-l-4 border-l-emerald-600 border border-emerald-100 shadow-sm">
+                <h3 className="text-xs sm:text-sm font-semibold text-emerald-800 uppercase tracking-wider">
+                  {summaryScope === "current_month"
+                    ? "Current Month Sale"
+                    : "Total Sale Amount"}
+                </h3>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-900 mt-1">
+                  ₹
+                  {Math.round(
+                    summaryScope === "current_month"
+                      ? summaryMetrics.currentMonth.saleAmount
+                      : summaryMetrics.overall.saleAmount,
+                  ).toLocaleString()}
+                </p>
+                <p className="text-[11px] text-emerald-700 mt-0.5">
+                  {summaryScope === "current_month"
+                    ? `${summaryMetrics.currentMonthName} Party Bills`
+                    : "Party Invoices"}
+                </p>
+              </div>
+
+              {/* Current Month Purchase Amount Card */}
+              <div className="bg-amber-50/80 p-3 sm:p-4 rounded-lg border-l-4 border-l-amber-500 border border-amber-100 shadow-sm">
+                <h3 className="text-xs sm:text-sm font-semibold text-amber-800 uppercase tracking-wider">
+                  {summaryScope === "current_month"
+                    ? "Current Month Purchase"
+                    : "Total Purchase Amount"}
+                </h3>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-amber-900 mt-1">
+                  ₹
+                  {Math.round(
+                    summaryScope === "current_month"
+                      ? summaryMetrics.currentMonth.purchaseAmount
+                      : summaryMetrics.overall.purchaseAmount,
+                  ).toLocaleString()}
+                </p>
+                <p className="text-[11px] text-amber-700 mt-0.5">
+                  {summaryScope === "current_month"
+                    ? `${summaryMetrics.currentMonthName} Supplier Bills`
+                    : "Supplier Invoices"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
