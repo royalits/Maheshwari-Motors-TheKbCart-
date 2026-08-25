@@ -156,7 +156,7 @@ const Dashboard = () => {
         subtitle: `${formatNumber(masters.transports ?? counts.transports)} transports`,
         icon: FaHandshake,
         color: 'green',
-        onClick: () => navigate('/inventory/view-all-creditors'),
+        onClick: () => navigate('/inventory/add-creditors'),
       },
       {
         title: 'Transactions',

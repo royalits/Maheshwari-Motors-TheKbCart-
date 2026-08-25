@@ -403,21 +403,6 @@ const Sidebar = ({ onClose }) => {
                     <FaUserPlus className="w-4 h-4" />
                     Creditors ( Purchasers) Master
                   </NavLink>
-
-                  {/* <NavLink
-                    to="/inventory/view-all-creditors"
-                    onClick={onClose}
-                    className={({ isActive }) =>
-                      `${linkBase} ${
-                        isActive ?
-                          "bg-neutral-100 text-neutral-900"
-                        : "text-[#CBD5E1] hover:bg-neutral-100 hover:text-neutral-900"
-                      }`
-                    }
-                  >
-                    <FaUsersGear className="w-4 h-4" />
-                    View All Creditors
-                  </NavLink> */}
                 </>
               )}
             </SidebarSection>

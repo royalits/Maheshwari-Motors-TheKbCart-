@@ -54,7 +54,6 @@ import CategoryMaster from "./pages/inventory/CategoryMaster";
 import LabelMaster from "./pages/inventory/LabelMaster";
 import ViewCategory from "./pages/inventory/ViewCategory";
 import AddSupplier from "./pages/inventory/AddSupplier";
-import ViewAllSupplier from "./pages/inventory/ViewAllSupplier";
 import DepartmentMaster from "./pages/inventory/DepartmentMaster";
 
 // Transaction Pages
@@ -247,7 +246,7 @@ const App = () => {
               <Route path="/inventory/add-creditors" element={<AddSupplier />} />
               <Route
                 path="/inventory/view-all-creditors"
-                element={<ViewAllSupplier />}
+                element={<Navigate to="/inventory/add-creditors" replace />}
               />
               <Route path="/masters/item-master/add" element={<AddItem />} />
               <Route path="/masters/debitors-master" element={<PartyMaster />} />
