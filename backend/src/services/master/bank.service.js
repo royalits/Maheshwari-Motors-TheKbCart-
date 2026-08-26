@@ -29,23 +29,48 @@ class BankService {
         firmType === "GST" ?
           user?.gst_firm?.bank_ids || []
         : user?.nongst_firm?.bank_ids || [];
-      andClauses.push({
-        $or: [
-          { assignment_type: "firm", _id: { $in: firmBankIds } },
-          { assignment_type: { $in: ["party", "supplier"] } },
-          { assignment_type: null },
-        ],
-      });
+      const otherFirmBankIds =
+        firmType === "GST" ?
+          user?.nongst_firm?.bank_ids || []
+        : user?.gst_firm?.bank_ids || [];
+
+      const orConditions = [
+        { assignment_type: { $in: ["party", "supplier"] } },
+        { assignment_type: { $in: [null, ""] } },
+        { assignment_type: { $exists: false } },
+      ];
+
+      if (firmBankIds.length > 0) {
+        orConditions.push({
+          assignment_type: "firm",
+          _id: { $in: firmBankIds },
+        });
+        if (otherFirmBankIds.length > 0) {
+          orConditions.push({
+            assignment_type: "firm",
+            _id: { $nin: otherFirmBankIds },
+          });
+        }
+      } else {
+        const firmQuery = { assignment_type: "firm" };
+        if (otherFirmBankIds.length > 0) {
+          firmQuery._id = { $nin: otherFirmBankIds };
+        }
+        orConditions.push(firmQuery);
+      }
+
+      andClauses.push({ $or: orConditions });
     }
 
     // Optional assignment_type filter
-    if (query.assignment_type) {
-      if (!ASSIGNMENT_TYPES.includes(query.assignment_type)) {
+    const rawAssignmentType = query.assignment_type || query.bank_type;
+    if (rawAssignmentType) {
+      if (!ASSIGNMENT_TYPES.includes(rawAssignmentType)) {
         throw ApiError.badRequest(
           `assignment_type must be one of: ${ASSIGNMENT_TYPES.join(", ")}`,
         );
       }
-      andClauses.push({ assignment_type: query.assignment_type });
+      andClauses.push({ assignment_type: rawAssignmentType });
     }
 
     // Filter by specific assigned_to

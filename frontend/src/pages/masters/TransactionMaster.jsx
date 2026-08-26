@@ -369,15 +369,17 @@ const TransactionMaster = () => {
   }, []);
 
   useEffect(() => {
-    if (isAddModalOpen) {
+    if (isAddModalOpen || isEditModalOpen) {
       fetchParties();
       fetchSuppliers();
       fetchBooks();
       fetchBanks();
       fetchChequeSetups();
-      focusFirstField();
+      if (isAddModalOpen) {
+        focusFirstField();
+      }
     }
-  }, [isAddModalOpen]);
+  }, [isAddModalOpen, isEditModalOpen]);
 
   const getBookTransactionTypes = (book) => {
     switch (book) {
@@ -1488,15 +1490,20 @@ const TransactionMaster = () => {
                 <SearchableSelect
                   value={formData.bank_id}
                   onChange={(value) => handleInputChange("bank_id", value)}
-                  placeholder="Select Bank"
+                  placeholder={banks.length === 0 ? "No banks found" : "Select Bank"}
                   searchPlaceholder="Search bank..."
                   options={banks.map((b) => ({
-                    value: b._id,
-                    label: `${b.bank_name} - ${b.account_number}`,
-                    searchText: `${b.bank_name} ${b.account_number}`,
+                    value: String(getEntityId(b)),
+                    label: `${b.bank_name || ""}${b.account_number ? ` - ${b.account_number}` : ""}`,
+                    searchText: `${b.bank_name || ""} ${b.account_number || ""}`,
                   }))}
                   buttonClassName="rounded-lg"
                 />
+                {banks.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    No bank accounts found. Please add a bank in Bank Master first.
+                  </p>
+                )}
               </div>
             )}
             <div>

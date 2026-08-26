@@ -19,6 +19,7 @@ const bankSchema = new mongoose.Schema(
     assigned_to: {
       type: mongoose.Schema.Types.ObjectId,
       default: null,
+      set: (v) => (v === "" ? null : v),
     },
     is_default: {
       type: Boolean,
