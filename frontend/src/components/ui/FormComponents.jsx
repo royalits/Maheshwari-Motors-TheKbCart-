@@ -25,7 +25,7 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
 
   if (props.type === 'date') {
     const isoValue = toISODate(props.value) || '';
-    const displayValue = toDisplayDate(props.value) || props.value || '';
+    const displayValue = toDisplayDate(props.value) || (typeof props.value === 'string' ? props.value : '');
 
     const handleTextChange = (e) => {
       if (!props.onChange) return;
@@ -38,7 +38,8 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
     const handlePickerChange = (e) => {
       if (!props.onChange) return;
       const iso = e.target.value;
-      props.onChange(iso || '', e);
+      if (!iso) return;
+      props.onChange(iso, e);
     };
 
     const openPickerSafely = () => {
@@ -46,28 +47,18 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
       if (hiddenDateRef.current && typeof hiddenDateRef.current.showPicker === 'function') {
         try {
           hiddenDateRef.current.showPicker();
-        } catch (err) {
+        } catch {
           // Handled silently if browser restricts showPicker invocation
         }
       }
     };
 
-    const handleFocus = (e) => {
-      if (props.onFocus) props.onFocus(e);
-      openPickerSafely();
-    };
-
     const handleKeyDownInternal = (e) => {
       if (props.onKeyDown) props.onKeyDown(e);
-      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      if (e.key === 'ArrowDown' || (e.altKey && e.key === 'ArrowDown')) {
+        e.preventDefault();
         openPickerSafely();
       }
-    };
-
-    const handleOpenPicker = (e) => {
-      e?.preventDefault?.();
-      e?.stopPropagation?.();
-      openPickerSafely();
     };
 
     return (
@@ -78,7 +69,8 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
           type="text"
           value={displayValue}
           onChange={handleTextChange}
-          onFocus={handleFocus}
+          onFocus={props.onFocus}
+          onBlur={props.onBlur}
           onKeyDown={handleKeyDownInternal}
           placeholder={props.placeholder || 'dd/mm/yyyy'}
           className={`w-full pl-3 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -89,22 +81,19 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
           ref={hiddenDateRef}
           type="date"
           tabIndex={-1}
-          aria-hidden="true"
+          aria-label="Pick date"
           value={isoValue}
           onChange={handlePickerChange}
+          onInput={handlePickerChange}
           disabled={props.disabled}
-          className="absolute right-0 top-0 w-8 h-full opacity-0 pointer-events-none"
+          className="absolute right-0 top-0 w-9 h-full opacity-0 cursor-pointer z-10"
         />
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={handleOpenPicker}
-          disabled={props.disabled}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-blue-600 focus:outline-none transition-colors"
+        <div
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 pointer-events-none transition-colors"
           title="Choose date"
         >
           <FaCalendarAlt className="w-4 h-4" />
-        </button>
+        </div>
       </div>
     );
   }

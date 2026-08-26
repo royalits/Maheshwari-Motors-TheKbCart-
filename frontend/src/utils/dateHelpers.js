@@ -42,23 +42,48 @@ export const getTodayDate = () => {
 
 export const toDisplayDate = (value) => {
   if (!value) return "";
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(String(value))) return String(value);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const day = String(value.getDate()).padStart(2, "0");
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const year = value.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+  const str = String(value).trim();
+  if (!str) return "";
 
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
+  // Already DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str;
+
+  // DD-MM-YYYY -> DD/MM/YYYY
+  if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+    const [d, m, y] = str.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  // YYYY-MM-DD or ISO timestamp
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const [y, m, d] = str.slice(0, 10).split("-");
+    if (y && m && d) return `${d}/${m}/${y}`;
+  }
+
+  return "";
 };
 
 export const toISODate = (value) => {
   if (!value) return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const day = String(value.getDate()).padStart(2, "0");
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const year = value.getFullYear();
+    return `${year}-${month}-${day}`;
+  }
+
   const raw = String(value).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
 
-  const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  const match = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})$/);
   if (!match) return "";
 
   const [, dd, mm, yyyy] = match;
@@ -70,19 +95,12 @@ export const toISODate = (value) => {
         1900 + Number(yyyy)
       : 2000 + Number(yyyy)
     : Number(yyyy);
-  const iso = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  const date = new Date(iso);
 
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getFullYear() !== year ||
-    date.getMonth() + 1 !== month ||
-    date.getDate() !== day
-  ) {
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
     return "";
   }
 
-  return iso;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 };
 
 export const normalizeDisplayDateInput = (value) => {

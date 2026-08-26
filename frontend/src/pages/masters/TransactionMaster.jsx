@@ -12,6 +12,8 @@ import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import {
   getFinancialYearStartDisplayDate,
   getTodayDisplayDate,
+  toISODate,
+  toDisplayDate,
 } from "../../utils/dateHelpers";
 import { getResolvedFirmMeta } from "../../utils/reportPdf";
 
@@ -19,24 +21,9 @@ const getToday = () => {
   return getTodayDisplayDate();
 };
 
-const convertDateToISO = (ddmmyyyy) => {
-  if (!ddmmyyyy) return "";
-  const parts = ddmmyyyy.split("/");
-  if (parts.length !== 3) return "";
-  const [dd, mm, yyyy] = parts;
-  const fullYear = yyyy.length === 2 ? `20${yyyy}` : yyyy;
-  return `${fullYear}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
-};
+const convertDateToISO = (val) => toISODate(val) || "";
 
-const convertDateFromISO = (isoDate) => {
-  if (!isoDate) return "";
-  const date = new Date(isoDate);
-  if (isNaN(date.getTime())) return "";
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-};
+const convertDateFromISO = (val) => toDisplayDate(val) || "";
 
 const sortContactsWithBooksOnTop = (contacts = []) => {
   return [...contacts].sort((a, b) => {
@@ -489,17 +476,15 @@ const TransactionMaster = () => {
     }
 
     if (fromDate || toDate) {
-      const fromTs =
-        fromDate ?
-          new Date(convertDateToISO(fromDate)).setHours(0, 0, 0, 0)
-        : null;
-      const toTs =
-        toDate ?
-          new Date(convertDateToISO(toDate)).setHours(23, 59, 59, 999)
-        : null;
+      const fromIso = convertDateToISO(fromDate);
+      const toIso = convertDateToISO(toDate);
+      const fromTs = fromIso ? new Date(fromIso + "T00:00:00").getTime() : null;
+      const toTs = toIso ? new Date(toIso + "T23:59:59.999").getTime() : null;
+
       scoped = scoped.filter((t) => {
         if (!t?.date) return false;
-        const dateTs = new Date(t.date).getTime();
+        const txnIso = toISODate(t.date);
+        const dateTs = txnIso ? new Date(txnIso + "T12:00:00").getTime() : new Date(t.date).getTime();
         if (Number.isNaN(dateTs)) return false;
         if (fromTs && dateTs < fromTs) return false;
         if (toTs && dateTs > toTs) return false;
@@ -551,11 +536,12 @@ const TransactionMaster = () => {
       label: "Amount",
       width: "150px",
       render: (v, row) => {
+        const num = Number(v) || 0;
         const isSettled = row?.settlement_status === "settled";
         return (
           <div className="flex items-center gap-2">
             <span className={isSettled ? "text-green-600 font-bold" : "text-neutral-900"}>
-              ₹{v?.toFixed(2)}
+              ₹{num.toFixed(2)}
             </span>
             {isSettled && (
               <span className="px-2 py-0.5 text-[10px] leading-tight font-medium bg-green-100 text-green-800 rounded-full border border-green-200">
@@ -1198,7 +1184,8 @@ const TransactionMaster = () => {
               type="date"
               value={fromDate}
               onChange={(val) => {
-                setFromDate(toDisplayDate(val) || val);
+                const display = toDisplayDate(val);
+                setFromDate(display || val || "");
               }}
               placeholder="dd/mm/yyyy"
             />
@@ -1211,7 +1198,8 @@ const TransactionMaster = () => {
               type="date"
               value={toDate}
               onChange={(val) => {
-                setToDate(toDisplayDate(val) || val);
+                const display = toDisplayDate(val);
+                setToDate(display || val || "");
               }}
               placeholder="dd/mm/yyyy"
             />
@@ -1288,7 +1276,7 @@ const TransactionMaster = () => {
               </div>
               <div>
                 <label className="font-medium">Amount:</label>
-                <p>₹{selectedTransaction.amount?.toFixed(2)}</p>
+                <p>₹{(Number(selectedTransaction.amount) || 0).toFixed(2)}</p>
               </div>
               <div>
                 <label className="font-medium">Bank:</label>
@@ -1438,7 +1426,8 @@ const TransactionMaster = () => {
                 placeholder="dd/mm/yyyy"
                 value={formData.date}
                 onChange={(val) => {
-                  setFormData((prev) => ({ ...prev, date: toDisplayDate(val) || val }));
+                  const display = toDisplayDate(val);
+                  setFormData((prev) => ({ ...prev, date: display || val || "" }));
                 }}
                 required
               />

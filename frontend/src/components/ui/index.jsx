@@ -235,7 +235,7 @@ export const Input = React.forwardRef(({
 
   if (type === "date") {
     const isoValue = toISODate(value) || "";
-    const displayValue = toDisplayDate(value) || value || "";
+    const displayValue = toDisplayDate(value) || (typeof value === "string" ? value : "");
 
     const handleTextChange = (e) => {
       if (!onChange) return;
@@ -248,7 +248,8 @@ export const Input = React.forwardRef(({
     const handlePickerChange = (e) => {
       if (!onChange) return;
       const iso = e.target.value;
-      onChange(iso || "", e);
+      if (!iso) return;
+      onChange(iso, e);
     };
 
     const openPickerSafely = () => {
@@ -256,28 +257,18 @@ export const Input = React.forwardRef(({
       if (hiddenDateRef.current && typeof hiddenDateRef.current.showPicker === "function") {
         try {
           hiddenDateRef.current.showPicker();
-        } catch (err) {
+        } catch {
           // Handled silently if browser restricts showPicker invocation
         }
       }
     };
 
-    const handleFocus = (e) => {
-      if (onFocus) onFocus(e);
-      openPickerSafely();
-    };
-
     const handleKeyDownInternal = (e) => {
       if (onKeyDown) onKeyDown(e);
-      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      if (e.key === "ArrowDown" || (e.altKey && e.key === "ArrowDown")) {
+        e.preventDefault();
         openPickerSafely();
       }
-    };
-
-    const handleOpenPicker = (e) => {
-      e?.preventDefault?.();
-      e?.stopPropagation?.();
-      openPickerSafely();
     };
 
     return (
@@ -287,7 +278,7 @@ export const Input = React.forwardRef(({
           type="text"
           value={displayValue}
           onChange={handleTextChange}
-          onFocus={handleFocus}
+          onFocus={onFocus}
           onBlur={onBlur}
           onKeyDown={handleKeyDownInternal}
           placeholder={placeholder || "dd/mm/yyyy"}
@@ -301,22 +292,19 @@ export const Input = React.forwardRef(({
           ref={hiddenDateRef}
           type="date"
           tabIndex={-1}
-          aria-hidden="true"
+          aria-label="Pick date"
           value={isoValue}
           onChange={handlePickerChange}
+          onInput={handlePickerChange}
           disabled={disabled}
-          className="absolute right-0 top-0 w-8 h-full opacity-0 pointer-events-none"
+          className="absolute right-0 top-0 w-9 h-full opacity-0 cursor-pointer z-10"
         />
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={handleOpenPicker}
-          disabled={disabled}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-blue-600 focus:outline-none transition-colors"
+        <div
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 pointer-events-none transition-colors"
           title="Choose date"
         >
           <FaCalendarAlt className="w-4 h-4" />
-        </button>
+        </div>
       </div>
     );
   }
