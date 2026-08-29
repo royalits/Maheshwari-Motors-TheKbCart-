@@ -1333,7 +1333,10 @@ class BillService {
       billAmount = deliveredNum;
     }
 
-    const contactType = billData.contact_type || contact.type || "party";
+    const contactType =
+      resolvedChallanType === "purchase" ?
+        "supplier"
+      : billData.contact_type || contact.type || "party";
     const bill_no = await this._resolveBillNo(
       providedBillNo,
       resolvedIsGst,

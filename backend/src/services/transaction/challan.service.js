@@ -1278,7 +1278,7 @@ class ChallanService {
     const supplier = await Contact.findOne({
       _id: contact_id,
       user_id: userId,
-      type: "supplier",
+      type: { $in: ["supplier", "book"] },
     }).lean();
     if (!supplier) {
       throw ApiError.badRequest("Supplier not found");
