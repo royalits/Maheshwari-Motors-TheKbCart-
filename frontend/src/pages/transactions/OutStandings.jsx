@@ -295,7 +295,7 @@ const OutStandings = ({
           };
         });
 
-        const mappedSuppliers = getResponseList(supplierRes).map((contact) => {
+        const mappedSuppliers = (supplierList || []).map((contact) => {
           const normalized = normalizeContact(contact);
           return {
             id: normalized.id,
@@ -305,7 +305,7 @@ const OutStandings = ({
           };
         });
 
-        const mappedBanks = getResponseList(bankRes).map((bank) => ({
+        const mappedBanks = (bankList || []).map((bank) => ({
           id: getEntityId(bank) || bank._id,
           name: bank.bank_name || bank.name || "Bank",
           account: bank.account_number || bank.accountNo || "",
