@@ -13,6 +13,7 @@ import {
   getResponseMeta,
   normalizeContact,
   toNumber,
+  fetchAllPages,
 } from "../../services/apiUtils";
 import {
   addBrandedReportFooters,
@@ -88,25 +89,19 @@ const OutstandingList = () => {
     totalPages: 1,
   });
 
-  // Load outstanding contacts using new API
+  // Load all outstanding contacts
   useEffect(() => {
     const loadContacts = async () => {
       setLoadingContacts(true);
       try {
         const params = {
           type: contactType,
-          page: pagination.page,
-          limit: pagination.limit,
+          all: true,
         };
-        if (search.trim()) {
-          params.search = search.trim();
-        }
 
-        const response = await api.get("/outstanding", { params });
-        const contactsList = getResponseList(response) || [];
-        const meta = getResponseMeta(response) || {};
+        const contactsList = await fetchAllPages(api, "/outstanding", params);
 
-        const mappedContacts = contactsList.map((contact) => ({
+        const mappedContacts = (contactsList || []).map((contact) => ({
           id: getEntityId(contact) || contact._id,
           name: contact.name || contact.contact_name || "-",
           type: contactType,
@@ -119,10 +114,6 @@ const OutstandingList = () => {
         }));
 
         setContacts(mappedContacts);
-        setPagination((prev) => ({
-          ...prev,
-          totalPages: meta.totalPages || 1,
-        }));
       } catch (error) {
         console.error("Failed to load outstanding contacts:", error);
         showToast(
@@ -136,7 +127,7 @@ const OutstandingList = () => {
     };
 
     loadContacts();
-  }, [contactType, search, pagination.page, refreshKey, showToast]);
+  }, [contactType, refreshKey, showToast]);
 
   // Load contact summary and bills using new API
   useEffect(() => {
@@ -384,10 +375,17 @@ const OutstandingList = () => {
   }, [selectedContacts, refreshKey, contacts, contactType, showToast]);
 
   const visibleContacts = useMemo(() => {
-    // Since we're now using server-side search and filtering,
-    // we just return the contacts as they come from the API
-    return contacts;
-  }, [contacts]);
+    if (!search.trim()) return contacts;
+    const q = search.trim().toLowerCase();
+    return contacts.filter(
+      (c) =>
+        (c.name || "").toLowerCase().includes(q) ||
+        (c.city || "").toLowerCase().includes(q) ||
+        (c.phone || "").toLowerCase().includes(q) ||
+        (c.address || "").toLowerCase().includes(q) ||
+        (c.agentName || "").toLowerCase().includes(q),
+    );
+  }, [contacts, search]);
 
   const toggleAllVisibleContacts = () => {
     if (visibleContacts.length === 0) {
@@ -1337,11 +1335,16 @@ const OutstandingList = () => {
               placeholder="Search contact..."
             />
           </div>
-          <div className="text-xs text-gray-500">
-            Shortcut: `Ctrl+Z` to select all visible{" "}
-            {contactType === "party" ? "parties" : "suppliers"}.
+          <div className="text-xs text-gray-500 flex justify-between items-center">
+            <span>
+              Shortcut: `Ctrl+Z` to select all visible{" "}
+              {contactType === "party" ? "parties" : "suppliers"}.
+            </span>
+            <span className="font-medium text-gray-700">
+              Total: {visibleContacts.length}
+            </span>
           </div>
-          <div className="max-h-[520px] overflow-y-auto border rounded-lg">
+          <div className="max-h-[580px] overflow-y-auto border rounded-lg">
             {loadingContacts ?
               <div className="p-3 text-sm text-gray-500">
                 Loading contacts...
@@ -1351,7 +1354,7 @@ const OutstandingList = () => {
                 No contacts found.
               </div>
             : <>
-                <div className="sticky top-0 bg-gray-100 border-b px-3 py-2 flex items-center gap-2">
+                <div className="sticky top-0 bg-gray-100 border-b px-3 py-2 flex items-center gap-2 z-10">
                   <input
                     type="checkbox"
                     checked={
@@ -1370,7 +1373,7 @@ const OutstandingList = () => {
                     className="w-3.5 h-3.5 accent-blue-600 shrink-0"
                   />
                   <span className="text-xs font-medium text-gray-700">
-                    Select All
+                    Select All ({visibleContacts.length})
                   </span>
                 </div>
                 {visibleContacts.map((contact) => {
@@ -1406,37 +1409,6 @@ const OutstandingList = () => {
                     </button>
                   );
                 })}
-                {pagination.totalPages > 1 && (
-                  <div className="p-2 border-t bg-gray-50 flex justify-between items-center">
-                    <button
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          page: Math.max(1, prev.page - 1),
-                        }))
-                      }
-                      disabled={pagination.page === 1}
-                      className="px-2 py-1 text-xs bg-white border rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-xs text-gray-600">
-                      Page {pagination.page} of {pagination.totalPages}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          page: Math.min(prev.totalPages, prev.page + 1),
-                        }))
-                      }
-                      disabled={pagination.page === pagination.totalPages}
-                      className="px-2 py-1 text-xs bg-white border rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
               </>
             }
           </div>
