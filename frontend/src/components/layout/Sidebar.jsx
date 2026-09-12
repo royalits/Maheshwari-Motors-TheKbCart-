@@ -20,6 +20,7 @@ import {
   FaDownload,
   FaCalendarXmark,
   FaMoneyBillTransfer,
+  FaReceipt,
 } from "react-icons/fa6";
 import useStore from "../../store";
 import { usePermission } from "../../hooks/usePermission";
@@ -335,6 +336,21 @@ const Sidebar = ({ onClose }) => {
                 <FaBell className="w-4 h-4" />
                 Stock Alert Master
               </NavLink>
+
+              <NavLink
+                to="/masters/expense-master"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${linkBase} ${
+                    isActive
+                      ? "bg-neutral-100 text-neutral-900"
+                      : "text-[#CBD5E1] hover:bg-neutral-100 hover:text-neutral-900"
+                  }`
+                }
+              >
+                <FaReceipt className="w-4 h-4" />
+                Expense Master
+              </NavLink>
             </SidebarSection>
           )}
 
@@ -500,6 +516,21 @@ const Sidebar = ({ onClose }) => {
                 <FaMoneyBillTransfer className="w-4 h-4" />
                 Outstanding List
               </NavLink>
+
+              <NavLink
+                to="/transactions/expense-entry"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${linkBase} ${
+                    isActive
+                      ? "bg-neutral-100 text-neutral-900"
+                      : "text-[#CBD5E1] hover:bg-neutral-100 hover:text-neutral-900"
+                  }`
+                }
+              >
+                <FaReceipt className="w-4 h-4" />
+                Expense Entry
+              </NavLink>
             </SidebarSection>
           )}
 
@@ -633,6 +664,21 @@ const Sidebar = ({ onClose }) => {
               >
                 <FaChartPie className="w-4 h-4" />
                 Damage Item Report
+              </NavLink>
+
+              <NavLink
+                to="/reports/expense-report"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${linkBase} ${
+                    isActive
+                      ? "bg-neutral-100 text-neutral-900"
+                      : "text-[#CBD5E1] hover:bg-neutral-100 hover:text-neutral-900"
+                  }`
+                }
+              >
+                <FaChartPie className="w-4 h-4" />
+                Expense & Cash/Bank Report
               </NavLink>
             </SidebarSection>
           )}

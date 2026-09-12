@@ -20,3 +20,5 @@ export * as transactionController from "./transaction/transaction.controller.js"
 export * as outstandingController from "./report/outstanding.controller.js";
 export { default as itemLedgerController } from "./report/itemLedger.controller.js";
 export { default as backupController } from "./backup/backup.controller.js";
+export { default as expenseCategoryController } from "./master/expenseCategory.controller.js";
+export { default as expenseController } from "./transaction/expense.controller.js";

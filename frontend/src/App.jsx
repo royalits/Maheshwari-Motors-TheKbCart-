@@ -43,6 +43,7 @@ import AreaMaster from "./pages/masters/AreaMaster";
 import BankMaster from "./pages/masters/BankMaster";
 import ReturnMaster from "./pages/masters/ReturnMaster";
 import TransactionMaster from "./pages/masters/TransactionMaster";
+import ExpenseMaster from "./pages/masters/ExpenseMaster";
 
 // Inventory Pages
 import ItemMaster from "./pages/inventory/ItemMaster";
@@ -65,6 +66,7 @@ import BillAutomation from "./pages/transactions/BillAutomation";
 import TransactionHistory from "./pages/transactions/TransactionHistory";
 import OutStandings from "./pages/transactions/OutStandings";
 import OutstandingList from "./pages/transactions/OutstandingList";
+import ExpenseEntry from "./pages/transactions/ExpenseEntry";
 
 // Report Pages
 import Reports from "./pages/reports/Reports";
@@ -79,6 +81,7 @@ import PurchaseDateWiseReport from "./pages/reports/PurchaseDateWiseReport";
 import CollectionReport from "./pages/reports/CollectionReport";
 import ProfitLossReport from "./pages/reports/ProfitLossReport";
 import DamageItemReport from "./pages/reports/DamageItemReport";
+import ExpenseReport from "./pages/reports/ExpenseReport";
 
 // Setup Pages
 import BackupRestore from "./pages/setup/BackupRestore";
@@ -272,6 +275,10 @@ const App = () => {
                 element={<TransactionMaster />}
               />
               <Route path="/masters/return-master" element={<ReturnMaster />} />
+              <Route
+                path="/masters/expense-master"
+                element={<ExpenseMaster />}
+              />
             </Route>
 
             {/* Item View - Admin, Accountant, and Client */}
@@ -315,6 +322,10 @@ const App = () => {
               <Route
                 path="/transactions/outstandings"
                 element={<OutStandings />}
+              />
+              <Route
+                path="/transactions/expense-entry"
+                element={<ExpenseEntry />}
               />
             </Route>
 
@@ -374,6 +385,10 @@ const App = () => {
               <Route
                 path="/reports/damage-item-report"
                 element={<DamageItemReport />}
+              />
+              <Route
+                path="/reports/expense-report"
+                element={<ExpenseReport />}
               />
             </Route>
 

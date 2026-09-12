@@ -23,3 +23,5 @@ export { default as PlatformBackup } from "./common/platform_backup.model.js";
 export { default as PlatformBackupChunk } from "./common/platform_backup_chunk.model.js";
 export { default as Transaction } from "./transaction/transaction.model.js";
 export { default as Return } from "./transaction/return.model.js";
+export { default as ExpenseCategory } from "./master/expense_category.model.js";
+export { default as Expense } from "./transaction/expense.model.js";

@@ -23,3 +23,6 @@ export { default as subscriptionService } from "./subscription/subscription.serv
 export { default as transactionService } from "./transaction/transaction.service.js";
 export { default as outstandingService } from "./report/outstanding.service.js";
 export { default as itemLedgerService } from "./report/itemLedger.service.js";
+export { default as expenseCategoryService } from "./master/expenseCategory.service.js";
+export { default as expenseService } from "./transaction/expense.service.js";
+export { default as expenseReportService } from "./report/expenseReport.service.js";

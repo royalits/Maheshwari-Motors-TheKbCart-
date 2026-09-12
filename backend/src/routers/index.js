@@ -24,6 +24,7 @@ import setupRoutes from "./setup.routes.js";
 import backupRoutes from "./backup.routes.js";
 import financialYearRoutes from "./financialYear.routes.js";
 import mediaRoutes from "./media.routes.js";
+import expenseRoutes from "./expense.routes.js";
 
 const router = Router();
 
@@ -52,5 +53,6 @@ router.use("/item-ledger", itemLedgerRoutes);
 router.use("/setup", setupRoutes);
 router.use("/backup", backupRoutes);
 router.use("/financial-years", financialYearRoutes);
+router.use("/expenses", expenseRoutes);
 
 export default router;
