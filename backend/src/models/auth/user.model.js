@@ -71,6 +71,7 @@ const firmSubSchema = new Schema(
     CIN: { type: String },
     reg_number: { type: String },
     bank_ids: [{ type: ObjectId, ref: "Bank" }],
+    cash_opening_balance: { type: Number, default: 0 },
     signature: { type: String, default: null },
   },
   { _id: false },

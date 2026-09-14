@@ -2,6 +2,7 @@ import Expense from "../../models/transaction/expense.model.js";
 import ExpenseCategory from "../../models/master/expense_category.model.js";
 import Transaction from "../../models/transaction/transaction.model.js";
 import Bill from "../../models/transaction/bill.model.js";
+import User from "../../models/auth/user.model.js";
 import mongoose from "mongoose";
 
 class ExpenseReportService {
@@ -179,24 +180,39 @@ class ExpenseReportService {
     const totalCashOut = purchaseCashOut + totalCashExpense;
     const totalBankOut = purchaseBankOut + totalBankExpense;
 
+    // 4. Fetch Cash Opening Balance & Bank Opening Balances
+    const userDoc = await User.findById(userId).lean();
+    const firmTypeStr = Number(isGst) === 1 ? "gst_firm" : "nongst_firm";
+    const cashOpening = Number(userDoc?.[firmTypeStr]?.cash_opening_balance || 0);
+
+    const bankDocs = await mongoose.model("Bank").find({ user_id: userId }).select("opening_balance").lean();
+    const bankOpening = bankDocs.reduce((sum, b) => sum + Number(b.opening_balance || 0), 0);
+
+    const closingCash = cashOpening + salesCashIn - totalCashOut;
+    const closingBank = bankOpening + salesBankIn - totalBankOut;
+
     return {
       totalExpense,
       totalCashExpense,
       totalBankExpense,
       categoryBreakdown,
       cashFlow: {
+        cashOpening,
         cashIn: salesCashIn,
         cashOut: totalCashOut,
         cashPurchaseOut: purchaseCashOut,
         cashExpenseOut: totalCashExpense,
         netCash: salesCashIn - totalCashOut,
+        closingCash,
       },
       bankFlow: {
+        bankOpening,
         bankIn: salesBankIn,
         bankOut: totalBankOut,
         bankPurchaseOut: purchaseBankOut,
         bankExpenseOut: totalBankExpense,
         netBank: salesBankIn - totalBankOut,
+        closingBank,
       },
     };
   }

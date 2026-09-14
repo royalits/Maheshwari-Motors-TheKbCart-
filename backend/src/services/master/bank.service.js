@@ -2,7 +2,10 @@ import mongoose from "mongoose";
 import Bank, { ASSIGNMENT_TYPES } from "../../models/master/bank.model.js";
 import Contact from "../../models/master/contact.model.js";
 import User from "../../models/auth/user.model.js";
-import { ApiError, Pagination } from "../../utils/index.js";
+import Transaction from "../../models/transaction/transaction.model.js";
+import Bill from "../../models/transaction/bill.model.js";
+import Expense from "../../models/transaction/expense.model.js";
+import { ApiError, Pagination, toNumber } from "../../utils/index.js";
 import { getNextId } from "../../helpers/counter.js";
 
 const BANK_POPULATE = [
@@ -10,6 +13,125 @@ const BANK_POPULATE = [
 ];
 
 class BankService {
+  async _enrichBanksWithClosingBalance(banks, userId) {
+    if (!Array.isArray(banks) || banks.length === 0) return banks;
+    const validUserId = new mongoose.Types.ObjectId(userId);
+    const bankIds = banks
+      .map((b) => b._id || b.id)
+      .filter(Boolean)
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    if (bankIds.length === 0) return banks;
+
+    const [transAgg, billAgg, expenseAgg] = await Promise.all([
+      Transaction.aggregate([
+        {
+          $match: {
+            user_id: validUserId,
+            bank_id: { $in: bankIds },
+          },
+        },
+        {
+          $group: {
+            _id: { bank_id: "$bank_id", type: "$type" },
+            total: { $sum: "$amount" },
+          },
+        },
+      ]),
+      Bill.aggregate([
+        {
+          $match: {
+            $or: [
+              { user_id: validUserId },
+              { user_id: { $exists: false } },
+              { user_id: null },
+            ],
+            "payment_entries.bank_id": { $in: bankIds },
+          },
+        },
+        { $unwind: "$payment_entries" },
+        {
+          $match: {
+            "payment_entries.bank_id": { $in: bankIds },
+            $or: [
+              { "payment_entries.transaction_id": { $exists: false } },
+              { "payment_entries.transaction_id": null },
+            ],
+          },
+        },
+        {
+          $group: {
+            _id: {
+              bank_id: "$payment_entries.bank_id",
+              payment_type: "$payment_entries.payment_type",
+            },
+            total: { $sum: "$payment_entries.amount" },
+          },
+        },
+      ]),
+      Expense.aggregate([
+        {
+          $match: {
+            user_id: validUserId,
+            payment_mode: "bank",
+            bank_id: { $in: bankIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$bank_id",
+            total: { $sum: "$amount" },
+          },
+        },
+      ]),
+    ]);
+
+    const flowMap = {};
+    bankIds.forEach((id) => {
+      flowMap[String(id)] = { in: 0, out: 0 };
+    });
+
+    transAgg.forEach((row) => {
+      const bId = String(row._id.bank_id);
+      if (!flowMap[bId]) flowMap[bId] = { in: 0, out: 0 };
+      if (row._id.type === "bank_received") flowMap[bId].in += row.total || 0;
+      if (row._id.type === "bank_payment") flowMap[bId].out += row.total || 0;
+    });
+
+    billAgg.forEach((row) => {
+      const bId = String(row._id.bank_id);
+      if (!flowMap[bId]) flowMap[bId] = { in: 0, out: 0 };
+      if (row._id.payment_type === "bank_transaction_received_amount")
+        flowMap[bId].in += row.total || 0;
+      if (row._id.payment_type === "bank_transfer_payment_given")
+        flowMap[bId].out += row.total || 0;
+    });
+
+    expenseAgg.forEach((row) => {
+      const bId = String(row._id);
+      if (!flowMap[bId]) flowMap[bId] = { in: 0, out: 0 };
+      flowMap[bId].out += row.total || 0;
+    });
+
+    return banks.map((bank) => {
+      const bObj =
+        typeof bank.toObject === "function" ? bank.toObject() : { ...bank };
+      const bId = String(bObj._id || bObj.id);
+      const flows = flowMap[bId] || { in: 0, out: 0 };
+      const opening = Number(bObj.opening_balance || 0);
+      const closing = opening + flows.in - flows.out;
+
+      return {
+        ...bObj,
+        opening_balance: opening,
+        total_inflow: flows.in,
+        total_outflow: flows.out,
+        closing_balance: closing,
+        current_balance: closing,
+      };
+    });
+  }
+
   /**
    * Get banks with ownership-aware visibility.
    * - Firm users see: their firm's banks + all contact banks + unassigned banks
@@ -97,11 +219,18 @@ class BankService {
       filter.$and = andClauses;
     }
 
-    return Pagination.paginate(Bank, filter, {
+    const paginatedResult = await Pagination.paginate(Bank, filter, {
       ...query,
       sort: { is_default: -1, assignment_type: 1, createdAt: -1 },
       populate: BANK_POPULATE,
     });
+
+    paginatedResult.data = await this._enrichBanksWithClosingBalance(
+      paginatedResult.data,
+      userId,
+    );
+
+    return paginatedResult;
   }
 
   async getBankById(bankId, userId) {
@@ -109,7 +238,8 @@ class BankService {
       .populate(BANK_POPULATE)
       .lean();
     if (!bank) throw ApiError.notFound("Bank not found");
-    return bank;
+    const [enriched] = await this._enrichBanksWithClosingBalance([bank], userId);
+    return enriched;
   }
 
   async createBank(bankData, userId, firmType = null) {
@@ -125,7 +255,10 @@ class BankService {
       upi_id,
       is_default,
       default_bank,
+      opening_balance,
     } = bankData;
+
+    const parsedOpeningBalance = toNumber(opening_balance || 0, "Opening balance", { min: 0 });
 
     // type takes precedence over assignment_type; default "firm"
     const assignment_type = type || rawAssignmentType || "firm";
@@ -206,6 +339,7 @@ class BankService {
       assignment_type: validatedAssignmentType,
       assigned_to: validatedAssignedTo,
       is_default: isDefaultBank,
+      opening_balance: parsedOpeningBalance,
       user_id: userId,
     });
 
@@ -252,6 +386,7 @@ class BankService {
       assigned_to,
       is_default,
       default_bank,
+      opening_balance,
     } = updateData;
 
     if (bank_name !== undefined) {
@@ -285,6 +420,9 @@ class BankService {
     if (account_holder !== undefined)
       fields.account_holder = account_holder.trim();
     if (upi_id !== undefined) fields.upi_id = upi_id.trim();
+    if (opening_balance !== undefined) {
+      fields.opening_balance = toNumber(opening_balance || 0, "Opening balance", { min: 0 });
+    }
 
     if (is_default !== undefined || default_bank !== undefined) {
       fields.is_default =

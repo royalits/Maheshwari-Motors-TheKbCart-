@@ -52,6 +52,10 @@ const ExpenseReport = () => {
   const totalBankExpense = reportData?.totalBankExpense || 0;
   const salesCashIn = reportData?.cashFlow?.cashIn || 0;
   const salesBankIn = reportData?.bankFlow?.bankIn || 0;
+  const cashOpening = reportData?.cashFlow?.cashOpening || 0;
+  const closingCash = reportData?.cashFlow?.closingCash ?? (cashOpening + salesCashIn - totalCashExpense);
+  const bankOpening = reportData?.bankFlow?.bankOpening || 0;
+  const closingBank = reportData?.bankFlow?.closingBank ?? (bankOpening + salesBankIn - totalBankExpense);
   const categories = reportData?.categoryBreakdown || [];
 
   const handlePrint = () => {
@@ -84,6 +88,12 @@ const ExpenseReport = () => {
         ],
         body: [
           [
+            "Opening Balance",
+            `${cashOpening.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+            `${bankOpening.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+            `${(cashOpening + bankOpening).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+          ],
+          [
             "Receipts & Inflows (Sales / Collections)",
             `+${salesCashIn.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
             `+${salesBankIn.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
@@ -96,10 +106,10 @@ const ExpenseReport = () => {
             `-${totalExpense.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
           ],
           [
-            "Net Cash / Bank Balance Impact",
-            `${(salesCashIn - totalCashExpense).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-            `${(salesBankIn - totalBankExpense).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-            `${(salesCashIn + salesBankIn - totalExpense).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+            "Live Closing Balance",
+            `${closingCash.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+            `${closingBank.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+            `${(closingCash + closingBank).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
           ],
         ],
         theme: "grid",
@@ -292,6 +302,12 @@ const ExpenseReport = () => {
             </div>
             <div className="mt-3 space-y-1.5 text-sm">
               <div className="flex justify-between text-neutral-600">
+                <span>Cash Opening Balance:</span>
+                <span className="font-mono font-medium text-neutral-800">
+                  ₹{cashOpening.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between text-neutral-600">
                 <span>Cash Receipts (Inflow):</span>
                 <span className="font-semibold text-emerald-600">
                   +₹{salesCashIn.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -304,9 +320,9 @@ const ExpenseReport = () => {
                 </span>
               </div>
               <div className="flex justify-between font-bold pt-2 border-t text-neutral-800">
-                <span>Net Cash Expense Impact:</span>
-                <span className="text-amber-700">
-                  ₹{totalCashExpense.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                <span>Live Cash Closing Balance:</span>
+                <span className="text-amber-700 font-mono">
+                  ₹{closingCash.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -322,6 +338,12 @@ const ExpenseReport = () => {
             </div>
             <div className="mt-3 space-y-1.5 text-sm">
               <div className="flex justify-between text-neutral-600">
+                <span>Bank Opening Balance:</span>
+                <span className="font-mono font-medium text-neutral-800">
+                  ₹{bankOpening.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between text-neutral-600">
                 <span>Bank Receipts (Inflow):</span>
                 <span className="font-semibold text-emerald-600">
                   +₹{salesBankIn.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -334,9 +356,9 @@ const ExpenseReport = () => {
                 </span>
               </div>
               <div className="flex justify-between font-bold pt-2 border-t text-neutral-800">
-                <span>Net Bank Expense Impact:</span>
-                <span className="text-blue-700">
-                  ₹{totalBankExpense.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                <span>Live Bank Closing Balance:</span>
+                <span className="text-blue-700 font-mono">
+                  ₹{closingBank.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>

@@ -25,6 +25,10 @@ const bankSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    opening_balance: {
+      type: Number,
+      default: 0,
+    },
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

@@ -14,6 +14,7 @@ const INITIAL_FORM_DATA = {
   account_number: '',
   account_holder: '',
   upi_id: '',
+  opening_balance: '0',
   // bank_type stays implicitly "firm" on backend
   is_default: false,
 };
@@ -25,6 +26,7 @@ const INITIAL_FORM_ERRORS = {
   account_number: '',
   account_holder: '',
   upi_id: '',
+  opening_balance: '',
 };
 
 const collapseAndTrimSpaces = (value) =>
@@ -52,6 +54,7 @@ const sanitizeBankFormData = (data) => ({
   account_number: normalizeAccountNumberInput(data.account_number),
   account_holder: collapseAndTrimSpaces(data.account_holder),
   upi_id: normalizeUpiInput(data.upi_id),
+  opening_balance: Number(data.opening_balance || 0),
   is_default: Boolean(data.is_default),
 });
 
@@ -63,6 +66,7 @@ const mapBankToFormData = (bank = {}) =>
     account_number: bank.account_number || '',
     account_holder: bank.account_holder || '',
     upi_id: bank.upi_id || '',
+    opening_balance: bank.opening_balance ?? 0,
     is_default: Boolean(bank.is_default),
   });
 
@@ -205,6 +209,8 @@ const BankMaster = () => {
     { key: 'bank_name', label: 'Bank Name', render: (val) => <span className="text-xs sm:text-sm font-medium">{val}</span> },
     { key: 'account_number', label: 'Account Number', render: (val) => <span className="text-xs sm:text-sm">{val}</span> },
     { key: 'ifsc_code', label: 'IFSC Code', render: (val) => <span className="text-xs sm:text-sm">{val || '-'}</span> },
+    { key: 'opening_balance', label: 'Opening Balance (₹)', render: (val) => <span className="text-xs sm:text-sm font-mono text-gray-700 font-medium">₹{Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span> },
+    { key: 'closing_balance', label: 'Closing Balance (₹)', render: (val, row) => <span className={`text-xs sm:text-sm font-mono font-bold ${(val ?? row.closing_balance ?? 0) >= 0 ? "text-emerald-700" : "text-rose-600"}`}>₹{Number(val ?? row.closing_balance ?? row.opening_balance ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span> },
     { key: 'is_default', label: 'Default', render: (val) => <span className={`px-2 py-1 text-xs rounded-full ${val ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{val ? 'Yes' : 'No'}</span> }
   ];
 
@@ -384,6 +390,21 @@ const BankMaster = () => {
             />
             {formErrors.upi_id && <p className="mt-1 text-xs text-red-600">{formErrors.upi_id}</p>}
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance (₹)</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.opening_balance}
+              onChange={(valueOrEvent, fallbackEvent) =>
+                handleFormFieldChange('opening_balance', extractInputValue(valueOrEvent, fallbackEvent))
+              }
+              placeholder="Enter opening balance (e.g. 1000)"
+              allowSpaces={false}
+            />
+            {formErrors.opening_balance && <p className="mt-1 text-xs text-red-600">{formErrors.opening_balance}</p>}
+          </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={formData.is_default} onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })} className="rounded" />
             <label className="text-sm text-gray-700">Set as default bank</label>
@@ -438,6 +459,14 @@ const BankMaster = () => {
               <div>
                 <label className="block text-xs font-medium text-gray-500">UPI ID</label>
                 <p className="text-sm text-gray-900">{viewingBank.upi_id || '-'}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500">Opening Balance</label>
+                <p className="text-sm font-mono text-gray-900">₹{Number(viewingBank.opening_balance || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500">Live Closing Balance</label>
+                <p className="text-sm font-mono font-bold text-emerald-700">₹{Number(viewingBank.closing_balance ?? viewingBank.opening_balance ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500">Default Bank</label>
