@@ -48,7 +48,13 @@ const itemSchema = new mongoose.Schema(
 );
 
 itemSchema.index({ id: 1, user_id: 1 });
-itemSchema.index({ barcode: 1 }, { unique: true, sparse: true });
-itemSchema.index({ item_id: 1 }, { unique: true, sparse: true });
+itemSchema.index({ barcode: 1, user_id: 1 }, { unique: true, sparse: true });
+itemSchema.index({ item_id: 1, user_id: 1 }, { unique: true, sparse: true });
 
-export default mongoose.model("Item", itemSchema);
+const ItemModel = mongoose.model("Item", itemSchema);
+
+// Safely drop legacy single-field global indexes if present in database
+ItemModel.collection.dropIndex("barcode_1").catch(() => {});
+ItemModel.collection.dropIndex("item_id_1").catch(() => {});
+
+export default ItemModel;

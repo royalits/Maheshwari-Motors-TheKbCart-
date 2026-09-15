@@ -138,6 +138,18 @@ class AuthController {
     res.setHeader("Cache-Control", "private, max-age=300");
     res.status(200).send(signature.buffer);
   });
+
+  updateCashOpeningBalance = asyncHandler(async (req, res) => {
+    const { amount } = req.body;
+    const result = await authService.updateCashOpeningBalance(
+      req.user._id,
+      req.firmType,
+      amount
+    );
+    res
+      .status(200)
+      .json(new ApiResponse(200, result, "Cash opening balance updated successfully"));
+  });
 }
 
 export default new AuthController();

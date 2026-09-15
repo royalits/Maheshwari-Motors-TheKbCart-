@@ -419,7 +419,7 @@ class ItemService {
       }
       finalBarcode = barcode.toUpperCase();
     } else {
-      finalBarcode = await generateUniqueBarcode();
+      finalBarcode = await generateUniqueBarcode(userId);
     }
 
     let finalItemId;

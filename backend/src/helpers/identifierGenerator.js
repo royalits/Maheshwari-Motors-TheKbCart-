@@ -15,19 +15,35 @@ function _randomBarcode() {
   return barcode;
 }
 
-export async function generateUniqueBarcode() {
+export async function generateUniqueBarcode(userId = null) {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const barcode = _randomBarcode();
-    const exists = await Item.exists({ barcode });
+    const query = userId ? { barcode, user_id: userId } : { barcode };
+    const exists = await Item.exists(query);
     if (!exists) return barcode;
   }
   throw new Error(
     `Failed to generate unique barcode after ${MAX_RETRIES} attempts`,
   );
 }
+
 export async function generateUniqueItemId(userId) {
-  const nextId = await getNextId("ItemId", userId);
-  return String(nextId);
+  let attempts = 0;
+  while (attempts < 1000) {
+    const nextId = await getNextId("ItemId", userId);
+    const candidate = String(nextId);
+    const query = userId
+      ? {
+          user_id: userId,
+          $or: [{ item_id: candidate }, { item_id: Number(candidate) }],
+        }
+      : { $or: [{ item_id: candidate }, { item_id: Number(candidate) }] };
+
+    const exists = await Item.exists(query);
+    if (!exists) return candidate;
+    attempts++;
+  }
+  return String(Date.now());
 }
 
 export function isValidBarcodeFormat(barcode) {

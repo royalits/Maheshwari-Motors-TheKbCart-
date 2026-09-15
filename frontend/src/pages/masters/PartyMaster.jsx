@@ -619,6 +619,10 @@ const PartyMaster = () => {
                 <p className="text-sm text-gray-900">{selectedParty.transport_charge || 'N/A'}</p>
               </div>
               <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Credit Terms (Days)</label>
+                <p className="text-sm text-gray-900">{selectedParty.due_days ? `${selectedParty.due_days} Days` : '0 (No Credit)'}</p>
+              </div>
+              <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">GST Number</label>
                 <p className="text-sm text-gray-900">{selectedParty.gstin || 'N/A'}</p>
               </div>

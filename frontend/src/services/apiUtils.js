@@ -86,6 +86,7 @@ export const normalizeContact = (contact = {}) => ({
   state: contact?.state || "",
   gstin: contact?.gstin || "",
   is_gst: toNumber(contact?.is_gst, 0) === 1 ? 1 : 0,
+  due_days: toNumber(contact?.due_days, 0),
   category_id: getEntityId(contact?.category_id),
   transport_id: getEntityId(contact?.transport_id),
   area_id: getEntityId(contact?.area_id),

@@ -841,6 +841,29 @@ class AuthService {
     if (!signatureUrl) throw ApiError.notFound("Signature not found");
     return s3Service.getFile(signatureUrl);
   }
+
+  async updateCashOpeningBalance(userId, firmType, amount) {
+    const user = await User.findById(userId);
+    if (!user) throw ApiError.notFound("User not found");
+
+    const parsedAmount = Number(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+      throw ApiError.badRequest("Cash opening balance must be a non-negative number");
+    }
+
+    const firmKey = String(firmType || "").toUpperCase() === "NON_GST" ? "nongst_firm" : "gst_firm";
+    if (!user[firmKey]) {
+      user[firmKey] = {};
+    }
+
+    user[firmKey].cash_opening_balance = parsedAmount;
+    await user.save();
+
+    return {
+      cash_opening_balance: parsedAmount,
+      firm_type: firmKey === "nongst_firm" ? "NON_GST" : "GST",
+    };
+  }
 }
 
 export default new AuthService();

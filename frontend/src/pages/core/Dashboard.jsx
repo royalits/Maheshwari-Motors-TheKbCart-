@@ -338,17 +338,6 @@ const Dashboard = () => {
         </p>
       </div>
     </div>
-    <button
-      onClick={() => navigate('/core/user-profile')}
-      className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-lg shadow-sm whitespace-nowrap transition flex items-center gap-1.5 ${
-        subscriptionExpiryAlert.days_remaining <= 3 || subscriptionExpiryAlert.is_expired
-          ? 'bg-red-600 hover:bg-red-700 text-white'
-          : 'bg-amber-600 hover:bg-amber-700 text-white'
-      }`}
-    >
-      Renew Subscription
-      <FaArrowRight size={12} />
-    </button>
   </div>
 )}
 
@@ -479,26 +468,12 @@ const Dashboard = () => {
                           )}
                         </td>
                         <td className="py-3 px-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {waUrl ? (
-                              <a
-                                href={waUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Send WhatsApp Reminder"
-                                className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition shadow-xs flex items-center gap-1 text-xs px-2.5 py-1 font-medium"
-                              >
-                                <FaWhatsapp className="text-sm" />
-                                WhatsApp
-                              </a>
-                            ) : null}
-                            <button
-                              onClick={() => navigate('/transactions/bill-list')}
-                              className="px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium shadow-xs"
-                            >
-                              Settle
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => navigate('/transactions/bill-list')}
+                            className="px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium shadow-xs"
+                          >
+                            Settle
+                          </button>
                         </td>
                       </tr>
                     );

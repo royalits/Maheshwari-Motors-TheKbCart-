@@ -42,5 +42,6 @@ router.put(
   upload.single("signature"),
   authController.updateSignature,
 );
+router.put("/cash-opening-balance", authController.updateCashOpeningBalance);
 
 export default router;

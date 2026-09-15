@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlus, FaEye, FaEdit, FaTrash, FaPrint, FaDownload } from "react-icons/fa";
+import { FaMoneyBillTransfer } from "react-icons/fa6";
 import { DataTable, Modal, DeleteConfirmDialog } from "../../components/common";
 import { Button, Input, SearchableSelect } from "../../components/ui";
 import jsPDF from "jspdf";
@@ -234,7 +235,7 @@ const INITIAL_FORM = {
 };
 
 const TransactionMaster = () => {
-  const { showToast } = useStore();
+  const { showToast, user, setUser } = useStore();
   const navigate = useNavigate();
   const [activeBook, setActiveBook] = useState("all");
   const [transactions, setTransactions] = useState([]);
@@ -243,6 +244,10 @@ const TransactionMaster = () => {
   const [books, setBooks] = useState([]);
   const [banks, setBanks] = useState([]);
   const [chequeSetups, setChequeSetups] = useState({});
+  const [cashOpeningBalance, setCashOpeningBalance] = useState(0);
+  const [isCashOpeningModalOpen, setIsCashOpeningModalOpen] = useState(false);
+  const [cashOpeningInput, setCashOpeningInput] = useState("");
+  const [cashOpeningSaving, setCashOpeningSaving] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -259,6 +264,44 @@ const TransactionMaster = () => {
   });
   const [toDate, setToDate] = useState(() => getToday());
   const firstFieldRef = useRef(null);
+
+  const fetchCashOpeningBalance = async () => {
+    try {
+      const res = await api.get("/auth/me");
+      const meData = res?.data?.data || {};
+      if (meData) {
+        if (typeof setUser === "function") setUser(meData);
+        const activeFirmType = localStorage.getItem("firm_type") || meData.current_firm_type || "GST";
+        const isNonGst = String(activeFirmType).toUpperCase() === "NON_GST";
+        const firmObj = isNonGst ? meData.nongst_firm : meData.gst_firm;
+        setCashOpeningBalance(Number(firmObj?.cash_opening_balance || 0));
+      }
+    } catch (err) {
+      console.error("Failed to fetch cash opening balance", err);
+    }
+  };
+
+  const handleSaveCashOpeningBalance = async (e) => {
+    e.preventDefault();
+    const val = Number(cashOpeningInput);
+    if (isNaN(val) || val < 0) {
+      showToast("Cash opening balance must be a valid non-negative number", "error");
+      return;
+    }
+    setCashOpeningSaving(true);
+    try {
+      await api.put("/auth/cash-opening-balance", { amount: val });
+      showToast("Cash opening balance updated successfully", "success");
+      setCashOpeningBalance(val);
+      setIsCashOpeningModalOpen(false);
+      fetchCashOpeningBalance();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update cash opening balance", "error");
+    } finally {
+      setCashOpeningSaving(false);
+    }
+  };
+
   useSaveShortcut(
     () => handleSubmit({ preventDefault: () => {} }),
     isAddModalOpen || isEditModalOpen,
@@ -366,6 +409,7 @@ const TransactionMaster = () => {
     fetchBooks();
     fetchBanks();
     fetchChequeSetups();
+    fetchCashOpeningBalance();
   }, []);
 
   useEffect(() => {
@@ -1135,6 +1179,32 @@ const TransactionMaster = () => {
         </Button>
       </div>
 
+      {/* Cash Opening Balance Info Banner */}
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-emerald-600 text-white rounded-lg shadow-sm">
+            <FaMoneyBillTransfer className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Cashbook Opening Balance</span>
+            <div className="text-xl font-bold font-mono text-emerald-900">
+              ₹{Number(cashOpeningBalance || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setCashOpeningInput(String(cashOpeningBalance || 0));
+            setIsCashOpeningModalOpen(true);
+          }}
+          className="border-emerald-300 text-emerald-800 hover:bg-emerald-100 flex items-center gap-2 text-sm"
+        >
+          <FaEdit className="w-3.5 h-3.5" />
+          Edit Cash Opening Balance
+        </Button>
+      </div>
+
       <div className="flex gap-2 border-b">
         {[
           { key: "all", label: "All" },
@@ -1551,6 +1621,47 @@ const TransactionMaster = () => {
             </Button>
             <Button type="submit">
               {isEditModalOpen ? "Update" : "Add"} Transaction
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Cash Opening Balance Modal */}
+      <Modal
+        isOpen={isCashOpeningModalOpen}
+        onClose={() => setIsCashOpeningModalOpen(false)}
+        title="Edit Cash Opening Balance"
+        size="sm"
+      >
+        <form onSubmit={handleSaveCashOpeningBalance} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Opening Cash Balance (₹) *
+            </label>
+            <input
+              type="number"
+              step="any"
+              min="0"
+              value={cashOpeningInput}
+              onChange={(e) => setCashOpeningInput(e.target.value)}
+              placeholder="e.g. 10000"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Set the starting cash in hand for your active firm. This balance is used in Cash Flow and Expense Reports.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsCashOpeningModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={cashOpeningSaving}>
+              {cashOpeningSaving ? "Saving..." : "Save Balance"}
             </Button>
           </div>
         </form>
