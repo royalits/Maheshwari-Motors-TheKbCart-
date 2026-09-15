@@ -289,6 +289,7 @@ class ContactService {
       bank_branch,
       account_holder_name,
       upi_id,
+      due_days,
     } = contactData;
 
     if (!name || typeof name !== "string" || !name.trim()) {
@@ -379,6 +380,7 @@ class ContactService {
       reg_number,
       label_ids: normalizedLabelIds,
       label_id: normalizedLabelId,
+      due_days: Math.max(0, Number(due_days) || 0),
       transport_charge: normalizedTransportCharge,
       ...(type === "party" ? { is_gst: Number(is_gst ?? 1) === 1 ? 1 : 0 } : {}),
       transport_id: type === "party" ? transport_id || null : undefined,
@@ -448,6 +450,7 @@ class ContactService {
       account_holder_name,
       account_holder,
       upi_id,
+      due_days,
     } = updateData;
 
     if (name !== undefined) {
@@ -549,6 +552,7 @@ class ContactService {
     if (gstin !== undefined) fields.gstin = gstin;
     if (cin !== undefined) fields.cin = cin;
     if (reg_number !== undefined) fields.reg_number = reg_number;
+    if (due_days !== undefined) fields.due_days = Math.max(0, Number(due_days) || 0);
     if (normalizedBankId !== undefined) fields.bank_id = normalizedBankId;
 
     // Sync Bank ownership when contact's bank_id changes

@@ -168,6 +168,7 @@ const getDefaultUserForm = () => ({
   name: '',
   email: '',
   phone: '',
+  allow_bill_upload: false,
   signature: '',
   signatureFile: null,
   role_users: getDefaultRoleUsers(),
@@ -673,6 +674,24 @@ const UserMaster = () => {
         );
       }
     },
+    {
+      key: 'allow_bill_upload',
+      label: 'Bill Upload',
+      render: (_value, row) => {
+        const allowed = Boolean(row?.original?.allow_bill_upload);
+        return (
+          <span
+            className={`px-2 py-0.5 rounded text-xs font-semibold ${
+              allowed
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-gray-100 text-gray-600 border border-gray-200'
+            }`}
+          >
+            {allowed ? 'Allowed' : 'Disabled'}
+          </span>
+        );
+      }
+    },
     { 
       key: 'username', 
       label: 'Name',
@@ -708,6 +727,7 @@ const UserMaster = () => {
         setEditingForm({
           ...base,
           id: user.id,
+          allow_bill_upload: Boolean(base.allow_bill_upload),
           role_users: mapRoleUsersFromUser(base),
           subscription_amount: base.subscription?.amount || 0,
           subscription_years: base.subscription?.timeline?.years || 0,
@@ -908,6 +928,7 @@ const UserMaster = () => {
         name: newUser.name,
         email: newUser.email,
         phone: newUser.phone,
+        allow_bill_upload: Boolean(newUser.allow_bill_upload),
         role_users: buildRoleUsersPayload(newUser.role_users, {
           fields: ADD_USER_ROLE_CREDENTIAL_FIELDS,
           skipEmpty: true,
@@ -1047,6 +1068,7 @@ const UserMaster = () => {
         email: currentForm?.email || '',
         phone: currentForm?.phone || '',
         is_active: Boolean(currentForm?.is_active),
+        allow_bill_upload: Boolean(currentForm?.allow_bill_upload),
         role_users: buildRoleUsersPayload(currentForm?.role_users),
         gst_firm: buildFirmUpdatePayload(currentForm?.gst_firm),
         nongst_firm: buildFirmUpdatePayload(currentForm?.nongst_firm),
@@ -1483,6 +1505,21 @@ const UserMaster = () => {
                   <label className="text-xs font-medium text-gray-700">Email</label>
                   <Input type="email" value={newUser.email} onChange={(v) => setNewUser({...newUser, email: v})} placeholder="staff@mm.com" className="mt-1" />
                </div>
+               <div className="sm:col-span-2 flex items-center justify-between bg-white p-3 rounded border">
+                 <div>
+                   <span className="text-xs font-semibold text-gray-800">Allow Bill Upload / OCR Scan</span>
+                   <p className="text-[11px] text-gray-500">Enable paid bill scanning feature for this firm user</p>
+                 </div>
+                 <label className="relative inline-flex items-center cursor-pointer">
+                   <input
+                     type="checkbox"
+                     checked={Boolean(newUser.allow_bill_upload)}
+                     onChange={(e) => setNewUser({ ...newUser, allow_bill_upload: e.target.checked })}
+                     className="sr-only peer"
+                   />
+                   <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
+                 </label>
+               </div>
                <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-gray-700">Signature</label>
                   <input 
@@ -1918,6 +1955,14 @@ const UserMaster = () => {
                   <Input value={viewingUser.original?.email || viewingUser.email} disabled className="mt-1" />
                 </div>
                 <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-gray-700">Bill Upload / OCR Scan Feature</label>
+                  <div className="mt-1">
+                    <span className={`px-2.5 py-1 rounded text-xs font-semibold ${viewingUser.original?.allow_bill_upload ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+                      {viewingUser.original?.allow_bill_upload ? 'Allowed / ON' : 'Disabled / OFF'}
+                    </span>
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-gray-700">Signature</label>
                   {viewingUser.original?.signature ? (
                     <img src={viewingUser.original.signature} alt="Signature" className="mt-2 h-20 border rounded" />
@@ -2237,6 +2282,21 @@ const UserMaster = () => {
                 <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-gray-700">Email</label>
                   <Input type="email" value={editingForm.email || ''} onChange={(v) => setEditingForm(prev => ({ ...prev, email: v }))} className="mt-1" />
+                </div>
+                <div className="sm:col-span-2 flex items-center justify-between bg-white p-3 rounded border">
+                  <div>
+                    <span className="text-xs font-semibold text-gray-800">Allow Bill Upload / OCR Scan</span>
+                    <p className="text-[11px] text-gray-500">Enable paid bill scanning feature for this firm user</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingForm.allow_bill_upload)}
+                      onChange={(e) => setEditingForm(prev => ({ ...prev, allow_bill_upload: e.target.checked }))}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
+                  </label>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700">Subscription Amount</label>

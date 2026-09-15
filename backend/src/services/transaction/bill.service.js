@@ -1350,6 +1350,10 @@ class BillService {
     );
     const nextId = await getNextId("Bill", userId);
 
+    const billDateObj = billData.date ? new Date(billData.date) : new Date();
+    const partyDueDays = Number(contact?.due_days || 0);
+    const computedDueDate = billData.due_date ? new Date(billData.due_date) : new Date(billDateObj.getTime() + partyDueDays * 24 * 60 * 60 * 1000);
+
     const bill = await Bill.create({
       id: nextId,
       bill_no,
@@ -1365,7 +1369,8 @@ class BillService {
           normalizedVehicleNumber.trim()
         : "",
       transport_charge: resolvedTransportCharge,
-      date: billData.date ? new Date(billData.date) : new Date(),
+      date: billDateObj,
+      due_date: computedDueDate,
       amount: billAmount,
       return_amount: 0,
       challan_ids,
@@ -1513,6 +1518,10 @@ class BillService {
       );
       const nextId = await getNextId("Bill", userId);
 
+      const batchBillDate = group.challans?.[0]?.date || new Date();
+      const batchPartyDueDays = Number(contact?.due_days || 0);
+      const batchDueDate = new Date(new Date(batchBillDate).getTime() + batchPartyDueDays * 24 * 60 * 60 * 1000);
+
       const bill = await Bill.create({
         id: nextId,
         bill_no,
@@ -1522,7 +1531,8 @@ class BillService {
         customer_name: contact.name || "",
         vehicle_number: "",
         transport_charge: resolvedTransportCharge,
-        date: group.challans?.[0]?.date || new Date(),
+        date: batchBillDate,
+        due_date: batchDueDate,
         amount: totalAmount,
         return_amount: 0,
         challan_ids: groupChallanIds,
@@ -2600,6 +2610,10 @@ class BillService {
     );
     const nextId = await getNextId("Bill", userId);
 
+    const autoBillDateObj = billDate || new Date();
+    const autoPartyDueDays = Number(contact?.due_days || 0);
+    const autoDueDate = new Date(new Date(autoBillDateObj).getTime() + autoPartyDueDays * 24 * 60 * 60 * 1000);
+
     const bill = await Bill.create({
       id: nextId,
       bill_no,
@@ -2609,7 +2623,8 @@ class BillService {
       customer_name: contact.name || "",
       vehicle_number: "",
       transport_charge: Number(contact.transport_charge || 0),
-      date: billDate,
+      date: autoBillDateObj,
+      due_date: autoDueDate,
       amount: this._roundNetAmount(amount),
       return_amount: 0,
       challan_ids: [],

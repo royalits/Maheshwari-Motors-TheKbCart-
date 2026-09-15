@@ -119,6 +119,7 @@ const userSchema = new Schema(
     admin: { type: adminSubSchema, default: null },
     signature: { type: String, default: null },
     is_active: { type: Boolean, default: true },
+    allow_bill_upload: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

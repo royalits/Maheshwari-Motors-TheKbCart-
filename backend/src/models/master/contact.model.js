@@ -53,6 +53,7 @@ const contactSchema = new mongoose.Schema(
       ref: "Area",
       default: null,
     },
+    due_days: { type: Number, default: 0, min: 0 },
     balance: { type: Number, default: 0 },
     gst_balance: { type: Number, default: 0 },
     nongst_balance: { type: Number, default: 0 },

@@ -71,6 +71,7 @@ const billSchema = new mongoose.Schema(
     id: { type: Number },
     bill_no: { type: String, required: true },
     date: { type: Date, required: true, default: Date.now },
+    due_date: { type: Date, default: null },
     contact_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Contact",

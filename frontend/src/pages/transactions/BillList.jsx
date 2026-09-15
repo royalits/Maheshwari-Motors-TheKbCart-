@@ -573,6 +573,18 @@ const BillList = () => {
       return dateB - dateA;
     });
 
+  const handleOpenUploadModal = () => {
+    const userRole = localStorage.getItem("userRole");
+    const isMasterOrAdmin = userRole === "master" || userRole === "admin" || user?.type === "main";
+    const canUpload = isMasterOrAdmin || Boolean(user?.allow_bill_upload);
+
+    if (!canUpload) {
+      showToast("Bill Upload feature is disabled for your firm. Please contact Super Admin.", "error");
+      return;
+    }
+    setIsUploadModalOpen(true);
+  };
+
   const toInputDate = (value) => {
     if (!value) return "";
     const date = new Date(value);
@@ -3054,7 +3066,7 @@ const BillList = () => {
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={handleOpenUploadModal}
             variant="outline"
             className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start"
           >

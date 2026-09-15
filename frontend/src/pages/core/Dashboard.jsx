@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -17,6 +17,13 @@ import {
   FaCheckCircle,
   FaClock,
   FaFileAlt,
+  FaWhatsapp,
+  FaBell,
+  FaPhoneAlt,
+  FaShoppingBag,
+  FaHourglassHalf,
+  FaBoxOpen,
+  FaFilter,
 } from 'react-icons/fa';
 import useStore from '../../store';
 import { StatsCard } from '../../components/common';
@@ -39,6 +46,8 @@ const Dashboard = () => {
     localStorage.getItem('financial_year_id') || 'default';
   const enabled = Boolean(localStorage.getItem('token')) && user?.role !== 'admin';
 
+  const [slowMovingMonths, setSlowMovingMonths] = useState(6);
+
   const dashboardQuery = useQuery({
     queryKey: [
       'dashboard',
@@ -46,8 +55,9 @@ const Dashboard = () => {
       selectedFirm?.firm_type || selectedFirm?.type || 'firm',
       selectedFinancialYearId,
       user?.id || user?._id || 'user',
+      slowMovingMonths,
     ],
-    queryFn: () => api.get('/dashboard'),
+    queryFn: () => api.get('/dashboard', { params: { slow_moving_months: slowMovingMonths } }),
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
@@ -56,7 +66,19 @@ const Dashboard = () => {
 
   const loading = dashboardQuery.isLoading;
 
-  const { recentChallans, recentBills, metricCards, detailGroups } = useMemo(() => {
+  const {
+    recentChallans,
+    recentBills,
+    overdueReminders,
+    overdueSummary,
+    newlyPurchasedItems,
+    newlyPurchasedSummary,
+    slowMovingStock,
+    slowMovingSummary,
+    subscriptionExpiryAlert,
+    metricCards,
+    detailGroups,
+  } = useMemo(() => {
     const payload = getResponseData(dashboardQuery.data) || {};
     const counts = payload.counts || {};
     const metrics = payload.metrics || {};
@@ -235,6 +257,13 @@ const Dashboard = () => {
     return {
       recentChallans: Array.isArray(payload.recent_challans) ? payload.recent_challans : [],
       recentBills: Array.isArray(payload.recent_bills) ? payload.recent_bills : [],
+      overdueReminders: Array.isArray(payload.overdue_reminders) ? payload.overdue_reminders : [],
+      overdueSummary: payload.overdue_summary || { total_overdue_count: 0, total_overdue_amount: 0 },
+      newlyPurchasedItems: Array.isArray(payload.newly_purchased_items) ? payload.newly_purchased_items : [],
+      newlyPurchasedSummary: payload.newly_purchased_summary || { total_items: 0, total_investment: 0 },
+      slowMovingStock: Array.isArray(payload.slow_moving_stock) ? payload.slow_moving_stock : [],
+      slowMovingSummary: payload.slow_moving_summary || { slow_moving_months: 6, total_slow_moving_count: 0, total_slow_moving_capital: 0 },
+      subscriptionExpiryAlert: payload.subscription_expiry_alert || null,
       metricCards: cards,
       detailGroups: groups,
     };
@@ -261,6 +290,67 @@ const Dashboard = () => {
     {formatDate(new Date())}
   </div>
 </div>
+
+{/* Subscription Expiry Emergency Alert Banner */}
+{subscriptionExpiryAlert?.is_expiring_soon && (
+  <div
+    className={`p-4 rounded-xl border shadow-xs transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+      subscriptionExpiryAlert.days_remaining <= 3 || subscriptionExpiryAlert.is_expired
+        ? 'bg-red-50 border-red-200 text-red-900'
+        : 'bg-amber-50 border-amber-200 text-amber-900'
+    }`}
+  >
+    <div className="flex items-center gap-3">
+      <div
+        className={`p-2.5 rounded-lg ${
+          subscriptionExpiryAlert.days_remaining <= 3 || subscriptionExpiryAlert.is_expired
+            ? 'bg-red-100 text-red-600 animate-pulse'
+            : 'bg-amber-100 text-amber-600'
+        }`}
+      >
+        <FaExclamationTriangle className="text-xl sm:text-2xl" />
+      </div>
+      <div>
+        <div className="flex items-center gap-2">
+          <span
+            className={`px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide rounded-full ${
+              subscriptionExpiryAlert.days_remaining <= 3 || subscriptionExpiryAlert.is_expired
+                ? 'bg-red-600 text-white'
+                : 'bg-amber-600 text-white'
+            }`}
+          >
+            {subscriptionExpiryAlert.is_expired
+              ? 'Subscription Expired'
+              : subscriptionExpiryAlert.days_remaining === 1
+              ? 'Expires Tomorrow!'
+              : `${subscriptionExpiryAlert.days_remaining} Days Remaining`}
+          </span>
+          <span className="text-[11px] font-bold text-gray-500 uppercase">
+            ({subscriptionExpiryAlert.plan_type} Plan)
+          </span>
+        </div>
+        <p className="text-xs sm:text-sm font-semibold mt-1">
+          {subscriptionExpiryAlert.is_expired
+            ? 'Emergency Alert: Your subscription plan has expired! Please renew immediately to prevent service lockout.'
+            : `Emergency Alert: Your subscription plan will expire in ${subscriptionExpiryAlert.days_remaining} day${
+                subscriptionExpiryAlert.days_remaining === 1 ? '' : 's'
+              } on ${formatDate(new Date(subscriptionExpiryAlert.expiry_date))}. Please renew your plan to ensure continuous access.`}
+        </p>
+      </div>
+    </div>
+    <button
+      onClick={() => navigate('/core/user-profile')}
+      className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-lg shadow-sm whitespace-nowrap transition flex items-center gap-1.5 ${
+        subscriptionExpiryAlert.days_remaining <= 3 || subscriptionExpiryAlert.is_expired
+          ? 'bg-red-600 hover:bg-red-700 text-white'
+          : 'bg-amber-600 hover:bg-amber-700 text-white'
+      }`}
+    >
+      Renew Subscription
+      <FaArrowRight size={12} />
+    </button>
+  </div>
+)}
 
      {/* Summary Metrics */}
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
@@ -301,6 +391,298 @@ const Dashboard = () => {
           );
         })}
       </div>
+      {/* Overdue Payment Reminders Widget */}
+      <div className="bg-white rounded-lg border border-red-100 shadow-sm overflow-hidden">
+        <div className="p-4 bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-red-100 text-red-600 rounded-lg">
+              <FaBell className="text-base sm:text-lg animate-bounce" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-base sm:text-lg flex items-center gap-2">
+                Overdue Payment Reminders
+                {overdueReminders.length > 0 && (
+                  <span className="px-2.5 py-0.5 text-xs font-semibold bg-red-600 text-white rounded-full">
+                    {overdueReminders.length}
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-gray-600">
+                Track payments past their due date and collect outstanding dues
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xs text-gray-500 font-medium">Total Overdue</div>
+              <div className="text-base sm:text-lg font-bold text-red-600">
+                {formatCurrency(overdueSummary.total_overdue_amount || 0)}
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/transactions/bill-list')}
+              className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition flex items-center gap-1 shadow-sm"
+            >
+              View Bills
+              <FaArrowRight size={10} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {overdueReminders.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b text-gray-500 font-semibold uppercase text-[11px] bg-gray-50">
+                    <th className="py-2.5 px-3">Party Name</th>
+                    <th className="py-2.5 px-3">Bill No & Date</th>
+                    <th className="py-2.5 px-3">Due Date & Overdue</th>
+                    <th className="py-2.5 px-3 text-right">Due Amount</th>
+                    <th className="py-2.5 px-3 text-center">Quick Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {overdueReminders.slice(0, 10).map((item) => {
+                    const phone = item.contact_whatsapp || item.contact_phone || '';
+                    const cleanPhone = phone.replace(/\D/g, '');
+                    const waMessage = encodeURIComponent(
+                      `Dear ${item.contact_name}, your payment of ${formatCurrency(item.due_amount)} for Bill No. ${item.bill_no} (Due Date: ${formatDate(new Date(item.due_date))}) is overdue by ${item.overdue_days} days. Kindly clear the dues.`
+                    );
+                    const waUrl = cleanPhone ? `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}?text=${waMessage}` : null;
+
+                    return (
+                      <tr key={item.bill_id} className="hover:bg-red-50/40 transition-colors">
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-gray-900">{item.contact_name}</div>
+                          {phone && (
+                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                              <FaPhoneAlt className="text-[10px] text-gray-400" />
+                              {phone}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="font-medium text-gray-900">{item.bill_no}</div>
+                          <div className="text-xs text-gray-500">{formatDate(new Date(item.date))}</div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="text-xs text-gray-700 font-medium">{formatDate(new Date(item.due_date))}</div>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700 mt-0.5">
+                            {item.overdue_days} Days Overdue
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="font-bold text-red-600 text-sm">{formatCurrency(item.due_amount)}</div>
+                          {item.paid_amount > 0 && (
+                            <div className="text-[11px] text-gray-500">Paid: {formatCurrency(item.paid_amount)}</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {waUrl ? (
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Send WhatsApp Reminder"
+                                className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition shadow-xs flex items-center gap-1 text-xs px-2.5 py-1 font-medium"
+                              >
+                                <FaWhatsapp className="text-sm" />
+                                WhatsApp
+                              </a>
+                            ) : null}
+                            <button
+                              onClick={() => navigate('/transactions/bill-list')}
+                              className="px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium shadow-xs"
+                            >
+                              Settle
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-500">
+              <FaCheckCircle className="text-green-500 text-2xl mx-auto mb-2" />
+              <p className="font-medium text-sm text-gray-800">All payments are up to date!</p>
+              <p className="text-xs text-gray-500">No overdue bill collections found.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Newly Purchased Items & Slow-Moving Stock Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Newly Purchased Items (This Month Inflow) */}
+        <div className="bg-white rounded-lg border border-blue-100 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                <FaShoppingBag className="text-base" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base flex items-center gap-2">
+                  New Purchased Items
+                  {newlyPurchasedItems.length > 0 && (
+                    <span className="px-2 py-0.5 text-xs font-semibold bg-blue-600 text-white rounded-full">
+                      {newlyPurchasedItems.length}
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-gray-500">Items received via purchase this month</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] text-gray-500 font-medium">New Inflow Total</div>
+              <div className="text-sm font-bold text-blue-700">
+                {formatCurrency(newlyPurchasedSummary.total_investment || 0)}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 flex-1">
+            {newlyPurchasedItems.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b text-gray-500 font-semibold uppercase text-[10px] bg-gray-50">
+                      <th className="py-2 px-2">Item Name</th>
+                      <th className="py-2 px-2">Supplier</th>
+                      <th className="py-2 px-2 text-center">Date</th>
+                      <th className="py-2 px-2 text-right">Qty</th>
+                      <th className="py-2 px-2 text-right">Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {newlyPurchasedItems.slice(0, 7).map((item) => (
+                      <tr key={item.item_id} className="hover:bg-blue-50/30 transition-colors">
+                        <td className="py-2.5 px-2">
+                          <div className="font-semibold text-gray-900">{item.item_name}</div>
+                          {item.barcode && <div className="text-[10px] text-gray-400 font-mono">{item.barcode}</div>}
+                        </td>
+                        <td className="py-2.5 px-2 text-gray-600 text-xs truncate max-w-[120px]">
+                          {item.supplier_name}
+                        </td>
+                        <td className="py-2.5 px-2 text-center text-xs text-gray-500">
+                          {formatDate(new Date(item.purchase_date))}
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-semibold text-gray-900">
+                          {item.total_quantity}
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-medium text-blue-700">
+                          {formatCurrency(item.purchase_rate)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <FaBoxOpen className="text-blue-300 text-3xl mx-auto mb-2" />
+                <p className="font-medium text-xs text-gray-700">No new item purchases this month</p>
+                <p className="text-[11px] text-gray-400">Newly purchased items will automatically appear here.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Slow-Moving / Dead Stock Indicator */}
+        <div className="bg-white rounded-lg border border-amber-100 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
+                <FaHourglassHalf className="text-base" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base flex items-center gap-2">
+                  Unsold / Slow-Moving Stock
+                  {slowMovingStock.length > 0 && (
+                    <span className="px-2 py-0.5 text-xs font-semibold bg-amber-600 text-white rounded-full">
+                      {slowMovingStock.length}
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-gray-500">Items with no sales in selected duration</p>
+              </div>
+            </div>
+
+            {/* Duration Selector Buttons */}
+            <div className="flex items-center gap-1 bg-amber-100/60 p-1 rounded-lg">
+              {[1, 2, 3, 6, 12].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setSlowMovingMonths(m)}
+                  className={`px-2 py-0.5 text-[11px] font-semibold rounded transition ${
+                    slowMovingMonths === m
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-amber-800 hover:bg-amber-200/60'
+                  }`}
+                >
+                  {m}M
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 flex-1">
+            <div className="mb-3 flex items-center justify-between bg-amber-50/70 p-2.5 rounded-lg border border-amber-100/80">
+              <span className="text-xs font-medium text-amber-900">Capital Locked in Unsold Stock ({slowMovingMonths} Months):</span>
+              <span className="text-sm font-bold text-amber-700">
+                {formatCurrency(slowMovingSummary.total_slow_moving_capital || 0)}
+              </span>
+            </div>
+
+            {slowMovingStock.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b text-gray-500 font-semibold uppercase text-[10px] bg-gray-50">
+                      <th className="py-2 px-2">Item Name</th>
+                      <th className="py-2 px-2 text-center">Unsold Duration</th>
+                      <th className="py-2 px-2 text-right">Available Stock</th>
+                      <th className="py-2 px-2 text-right">Locked Capital</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {slowMovingStock.slice(0, 7).map((item) => (
+                      <tr key={item.item_id} className="hover:bg-amber-50/30 transition-colors">
+                        <td className="py-2.5 px-2">
+                          <div className="font-semibold text-gray-900">{item.item_name}</div>
+                          {item.barcode && <div className="text-[10px] text-gray-400 font-mono">{item.barcode}</div>}
+                        </td>
+                        <td className="py-2.5 px-2 text-center">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">
+                            {item.days_unsold !== null ? `${item.days_unsold} Days Unsold` : 'Never Sold'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-semibold text-gray-900">
+                          {item.current_stock}
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-bold text-amber-700">
+                          {formatCurrency(item.capital_value)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <FaCheckCircle className="text-green-500 text-2xl mx-auto mb-2" />
+                <p className="font-medium text-xs text-gray-700">No slow-moving inventory detected</p>
+                <p className="text-[11px] text-gray-400">All items with stock have been sold in the last {slowMovingMonths} months.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Challans */}

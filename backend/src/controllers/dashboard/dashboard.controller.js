@@ -11,6 +11,7 @@ export const getDashboard = asyncHandler(async (req, res) => {
     req.user._id,
     req.isGst,
     req.financialYearId,
+    req.query,
   );
   res
     .status(200)

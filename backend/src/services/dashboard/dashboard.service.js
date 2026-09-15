@@ -14,6 +14,7 @@ import Bill from "../../models/transaction/bill.model.js";
 import Transaction from "../../models/transaction/transaction.model.js";
 import Return from "../../models/transaction/return.model.js";
 import AutoBill from "../../models/transaction/auto_bill.model.js";
+import Subscription from "../../models/common/subscription.model.js";
 
 const sumDueExpression = {
   $let: {
@@ -35,7 +36,7 @@ const sumDueExpression = {
 };
 
 class DashboardService {
-  async getDashboard(userId, isGst = null, financialYearId = null) {
+  async getDashboard(userId, isGst = null, financialYearId = null, query = {}) {
     const userObjectId = new mongoose.Types.ObjectId(userId);
     const financialYearObjectId =
       financialYearId ? new mongoose.Types.ObjectId(financialYearId) : null;
@@ -279,6 +280,200 @@ class DashboardService {
       .populate("contact_id", "name type")
       .lean();
 
+    const now = new Date();
+    const overdueBillsRaw = await Bill.find({
+      ...billFirmFilter,
+      payment_status: "due",
+    })
+      .populate("contact_id", "name phone whatsapp_number type due_days")
+      .sort({ date: 1, createdAt: 1 })
+      .lean();
+
+    const overdueReminders = [];
+    for (const bill of overdueBillsRaw) {
+      const contact = bill.contact_id || {};
+      const billDate = bill.date ? new Date(bill.date) : new Date(bill.createdAt);
+      const partyDueDays = Number(contact.due_days || 0);
+      const effectiveDueDate = bill.due_date ? new Date(bill.due_date) : new Date(billDate.getTime() + partyDueDays * 24 * 60 * 60 * 1000);
+
+      if (effectiveDueDate < now) {
+        const diffMs = now.getTime() - effectiveDueDate.getTime();
+        const overdueDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const dueAmount = Math.max(
+          0,
+          Number(bill.amount || 0) -
+            Number(bill.paid_amount || 0) -
+            Number(bill.return_amount || 0) -
+            Number(bill.settlement_discount || 0),
+        );
+
+        if (dueAmount > 0) {
+          overdueReminders.push({
+            bill_id: bill._id,
+            bill_no: bill.bill_no,
+            date: bill.date,
+            due_date: effectiveDueDate,
+            overdue_days: overdueDays,
+            amount: bill.amount,
+            paid_amount: bill.paid_amount || 0,
+            due_amount: dueAmount,
+            contact_name: contact.name || bill.customer_name || "Unknown Party",
+            contact_phone: contact.phone || "",
+            contact_whatsapp: contact.whatsapp_number || contact.phone || "",
+            contact_id: contact._id || bill.contact_id,
+            is_gst: bill.is_gst,
+          });
+        }
+      }
+    }
+    overdueReminders.sort((a, b) => b.overdue_days - a.overdue_days);
+
+    // Newly Purchased Items (This Month Inflow)
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const recentPurchaseChallans = await Challan.find({
+      user_id: userObjectId,
+      challan_type: "purchase",
+      date: { $gte: currentMonthStart },
+      ...challanYearFilter,
+    })
+      .populate("contact_id", "name")
+      .populate("items.item_id", "item_name barcode item_id purchase_rate sale_rate")
+      .lean();
+
+    const newlyPurchasedMap = new Map();
+    for (const ch of recentPurchaseChallans) {
+      for (const line of ch.items || []) {
+        if (!line.item_id) continue;
+        const itemIdStr = String(line.item_id._id || line.item_id);
+        const qty = Number(line.quantity || 0);
+        const rate = Number(line.rate || line.item_id.purchase_rate || 0);
+        const amt = Number(line.amount || qty * rate);
+
+        if (!newlyPurchasedMap.has(itemIdStr)) {
+          newlyPurchasedMap.set(itemIdStr, {
+            item_id: itemIdStr,
+            item_name: line.item_id.item_name || "Unknown Item",
+            barcode: line.item_id.barcode || line.item_id.item_id || "",
+            purchase_date: ch.date,
+            supplier_name: ch.contact_id?.name || "Unknown Supplier",
+            total_quantity: 0,
+            purchase_rate: rate,
+            total_amount: 0,
+          });
+        }
+        const existing = newlyPurchasedMap.get(itemIdStr);
+        existing.total_quantity += qty;
+        existing.total_amount += amt;
+        if (new Date(ch.date) > new Date(existing.purchase_date)) {
+          existing.purchase_date = ch.date;
+          existing.supplier_name = ch.contact_id?.name || existing.supplier_name;
+        }
+      }
+    }
+    const newlyPurchasedItems = Array.from(newlyPurchasedMap.values());
+
+    // Slow-Moving / Dead Stock Analytics
+    const slowMovingMonths = Math.max(1, Number(query.slow_moving_months || 6));
+    const cutoffDate = new Date(now.getTime() - slowMovingMonths * 30 * 24 * 60 * 60 * 1000);
+
+    const itemsWithStock = await Item.find({
+      user_id: userObjectId,
+      $or: [
+        { physical_stock: { $gt: 0 } },
+        { stock: { $gt: 0 } },
+        { logical_stock: { $gt: 0 } },
+      ],
+    }).lean();
+
+    const stockItemIds = itemsWithStock.map((i) => i._id);
+
+    const saleChallanAgg = await Challan.aggregate([
+      {
+        $match: {
+          user_id: userObjectId,
+          challan_type: "sale",
+          "items.item_id": { $in: stockItemIds },
+        },
+      },
+      { $unwind: "$items" },
+      { $match: { "items.item_id": { $in: stockItemIds } } },
+      {
+        $group: {
+          _id: "$items.item_id",
+          lastSaleDate: { $max: "$date" },
+        },
+      },
+    ]);
+
+    const saleBillAgg = await Bill.aggregate([
+      {
+        $match: {
+          user_id: userObjectId,
+          contact_type: "party",
+          "auto_bill_items.item_id": { $in: stockItemIds },
+        },
+      },
+      { $unwind: "$auto_bill_items" },
+      { $match: { "auto_bill_items.item_id": { $in: stockItemIds } } },
+      {
+        $group: {
+          _id: "$auto_bill_items.item_id",
+          lastSaleDate: { $max: "$date" },
+        },
+      },
+    ]);
+
+    const lastSaleDateMap = new Map();
+    saleChallanAgg.forEach((row) => {
+      if (row._id && row.lastSaleDate) {
+        lastSaleDateMap.set(String(row._id), new Date(row.lastSaleDate));
+      }
+    });
+    saleBillAgg.forEach((row) => {
+      if (row._id && row.lastSaleDate) {
+        const d = new Date(row.lastSaleDate);
+        const existing = lastSaleDateMap.get(String(row._id));
+        if (!existing || d > existing) {
+          lastSaleDateMap.set(String(row._id), d);
+        }
+      }
+    });
+
+    const slowMovingItems = [];
+    let totalSlowMovingCapital = 0;
+
+    for (const item of itemsWithStock) {
+      const itemIdStr = String(item._id);
+      const lastSaleDate = lastSaleDateMap.get(itemIdStr) || null;
+
+      if (!lastSaleDate || lastSaleDate < cutoffDate) {
+        const currentStock = Number(item.physical_stock ?? item.stock ?? item.logical_stock ?? 0);
+        const purchaseRate = Number(item.purchase_rate || 0);
+        const capitalValue = currentStock * purchaseRate;
+
+        let daysUnsold = null;
+        if (lastSaleDate) {
+          const diffMs = now.getTime() - lastSaleDate.getTime();
+          daysUnsold = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        }
+
+        totalSlowMovingCapital += capitalValue;
+
+        slowMovingItems.push({
+          item_id: item._id,
+          item_name: item.item_name,
+          barcode: item.barcode || item.item_id || "",
+          current_stock: currentStock,
+          purchase_rate: purchaseRate,
+          capital_value: capitalValue,
+          last_sale_date: lastSaleDate,
+          days_unsold: daysUnsold,
+        });
+      }
+    }
+    slowMovingItems.sort((a, b) => b.capital_value - a.capital_value);
+
     const gstMovementMap = new Map(
       gstMovement.map((row) => [String(row._id || "").toLowerCase(), row.total || 0]),
     );
@@ -420,6 +615,43 @@ class DashboardService {
       gst_paid: gstMovementMap.get("purchase") || 0,
       recent_challans: recentChallans,
       recent_bills: recentBills,
+      overdue_reminders: overdueReminders,
+      overdue_summary: {
+        total_overdue_count: overdueReminders.length,
+        total_overdue_amount: overdueReminders.reduce((sum, r) => sum + r.due_amount, 0),
+      },
+      newly_purchased_items: newlyPurchasedItems,
+      newly_purchased_summary: {
+        total_items: newlyPurchasedItems.length,
+        total_investment: newlyPurchasedItems.reduce((sum, i) => sum + i.total_amount, 0),
+      },
+      slow_moving_stock: slowMovingItems,
+      slow_moving_summary: {
+        slow_moving_months: slowMovingMonths,
+        total_slow_moving_count: slowMovingItems.length,
+        total_slow_moving_capital: totalSlowMovingCapital,
+      },
+      subscription_expiry_alert: await (async () => {
+        const userSub = await Subscription.findOne({ user_id: userObjectId })
+          .sort({ expiry_date: -1, createdAt: -1 })
+          .lean();
+        if (!userSub) return null;
+
+        const expiryDate = new Date(userSub.expiry_date);
+        const diffMs = expiryDate.getTime() - now.getTime();
+        const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        const isExpired = diffMs <= 0 || userSub.status === "expired";
+        const isExpiringSoon = daysRemaining <= 7 || isExpired;
+
+        return {
+          is_expiring_soon: isExpiringSoon,
+          days_remaining: daysRemaining,
+          expiry_date: userSub.expiry_date,
+          plan_type: userSub.plan_type || "demo",
+          status: userSub.status || "active",
+          is_expired: isExpired,
+        };
+      })(),
     };
   }
 

@@ -39,6 +39,7 @@ const INITIAL_FORM = {
   account_holder: '',
   upi_id: '',
   transport_charge: '',
+  due_days: 0,
   transport_id: '',
   area_id: '',
   agent: '',
@@ -144,6 +145,7 @@ const PartyMaster = () => {
       account_holder: bankDetails?.account_holder || '',
       upi_id: bankDetails?.upi_id || '',
       transport_charge: normalized.transport_charge,
+      due_days: normalized.due_days || 0,
       transport_id: normalized.transport_id,
       area_id: normalized.area_id,
       agent: normalized.agent_id,
@@ -292,6 +294,12 @@ const PartyMaster = () => {
       label: 'GST No',
       render: (value) => <span className="text-xs sm:text-sm truncate">{value || 'N/A'}</span>,
       width: '130px'
+    },
+    {
+      key: 'due_days',
+      label: 'Credit (Days)',
+      render: (value) => <span className="text-xs sm:text-sm font-medium">{value ? `${value} Days` : '0 (No Credit)'}</span>,
+      width: '110px'
     }
   ];
 
@@ -333,6 +341,7 @@ const PartyMaster = () => {
           account_holder: resolvedBank.account_holder || party.account_holder || '',
           upi_id: resolvedBank.upi_id || party.upi_id || '',
           transport_charge: party.transport_charge || '',
+          due_days: party.due_days || 0,
           transport_id: party.transport_id || '',
           area_id: party.area_id || '',
           agent: party.agent || '',
@@ -412,6 +421,7 @@ const PartyMaster = () => {
     if (formData.reg_number) payload.reg_number = formData.reg_number;
     if (formData.transport_charge) payload.transport_charge = formData.transport_charge;
     else payload.transport_charge = 0;
+    payload.due_days = Number(formData.due_days) || 0;
     if (formData.transport_id && formData.transport_id.trim() !== '') payload.transport_id = formData.transport_id;
     if (formData.area_id && formData.area_id.trim() !== '') payload.area_id = formData.area_id;
     if (formData.agent && formData.agent.trim() !== '') payload.agent_id = formData.agent;
@@ -805,6 +815,11 @@ const PartyMaster = () => {
            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Transport Charge</label>
               <input type="number" name="transport_charge" value={formData.transport_charge} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" />
+          </div>
+
+          <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Credit Terms (Days)</label>
+              <input type="number" name="due_days" value={formData.due_days} onChange={handleInputChange} onWheel={(e) => e.target.blur()} min="0" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 15, 30 days" />
           </div>
           </div>
           

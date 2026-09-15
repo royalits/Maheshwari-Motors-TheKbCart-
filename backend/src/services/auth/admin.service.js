@@ -469,7 +469,7 @@ class AdminService {
   }
 
   async createSecondaryUser(data) {
-    const { name, email, phone, gst_firm, nongst_firm } = data;
+    const { name, email, phone, allow_bill_upload, gst_firm, nongst_firm } = data;
     const roleCredentials = this._extractRoleCredentials(data);
     const effectiveRoleCredentials = { ...roleCredentials };
 
@@ -580,6 +580,7 @@ class AdminService {
       name,
       email,
       phone,
+      allow_bill_upload: Boolean(allow_bill_upload),
       admin: null,
       sale_user:
         hasSaleCredential ?
@@ -796,13 +797,14 @@ class AdminService {
     const hasRoleCredentialUpdates =
       Object.keys(roleCredentialUpdates).length > 0;
 
-    const { name, email, phone, is_active, gst_firm, nongst_firm, subscription_amount } = updateData;
+    const { name, email, phone, is_active, allow_bill_upload, gst_firm, nongst_firm, subscription_amount } = updateData;
 
     if (
       !name &&
       !email &&
       !phone &&
       is_active === undefined &&
+      allow_bill_upload === undefined &&
       !gst_firm &&
       !nongst_firm &&
       !hasRoleCredentialUpdates &&
@@ -831,6 +833,7 @@ class AdminService {
     }
     if (phone !== undefined) user.phone = phone;
     if (is_active !== undefined) user.is_active = is_active;
+    if (allow_bill_upload !== undefined) user.allow_bill_upload = Boolean(allow_bill_upload);
 
     if (gst_firm) {
       this._validateFirmUpdate(gst_firm, "GST Firm");
