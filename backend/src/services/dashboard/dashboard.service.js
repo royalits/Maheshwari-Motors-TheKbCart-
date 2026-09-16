@@ -283,6 +283,7 @@ class DashboardService {
     const now = new Date();
     const overdueBillsRaw = await Bill.find({
       ...billFirmFilter,
+      contact_type: { $ne: "supplier" },
       payment_status: "due",
     })
       .populate("contact_id", "name phone whatsapp_number type due_days")
@@ -292,9 +293,15 @@ class DashboardService {
     const overdueReminders = [];
     for (const bill of overdueBillsRaw) {
       const contact = bill.contact_id || {};
+      // Skip if contact is explicitly a supplier
+      if (contact.type === "supplier") continue;
+
       const billDate = bill.date ? new Date(bill.date) : new Date(bill.createdAt);
       const partyDueDays = Number(contact.due_days || 0);
-      const effectiveDueDate = bill.due_date ? new Date(bill.due_date) : new Date(billDate.getTime() + partyDueDays * 24 * 60 * 60 * 1000);
+      // Derive effective due date dynamically from bill date + party credit (due_days)
+      const effectiveDueDate = new Date(
+        billDate.getTime() + partyDueDays * 24 * 60 * 60 * 1000
+      );
 
       if (effectiveDueDate < now) {
         const diffMs = now.getTime() - effectiveDueDate.getTime();

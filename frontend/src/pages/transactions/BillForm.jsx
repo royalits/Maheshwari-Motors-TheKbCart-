@@ -8,11 +8,13 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaCalendarAlt,
+  FaPlus,
 } from "react-icons/fa";
 import { Button, SearchableSelect } from "../../components/ui";
 import useStore from "../../store";
 import { Modal } from "../../components/common";
 import BillGunScanner from "../../components/BillGunScanner";
+import QuickAddItemModal from "../../components/inventory/QuickAddItemModal";
 import api from "../../services/axiosInstance";
 import { STOCK_UPDATE_EVENT } from "../../services/stockSocket";
 import jsPDF from "jspdf";
@@ -516,6 +518,7 @@ const BillForm = () => {
     localStorage.getItem("hide_discount_columns") !== "false",
   );
   const [suggestedBillNumber, setSuggestedBillNumber] = useState("");
+  const [isQuickAddItemModalOpen, setIsQuickAddItemModalOpen] = useState(false);
   const itemDropdownRef = useRef(null);
   const itemSearchInputRef = useRef(null);
   const itemDropdownListRef = useRef(null);
@@ -5312,9 +5315,19 @@ const BillForm = () => {
 
           <div className="p-4 bg-gray-50 border-t order-2">
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search & Add Items:
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Search & Add Items:
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddItemModalOpen(true)}
+                  className="px-2.5 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-md flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  <FaPlus className="w-3 h-3" />
+                  Quick Add Item
+                </button>
+              </div>
               <div className="relative" ref={itemDropdownRef}>
                 <input
                   type="text"
@@ -5344,7 +5357,7 @@ const BillForm = () => {
                       onScroll={handleScroll}
                       ref={itemDropdownListRef}
                     >
-                      <div className="px-3 py-2 bg-gray-100 text-xs text-gray-600 sticky top-0 flex items-center justify-between">
+                      <div className="px-3 py-2 bg-gray-100 text-xs text-gray-600 sticky top-0 flex items-center justify-between z-10">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -5442,8 +5455,19 @@ const BillForm = () => {
                         </button>
                       ))}
                       {filteredItems.length === 0 && !isLoadingItems && (
-                        <div className="px-3 py-2 text-gray-500 text-sm">
-                          No items found
+                        <div className="p-3 text-center bg-gray-50">
+                          <p className="text-gray-500 text-xs mb-2">No matching items found</p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsQuickAddItemModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-md inline-flex items-center gap-1 shadow-sm transition-all"
+                          >
+                            <FaPlus className="w-3 h-3" />
+                            Create "{itemSearchTerm || "New Item"}"
+                          </button>
                         </div>
                       )}
                       {isLoadingItems && (
@@ -5451,6 +5475,19 @@ const BillForm = () => {
                           Loading...
                         </div>
                       )}
+                    </div>
+                    <div className="p-2 bg-gray-50 border-t text-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsQuickAddItemModalOpen(true);
+                        }}
+                        className="w-full py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-300 flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <FaPlus className="w-3 h-3" />
+                        + Quick Add Item to Master
+                      </button>
                     </div>
                   </div>
                 )}
@@ -6245,6 +6282,16 @@ const BillForm = () => {
           onClose={() => setIsScanModalOpen(false)}
         />
       )}
+
+      <QuickAddItemModal
+        isOpen={isQuickAddItemModalOpen}
+        onClose={() => setIsQuickAddItemModalOpen(false)}
+        initialItemName={itemSearchTerm}
+        defaultGstType={effectiveGstType}
+        onItemCreated={(newItem) => {
+          addItemToBill(newItem);
+        }}
+      />
     </div>
   );
 };
