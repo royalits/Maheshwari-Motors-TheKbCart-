@@ -265,5 +265,22 @@ export const normalizeBill = (bill = {}) => ({
         ? challan
         : challan?.challan_no || getEntityId(challan),
     ) || [],
+  has_custom_shipping: Boolean(
+    bill?.has_custom_shipping ?? bill?.hasCustomShipping ?? false,
+  ),
+  shipping_name: bill?.shipping_name || bill?.shippingName || "",
+  shipping_address: bill?.shipping_address || bill?.shippingAddress || "",
+  shipping_city: bill?.shipping_city || bill?.shippingCity || "",
+  shipping_state: bill?.shipping_state || bill?.shippingState || "",
+  shipping_state_code:
+    bill?.shipping_state_code || bill?.shippingStateCode || "",
+  shipping_pincode:
+    bill?.shipping_pincode ||
+    bill?.shippingPincode ||
+    bill?.shipping_pin ||
+    bill?.shippingPin ||
+    "",
+  shipping_gstin: bill?.shipping_gstin || bill?.shippingGstin || "",
+  shipping_pan: bill?.shipping_pan || bill?.shippingPan || "",
   raw: bill,
 });

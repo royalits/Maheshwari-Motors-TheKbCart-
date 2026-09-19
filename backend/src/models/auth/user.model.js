@@ -102,6 +102,16 @@ const clientCredentialSubSchema = new Schema(
   { _id: false },
 );
 
+const loginBrandingSubSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    firm_name: { type: String, default: "" },
+    phone: { type: String, default: "" },
+    tagline: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
 const userSchema = new Schema(
   {
     type: { type: String, enum: ["main", "secondary"], required: true },
@@ -120,6 +130,10 @@ const userSchema = new Schema(
     signature: { type: String, default: null },
     is_active: { type: Boolean, default: true },
     allow_bill_upload: { type: Boolean, default: false },
+    login_branding: {
+      type: loginBrandingSubSchema,
+      default: () => ({ enabled: true, firm_name: "", phone: "", tagline: "" }),
+    },
   },
   { timestamps: true },
 );

@@ -62,6 +62,15 @@ class AdminController {
       .json(new ApiResponse(200, null, "User deleted successfully"));
   });
 
+  downloadUserBackup = asyncHandler(async (req, res) => {
+    const backupData = await adminService.getUserBackupData(req.params.userId);
+    const sanitizeName = (backupData.user?.name || req.params.userId).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const filename = `user_backup_${sanitizeName}_${new Date().toISOString().slice(0, 10)}.json`;
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.status(200).send(JSON.stringify(backupData, null, 2));
+  });
+
   getSubscriptions = asyncHandler(async (req, res) => {
     const result = await subscriptionService.getSubscriptions(req.query);
     res
@@ -156,6 +165,20 @@ class AdminController {
     );
     res.status(200).send(buffer);
   });
+
+  getLoginBranding = asyncHandler(async (_req, res) => {
+    const result = await adminService.getLoginBranding();
+    res
+      .status(200)
+      .json(new ApiResponse(200, result, "Login branding fetched successfully"));
+  });
+
+  updateLoginBranding = asyncHandler(async (req, res) => {
+    const result = await adminService.updateLoginBranding(req.body);
+    res
+      .status(200)
+      .json(new ApiResponse(200, result, "Login branding updated successfully"));
+  });
 }
 
 const adminController = new AdminController();
@@ -167,6 +190,7 @@ export const updateSecondaryUser = adminController.updateSecondaryUser;
 export const deactivateSecondaryUser = adminController.deactivateSecondaryUser;
 export const reactivateSecondaryUser = adminController.reactivateSecondaryUser;
 export const deleteSecondaryUser = adminController.deleteSecondaryUser;
+export const downloadUserBackup = adminController.downloadUserBackup;
 export const getSubscriptions = adminController.getSubscriptions;
 export const getRoles = adminController.getRoles;
 export const getSubscriptionByUserId = adminController.getSubscriptionByUserId;
@@ -176,5 +200,7 @@ export const runExpiryCheck = adminController.runExpiryCheck;
 export const uploadSignature = adminController.uploadSignature;
 export const updateSignature = adminController.updateSignature;
 export const getSignature = adminController.getSignature;
+export const getLoginBranding = adminController.getLoginBranding;
+export const updateLoginBranding = adminController.updateLoginBranding;
 
 export default adminController;

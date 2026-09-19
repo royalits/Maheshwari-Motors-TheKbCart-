@@ -177,6 +177,8 @@ class AuthService {
         ip_address: deviceInfo.ip_address || "",
       });
 
+      const subscriptionExpiryAlert = await this._getSubscriptionAlert(user._id);
+
       return {
         _id: user._id,
         name: user.name,
@@ -186,6 +188,7 @@ class AuthService {
         is_admin: true,
         is_super_admin: true,
         role: "admin",
+        subscription_expiry_alert: subscriptionExpiryAlert,
         token,
       };
     } catch (_) {
@@ -260,6 +263,8 @@ class AuthService {
         signature: firmObj.signature || null,
       };
 
+      const subscriptionExpiryAlert = await this._getSubscriptionAlert(user._id);
+
       return {
         ...safe,
         _id: user._id,
@@ -284,9 +289,34 @@ class AuthService {
         contact: contact || null,
         firm_data: firmData,
         signature: firmObj.signature || user.signature || null,
+        subscription_expiry_alert: subscriptionExpiryAlert,
         token,
       };
     }
+  }
+
+  async _getSubscriptionAlert(userId) {
+    if (!userId) return null;
+    const subscription = await Subscription.findOne({ user_id: userId })
+      .sort({ expiry_date: -1, createdAt: -1 })
+      .lean();
+    if (!subscription) return null;
+
+    const now = new Date();
+    const expiryDate = new Date(subscription.expiry_date);
+    const diffMs = expiryDate.getTime() - now.getTime();
+    const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    const isExpired = diffMs <= 0 || subscription.status === "expired";
+    const isExpiringSoon = daysRemaining <= 7 || isExpired;
+
+    return {
+      is_expiring_soon: isExpiringSoon,
+      days_remaining: daysRemaining,
+      expiry_date: subscription.expiry_date,
+      plan_type: subscription.plan_type || "demo",
+      status: subscription.status || "active",
+      is_expired: isExpired,
+    };
   }
 
   async _checkSubscription(userId) {
@@ -300,7 +330,7 @@ class AuthService {
           subscription.status = "expired";
           await subscription.save().catch(() => {});
         }
-        throw ApiError.paymentRequired("Subscription has expired");
+        throw ApiError.paymentRequired("Subscription has expired. Please renew your plan to log in.");
       }
     }
   }
@@ -862,6 +892,29 @@ class AuthService {
     return {
       cash_opening_balance: parsedAmount,
       firm_type: firmKey === "nongst_firm" ? "NON_GST" : "GST",
+    };
+  }
+
+  async getLoginBranding() {
+    const mainUser = await User.findOne({ type: "main" });
+    if (!mainUser) {
+      return {
+        enabled: true,
+        firm_name: "",
+        phone: "",
+        tagline: "",
+      };
+    }
+
+    const branding = mainUser.login_branding || {};
+
+    return {
+      enabled: branding.enabled !== false,
+      firm_name:
+        typeof branding.firm_name === "string" ? branding.firm_name.trim() : "",
+      phone: typeof branding.phone === "string" ? branding.phone.trim() : "",
+      tagline:
+        typeof branding.tagline === "string" ? branding.tagline.trim() : "",
     };
   }
 }

@@ -560,6 +560,15 @@ const BillForm = () => {
     from_bank: "",
     to_bank: "",
     labelId: "",
+    has_custom_shipping: false,
+    shipping_name: "",
+    shipping_address: "",
+    shipping_city: "",
+    shipping_pincode: "",
+    shipping_state: "",
+    shipping_state_code: "",
+    shipping_gstin: "",
+    shipping_pan: "",
   });
 
   const resolvedContact = getResolvedContact();
@@ -1254,6 +1263,19 @@ const BillForm = () => {
             from_bank: getEntityId(billData?.from_bank) || "",
             to_bank: getEntityId(billData?.to_bank) || "",
             labelId: getEntityId(firstChallan?.label_id) || "",
+            has_custom_shipping: Boolean(
+              billData?.has_custom_shipping ||
+                billData?.shipping_name ||
+                billData?.shipping_address,
+            ),
+            shipping_name: billData?.shipping_name || "",
+            shipping_address: billData?.shipping_address || "",
+            shipping_city: billData?.shipping_city || "",
+            shipping_pincode: billData?.shipping_pincode || "",
+            shipping_state: billData?.shipping_state || "",
+            shipping_state_code: billData?.shipping_state_code || "",
+            shipping_gstin: billData?.shipping_gstin || "",
+            shipping_pan: billData?.shipping_pan || "",
           });
         }
 
@@ -2472,6 +2494,19 @@ const BillForm = () => {
           "",
         labelId:
           getEntityId(firstChallan?.label_id || sourceBill?.label_id) || "",
+        has_custom_shipping: Boolean(
+          sourceBill?.has_custom_shipping ||
+            sourceBill?.shipping_name ||
+            sourceBill?.shipping_address,
+        ),
+        shipping_name: sourceBill?.shipping_name || "",
+        shipping_address: sourceBill?.shipping_address || "",
+        shipping_city: sourceBill?.shipping_city || "",
+        shipping_pincode: sourceBill?.shipping_pincode || "",
+        shipping_state: sourceBill?.shipping_state || "",
+        shipping_state_code: sourceBill?.shipping_state_code || "",
+        shipping_gstin: sourceBill?.shipping_gstin || "",
+        shipping_pan: sourceBill?.shipping_pan || "",
       }));
 
       showToast("Bill copied to create screen", "success");
@@ -3126,14 +3161,58 @@ const BillForm = () => {
     const receiverStateCode =
       party?.state_code || resolvedContact?.state_code || "";
 
-    const consigneeName = receiverName;
-    const consigneeAddress = receiverAddress;
-    const consigneeCity = receiverCity;
-    const consigneePin = receiverPin;
-    const consigneeGstin = receiverGstin;
-    const consigneePan = receiverPan;
-    const consigneeState = receiverState;
-    const consigneeStateCode = receiverStateCode;
+    const hasCustomShipping = Boolean(
+      bill.has_custom_shipping &&
+        (bill.shipping_name ||
+          bill.shipping_address ||
+          bill.shipping_city ||
+          bill.shipping_pincode ||
+          bill.shipping_gstin ||
+          bill.shipping_pan ||
+          bill.shipping_state ||
+          bill.shipping_state_code),
+    );
+
+    const consigneeName =
+      hasCustomShipping && bill.shipping_name ?
+        bill.shipping_name
+      : receiverName;
+    const consigneeAddress =
+      hasCustomShipping && bill.shipping_address ?
+        bill.shipping_address
+      : receiverAddress;
+    const consigneeCity =
+      hasCustomShipping && bill.shipping_city ?
+        bill.shipping_city
+      : receiverCity;
+    const consigneePin =
+      hasCustomShipping && bill.shipping_pincode ?
+        bill.shipping_pincode
+      : receiverPin;
+    const consigneeGstin =
+      hasCustomShipping && bill.shipping_gstin ?
+        bill.shipping_gstin
+      : receiverGstin;
+    const consigneePan =
+      hasCustomShipping && bill.shipping_pan ?
+        bill.shipping_pan
+      : (hasCustomShipping &&
+          bill.shipping_gstin &&
+          bill.shipping_gstin.length >= 12) ?
+        bill.shipping_gstin.slice(2, 12).toUpperCase()
+      : receiverPan;
+    const consigneeState =
+      hasCustomShipping && bill.shipping_state ?
+        bill.shipping_state
+      : receiverState;
+    const consigneeStateCode =
+      hasCustomShipping && bill.shipping_state_code ?
+        bill.shipping_state_code
+      : (hasCustomShipping &&
+          bill.shipping_gstin &&
+          bill.shipping_gstin.length >= 2) ?
+        bill.shipping_gstin.slice(0, 2)
+      : receiverStateCode;
     const transportName = transport?.name || party?.transport || "";
     const brokerName =
       agent?.name ||
@@ -4771,6 +4850,16 @@ const BillForm = () => {
         customer_name: bill.customerName || undefined,
         vehicle_no: bill.vehicleNo || undefined,
         deduct_from_stock: resolvedDeductFromStock,
+        has_custom_shipping: Boolean(bill.has_custom_shipping),
+        shipping_name: bill.has_custom_shipping ? bill.shipping_name : "",
+        shipping_address: bill.has_custom_shipping ? bill.shipping_address : "",
+        shipping_city: bill.has_custom_shipping ? bill.shipping_city : "",
+        shipping_pincode: bill.has_custom_shipping ? bill.shipping_pincode : "",
+        shipping_state: bill.has_custom_shipping ? bill.shipping_state : "",
+        shipping_state_code:
+          bill.has_custom_shipping ? bill.shipping_state_code : "",
+        shipping_gstin: bill.has_custom_shipping ? bill.shipping_gstin : "",
+        shipping_pan: bill.has_custom_shipping ? bill.shipping_pan : "",
       };
 
       if (isEditMode) {
@@ -5303,6 +5392,241 @@ const BillForm = () => {
                 </div>
               )}
             </>
+          )}
+        </div>
+
+        {/* Consignee / Shipped To Section */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={bill.has_custom_shipping}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setBill((prev) => {
+                    const resolved = getResolvedContact();
+                    if (checked && !prev.shipping_name && resolved) {
+                      return {
+                        ...prev,
+                        has_custom_shipping: true,
+                        shipping_name: prev.customerName || resolved.name || "",
+                        shipping_address: resolved.address || "",
+                        shipping_city: resolved.city || "",
+                        shipping_pincode:
+                          resolved.pin || resolved.pincode || "",
+                        shipping_state: resolved.state || "",
+                        shipping_state_code: resolved.state_code || "",
+                        shipping_gstin: resolved.gstin || "",
+                        shipping_pan: resolved.pan || "",
+                      };
+                    }
+                    return {
+                      ...prev,
+                      has_custom_shipping: checked,
+                    };
+                  });
+                }}
+                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+              />
+              <span className="font-semibold text-gray-800 text-sm">
+                Ship to different address / Consignee (Shipped To)
+              </span>
+            </label>
+
+            {bill.has_custom_shipping && (
+              <button
+                type="button"
+                onClick={() => {
+                  const resolved = getResolvedContact();
+                  if (resolved) {
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_name: prev.customerName || resolved.name || "",
+                      shipping_address: resolved.address || "",
+                      shipping_city: resolved.city || "",
+                      shipping_pincode:
+                        resolved.pin || resolved.pincode || "",
+                      shipping_state: resolved.state || "",
+                      shipping_state_code: resolved.state_code || "",
+                      shipping_gstin: resolved.gstin || "",
+                      shipping_pan: resolved.pan || "",
+                    }));
+                    showToast("Copied Billed To party details", "success");
+                  }
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800 underline font-medium"
+              >
+                Copy from Billed To Party
+              </button>
+            )}
+          </div>
+
+          {bill.has_custom_shipping ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mt-3 pt-1">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Consignee / Shipped To Name
+                </label>
+                <input
+                  type="text"
+                  value={bill.shipping_name}
+                  onChange={(e) =>
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_name: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter consignee name"
+                  className="w-full px-3 py-1.5 border rounded-md text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  value={bill.shipping_address}
+                  onChange={(e) =>
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_address: e.target.value,
+                    }))
+                  }
+                  placeholder="Street / Area / Address"
+                  className="w-full px-3 py-1.5 border rounded-md text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={bill.shipping_city}
+                  onChange={(e) =>
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_city: e.target.value,
+                    }))
+                  }
+                  placeholder="City"
+                  className="w-full px-3 py-1.5 border rounded-md text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Pincode
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={bill.shipping_pincode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_pincode: val,
+                    }));
+                  }}
+                  placeholder="6-digit Pincode"
+                  className="w-full px-3 py-1.5 border rounded-md text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  GSTIN
+                </label>
+                <input
+                  type="text"
+                  maxLength={15}
+                  value={bill.shipping_gstin}
+                  onChange={(e) => {
+                    const gstinUpper = e.target.value.toUpperCase();
+                    let autoStateCode = bill.shipping_state_code;
+                    let autoPan = bill.shipping_pan;
+
+                    if (gstinUpper.length >= 2 && /^\d{2}/.test(gstinUpper)) {
+                      autoStateCode = gstinUpper.slice(0, 2);
+                    }
+                    if (gstinUpper.length >= 12) {
+                      const extractedPan = gstinUpper.slice(2, 12);
+                      if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(extractedPan)) {
+                        autoPan = extractedPan;
+                      }
+                    }
+
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_gstin: gstinUpper,
+                      shipping_state_code: autoStateCode,
+                      shipping_pan: autoPan,
+                    }));
+                  }}
+                  placeholder="15-digit GSTIN"
+                  className="w-full px-3 py-1.5 border rounded-md text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  PAN Number
+                </label>
+                <input
+                  type="text"
+                  maxLength={10}
+                  value={bill.shipping_pan}
+                  onChange={(e) =>
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_pan: e.target.value.toUpperCase(),
+                    }))
+                  }
+                  placeholder="10-digit PAN"
+                  className="w-full px-3 py-1.5 border rounded-md text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  State
+                </label>
+                <input
+                  type="text"
+                  value={bill.shipping_state}
+                  onChange={(e) =>
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_state: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Gujarat"
+                  className="w-full px-3 py-1.5 border rounded-md text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  State Code
+                </label>
+                <input
+                  type="text"
+                  maxLength={2}
+                  value={bill.shipping_state_code}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setBill((prev) => ({
+                      ...prev,
+                      shipping_state_code: val,
+                    }));
+                  }}
+                  placeholder="e.g. 24"
+                  className="w-full px-3 py-1.5 border rounded-md text-sm"
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500 mt-2">
+              Default: Same as Billed To party details will be printed on Tax Invoice.
+            </p>
           )}
         </div>
 

@@ -112,6 +112,16 @@ const billSchema = new mongoose.Schema(
 
     skip_stock_calculation: { type: Boolean, default: false },
 
+    has_custom_shipping: { type: Boolean, default: false },
+    shipping_name: { type: String, default: "" },
+    shipping_address: { type: String, default: "" },
+    shipping_city: { type: String, default: "" },
+    shipping_state: { type: String, default: "" },
+    shipping_state_code: { type: String, default: "" },
+    shipping_pincode: { type: String, default: "" },
+    shipping_gstin: { type: String, default: "" },
+    shipping_pan: { type: String, default: "" },
+
     is_gst: { type: Number, enum: [0, 1], required: true },
 
     financial_year_id: {

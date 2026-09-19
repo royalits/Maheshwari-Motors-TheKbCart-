@@ -19,6 +19,7 @@ const upload = multer({
 
 router.post("/admin/register", authController.registerMainUser);
 router.post("/login", authController.login);
+router.get("/login-branding", authController.getLoginBranding);
 
 router.use(authMiddleware);
 

@@ -1190,46 +1190,109 @@ const BillList = () => {
       extractPan(contact?.gstin),
     );
 
+    const hasCustomShipping = Boolean(
+      billData?.has_custom_shipping ||
+        bill?.has_custom_shipping ||
+        billData?.shipping_name ||
+        bill?.shipping_name ||
+        billData?.shipping_address ||
+        bill?.shipping_address,
+    );
+
     const consigneeName = toMandatoryText(
-      billData?.customer_name ||
+      (hasCustomShipping &&
+        (billData?.shipping_name ||
+          bill?.shipping_name ||
+          billData?.shippingName ||
+          bill?.shippingName)) ||
+        billData?.customer_name ||
         bill?.customerName ||
         contact?.name ||
         contact?.customer_name ||
         receiverName,
     );
     const consigneeAddress = toMandatoryText(
-      billData?.shipping_address || contact?.address,
+      (hasCustomShipping &&
+        (billData?.shipping_address ||
+          bill?.shipping_address ||
+          billData?.shippingAddress ||
+          bill?.shippingAddress)) ||
+        contact?.address ||
+        receiverAddress,
     );
     const consigneeCity = toMandatoryText(
-      billData?.shipping_city || contact?.city,
+      (hasCustomShipping &&
+        (billData?.shipping_city ||
+          bill?.shipping_city ||
+          billData?.shippingCity ||
+          bill?.shippingCity)) ||
+        contact?.city ||
+        receiverCity,
     );
     const consigneeState = toMandatoryText(
-      billData?.shipping_state || contact?.state,
+      (hasCustomShipping &&
+        (billData?.shipping_state ||
+          bill?.shipping_state ||
+          billData?.shippingState ||
+          bill?.shippingState)) ||
+        contact?.state ||
+        receiverState,
     );
     const consigneeGstin = toMandatoryText(
-      billData?.shipping_gstin || contact?.gstin,
+      (hasCustomShipping &&
+        (billData?.shipping_gstin ||
+          bill?.shipping_gstin ||
+          billData?.shippingGstin ||
+          bill?.shippingGstin)) ||
+        contact?.gstin ||
+        receiverGstin,
     );
     const consigneeStateCode = toMandatoryText(
       normalizeStateCode(
-        billData?.shipping_state_code,
-        billData?.shippingStateCode,
-        billData?.shipping_state,
-        billData?.shipping_gstin ?
-          String(billData.shipping_gstin).slice(0, 2)
+        hasCustomShipping ?
+          billData?.shipping_state_code ||
+          bill?.shipping_state_code ||
+          billData?.shippingStateCode ||
+          bill?.shippingStateCode
+        : "",
+        hasCustomShipping ?
+          billData?.shipping_state || bill?.shipping_state
+        : "",
+        (
+          hasCustomShipping &&
+          (billData?.shipping_gstin || bill?.shipping_gstin)
+        ) ?
+          String(billData?.shipping_gstin || bill?.shipping_gstin).slice(0, 2)
         : "",
         contact?.state_code,
         contact?.state,
+        receiverStateCode,
       ),
-      extractStateCode(billData?.shipping_gstin || contact?.gstin),
+      extractStateCode(
+        (hasCustomShipping &&
+          (billData?.shipping_gstin || bill?.shipping_gstin)) ||
+          contact?.gstin ||
+          receiverGstin,
+      ),
     );
     const consigneePin = (() => {
       const candidates = [
-        billData?.shipping_pincode,
-        billData?.shipping_pin,
-        billData?.shipping_zip,
-        billData?.shipping_postal_code,
-        billData?.shipping_address,
+        ...(hasCustomShipping ?
+          [
+            billData?.shipping_pincode,
+            bill?.shipping_pincode,
+            billData?.shippingPincode,
+            bill?.shippingPincode,
+            billData?.shipping_pin,
+            bill?.shipping_pin,
+            billData?.shipping_zip,
+            billData?.shipping_postal_code,
+            billData?.shipping_address,
+            bill?.shipping_address,
+          ]
+        : []),
         resolvePartyPincode(contact),
+        receiverPin,
       ];
       for (const candidate of candidates) {
         const parsed = extractPincode(candidate);
@@ -1238,10 +1301,18 @@ const BillList = () => {
       return "--";
     })();
     const consigneePan = resolvePan(
-      billData?.shipping_pan,
-      billData?.shipping_pan_no,
-      billData?.shipping_reg_no,
-      extractPan(billData?.shipping_gstin || contact?.gstin),
+      hasCustomShipping ?
+        billData?.shipping_pan ||
+        bill?.shipping_pan ||
+        billData?.shipping_pan_no ||
+        billData?.shipping_reg_no
+      : "",
+      extractPan(
+        (hasCustomShipping &&
+          (billData?.shipping_gstin || bill?.shipping_gstin)) ||
+          contact?.gstin ||
+          receiverGstin,
+      ),
       receiverPan,
     );
 

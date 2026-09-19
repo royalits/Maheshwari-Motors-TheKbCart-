@@ -150,6 +150,13 @@ class AuthController {
       .status(200)
       .json(new ApiResponse(200, result, "Cash opening balance updated successfully"));
   });
+
+  getLoginBranding = asyncHandler(async (_req, res) => {
+    const result = await authService.getLoginBranding();
+    res
+      .status(200)
+      .json(new ApiResponse(200, result, "Login branding fetched successfully"));
+  });
 }
 
 export default new AuthController();

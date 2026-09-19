@@ -24,6 +24,8 @@ import {
   FaCalendarAlt,
   FaAngleDown,
   FaAngleUp,
+  FaChevronDown,
+  FaChevronUp,
   FaArrowRight,
 } from "react-icons/fa";
 import { getFinancialYearStartDate, getTodayDate } from "../../utils/dateHelpers";

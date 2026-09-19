@@ -27,6 +27,7 @@ router.get("/users", adminController.getSecondaryUsers);
 router.post("/users", adminController.createSecondaryUser);
 router.get("/users/:userId", adminController.getSecondaryUserById);
 router.put("/users/:userId", adminController.updateSecondaryUser);
+router.get("/users/:userId/backup", adminController.downloadUserBackup);
 router.delete("/users/:userId", adminController.deleteSecondaryUser);
 router.post(
   "/users/:userId/deactivate",
@@ -74,5 +75,8 @@ router.delete(
   "/platform-backups/:backupId",
   platformBackupController.deleteBackup,
 );
+
+router.get("/login-branding", adminController.getLoginBranding);
+router.put("/login-branding", adminController.updateLoginBranding);
 
 export default router;

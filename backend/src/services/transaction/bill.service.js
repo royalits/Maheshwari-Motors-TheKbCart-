@@ -1173,6 +1173,15 @@ class BillService {
       bill_no: providedBillNo,
       deduct_from_stock,
       financial_year_id,
+      has_custom_shipping,
+      shipping_name,
+      shipping_address,
+      shipping_city,
+      shipping_state,
+      shipping_state_code,
+      shipping_pincode,
+      shipping_gstin,
+      shipping_pan,
     } = billData;
     const normalizedVehicleNumber =
       typeof vehicle_number === "string" ? vehicle_number : vehicle_no;
@@ -1381,6 +1390,15 @@ class BillService {
       payment_status: "due",
       skip_stock_calculation:
         resolvedChallanType === "sale" && requestedDeductFromStock === 0,
+      has_custom_shipping: Boolean(has_custom_shipping),
+      shipping_name: this._normalizeOptionalText(shipping_name),
+      shipping_address: this._normalizeOptionalText(shipping_address),
+      shipping_city: this._normalizeOptionalText(shipping_city),
+      shipping_state: this._normalizeOptionalText(shipping_state),
+      shipping_state_code: this._normalizeOptionalText(shipping_state_code),
+      shipping_pincode: this._normalizeOptionalText(shipping_pincode),
+      shipping_gstin: this._normalizeOptionalText(shipping_gstin),
+      shipping_pan: this._normalizeOptionalText(shipping_pan),
     });
 
     try {
@@ -2113,6 +2131,43 @@ class BillService {
     if (payload.deduct_from_stock !== undefined) {
       fields.skip_stock_calculation =
         this._normalizeDeductFromStock(payload.deduct_from_stock, 1) === 0;
+    }
+    if (payload.has_custom_shipping !== undefined) {
+      fields.has_custom_shipping = Boolean(payload.has_custom_shipping);
+    }
+    if (payload.shipping_name !== undefined) {
+      fields.shipping_name = this._normalizeOptionalText(payload.shipping_name);
+    }
+    if (payload.shipping_address !== undefined) {
+      fields.shipping_address = this._normalizeOptionalText(
+        payload.shipping_address,
+      );
+    }
+    if (payload.shipping_city !== undefined) {
+      fields.shipping_city = this._normalizeOptionalText(payload.shipping_city);
+    }
+    if (payload.shipping_state !== undefined) {
+      fields.shipping_state = this._normalizeOptionalText(
+        payload.shipping_state,
+      );
+    }
+    if (payload.shipping_state_code !== undefined) {
+      fields.shipping_state_code = this._normalizeOptionalText(
+        payload.shipping_state_code,
+      );
+    }
+    if (payload.shipping_pincode !== undefined) {
+      fields.shipping_pincode = this._normalizeOptionalText(
+        payload.shipping_pincode,
+      );
+    }
+    if (payload.shipping_gstin !== undefined) {
+      fields.shipping_gstin = this._normalizeOptionalText(
+        payload.shipping_gstin,
+      );
+    }
+    if (payload.shipping_pan !== undefined) {
+      fields.shipping_pan = this._normalizeOptionalText(payload.shipping_pan);
     }
 
     if (Object.keys(fields).length === 0)

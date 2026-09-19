@@ -472,9 +472,16 @@ const OutStandings = ({
           };
         });
 
-        const sorted = [...list].sort(
-          (a, b) => new Date(b.date) - new Date(a.date),
-        );
+        const sorted = [...list].sort((a, b) => {
+          const dateA = new Date(a.date).getTime() || 0;
+          const dateB = new Date(b.date).getTime() || 0;
+          if (dateA !== dateB) return dateA - dateB;
+          return String(a.billNo || "").localeCompare(
+            String(b.billNo || ""),
+            undefined,
+            { numeric: true },
+          );
+        });
         setBills(sorted);
 
         const fetchedTxns = txnsResponse?.data?.data || [];
@@ -837,12 +844,16 @@ const OutStandings = ({
         const list = getResponseList(refreshed).map((bill) => {
           const amount = toNumber(bill.amount ?? bill.total_amount, 0);
           const paidAmount = toNumber(bill.paid_amount ?? bill.paidAmount, 0);
+          const returnAmount = toNumber(
+            bill.return_amount ?? bill.returnAmount,
+            0,
+          );
           const settlementDiscount = toNumber(
             bill.settlement_discount ?? bill.settlementDiscount,
             0,
           );
           const dueAmount = toNumber(
-            bill.balance ?? amount - paidAmount - settlementDiscount,
+            bill.balance ?? amount - paidAmount - returnAmount - settlementDiscount,
             0,
           );
           return {
@@ -851,12 +862,23 @@ const OutStandings = ({
             date: bill.date,
             amount,
             paidAmount,
+            returnAmount,
             settlementDiscount,
             due: Number(dueAmount.toFixed(2)),
             status: bill.payment_status || "due",
           };
         });
-        setBills(list);
+        const sorted = [...list].sort((a, b) => {
+          const dateA = new Date(a.date).getTime() || 0;
+          const dateB = new Date(b.date).getTime() || 0;
+          if (dateA !== dateB) return dateA - dateB;
+          return String(a.billNo || "").localeCompare(
+            String(b.billNo || ""),
+            undefined,
+            { numeric: true },
+          );
+        });
+        setBills(sorted);
       }
     } catch (error) {
       console.error("Failed to settle bills", error);

@@ -5,6 +5,24 @@ import Session from "../../models/auth/session.model.js";
 import Subscription from "../../models/common/subscription.model.js";
 import Bank from "../../models/master/bank.model.js";
 import Contact from "../../models/master/contact.model.js";
+import {
+  Item,
+  Brand,
+  Hsn,
+  Agent,
+  Transport,
+  Area,
+  Department,
+  Label,
+  Bill,
+  Challan,
+  AutoBill,
+  Counter,
+  Transaction,
+  Return,
+  ExpenseCategory,
+  Expense,
+} from "../../models/index.js";
 import s3Service from "../common/s3.service.js";
 import financialYearService from "../common/financialYear.service.js";
 import { ApiError, Pagination } from "../../utils/index.js";
@@ -1146,12 +1164,115 @@ class AdminService {
     if (!user) throw ApiError.notFound("Secondary user not found");
 
     if (user.signature) {
-      await s3Service.deleteFile(user.signature);
+      await s3Service.deleteFile(user.signature).catch(() => {});
     }
 
-    await Session.deleteMany({ user_id: userId });
-    await Subscription.findOneAndDelete({ user_id: userId });
+    // Cascade deletion across all tenant collections
+    await Promise.all([
+      Session.deleteMany({ user_id: userId }),
+      Subscription.deleteMany({ user_id: userId }),
+      Item.deleteMany({ user_id: userId }),
+      Brand.deleteMany({ user_id: userId }),
+      Hsn.deleteMany({ user_id: userId }),
+      Contact.deleteMany({ user_id: userId }),
+      Agent.deleteMany({ user_id: userId }),
+      Transport.deleteMany({ user_id: userId }),
+      Area.deleteMany({ user_id: userId }),
+      Department.deleteMany({ user_id: userId }),
+      Label.deleteMany({ user_id: userId }),
+      Bank.deleteMany({ user_id: userId }),
+      Bill.deleteMany({ user_id: userId }),
+      Challan.deleteMany({ user_id: userId }),
+      AutoBill.deleteMany({ user_id: userId }),
+      Counter.deleteMany({ user_id: userId }),
+      Transaction.deleteMany({ user_id: userId }),
+      Return.deleteMany({ user_id: userId }),
+      ExpenseCategory.deleteMany({ user_id: userId }),
+      Expense.deleteMany({ user_id: userId }),
+    ]);
+
     await User.findByIdAndDelete(userId);
+  }
+
+  async getUserBackupData(userId) {
+    const user = await User.findOne({ _id: userId, type: "secondary" }).lean();
+    if (!user) throw ApiError.notFound("Secondary user not found");
+
+    const [
+      subscriptions,
+      items,
+      brands,
+      hsns,
+      contacts,
+      agents,
+      transports,
+      areas,
+      departments,
+      labels,
+      banks,
+      bills,
+      challans,
+      autoBills,
+      transactions,
+      returns,
+      expenseCategories,
+      expenses,
+    ] = await Promise.all([
+      Subscription.find({ user_id: userId }).lean(),
+      Item.find({ user_id: userId }).lean(),
+      Brand.find({ user_id: userId }).lean(),
+      Hsn.find({ user_id: userId }).lean(),
+      Contact.find({ user_id: userId }).lean(),
+      Agent.find({ user_id: userId }).lean(),
+      Transport.find({ user_id: userId }).lean(),
+      Area.find({ user_id: userId }).lean(),
+      Department.find({ user_id: userId }).lean(),
+      Label.find({ user_id: userId }).lean(),
+      Bank.find({ user_id: userId }).lean(),
+      Bill.find({ user_id: userId }).lean(),
+      Challan.find({ user_id: userId }).lean(),
+      AutoBill.find({ user_id: userId }).lean(),
+      Transaction.find({ user_id: userId }).lean(),
+      Return.find({ user_id: userId }).lean(),
+      ExpenseCategory.find({ user_id: userId }).lean(),
+      Expense.find({ user_id: userId }).lean(),
+    ]);
+
+    const safeUser = { ...user };
+    delete safeUser.password;
+    if (safeUser.gst_firm) delete safeUser.gst_firm.password;
+    if (safeUser.nongst_firm) delete safeUser.nongst_firm.password;
+    if (safeUser.sale_user) delete safeUser.sale_user.password;
+    if (safeUser.account_user) delete safeUser.account_user.password;
+    if (safeUser.client_user) delete safeUser.client_user.password;
+
+    return {
+      backup_version: "1.0",
+      exported_at: new Date().toISOString(),
+      user: safeUser,
+      subscriptions,
+      masters: {
+        items,
+        brands,
+        hsn_codes: hsns,
+        contacts,
+        agents,
+        transports,
+        areas,
+        departments,
+        labels,
+        banks,
+        expense_categories: expenseCategories,
+      },
+      transactions: {
+        bills,
+        challans,
+        auto_bills: autoBills,
+        transactions,
+        returns,
+        expenses,
+      },
+    };
   }
 
   async uploadSignature(userId, file) {
@@ -1221,6 +1342,68 @@ class AdminService {
 
     if (!signatureUrl) throw ApiError.notFound("Signature not found");
     return s3Service.getFile(signatureUrl);
+  }
+
+  async getLoginBranding() {
+    const mainUser = await User.findOne({ type: "main" });
+    if (!mainUser) throw ApiError.notFound("Main user not found");
+
+    const branding = mainUser.login_branding || {};
+
+    return {
+      enabled: branding.enabled !== false,
+      firm_name:
+        typeof branding.firm_name === "string" ? branding.firm_name.trim() : "",
+      phone: typeof branding.phone === "string" ? branding.phone.trim() : "",
+      tagline:
+        typeof branding.tagline === "string" ? branding.tagline.trim() : "",
+    };
+  }
+
+  async updateLoginBranding(data = {}) {
+    const mainUser = await User.findOne({ type: "main" });
+    if (!mainUser) throw ApiError.notFound("Main user not found");
+
+    const { enabled, firm_name, phone, tagline } = data;
+
+    let cleanPhone = "";
+    if (phone !== undefined && phone !== null) {
+      cleanPhone = String(phone).trim();
+      if (cleanPhone !== "") {
+        const digits = cleanPhone.replace(/\D/g, "");
+        if (
+          digits.length < 10 ||
+          digits.length > 15 ||
+          !/^[+]?[\d\s-]{10,20}$/.test(cleanPhone)
+        ) {
+          throw ApiError.badRequest(
+            "Please enter a valid phone number (10 to 15 digits)",
+          );
+        }
+      }
+    } else {
+      cleanPhone = mainUser.login_branding?.phone || "";
+    }
+
+    mainUser.login_branding = {
+      enabled:
+        enabled !== undefined
+          ? Boolean(enabled)
+          : (mainUser.login_branding?.enabled ?? true),
+      firm_name:
+        firm_name !== undefined
+          ? String(firm_name).trim()
+          : (mainUser.login_branding?.firm_name || ""),
+      phone: cleanPhone,
+      tagline:
+        tagline !== undefined
+          ? String(tagline).trim()
+          : (mainUser.login_branding?.tagline || ""),
+    };
+
+    await mainUser.save();
+
+    return mainUser.login_branding;
   }
 }
 

@@ -1,8 +1,19 @@
-import { useState } from 'react';
-import { FaCircleExclamation, FaEye, FaEyeSlash } from 'react-icons/fa6';
+import { useState, useEffect } from 'react';
+import { FaCircleExclamation, FaTriangleExclamation, FaEye, FaEyeSlash, FaPhone, FaBuilding } from 'react-icons/fa6';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store';
 import api from '../../services/axiosInstance';
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
 
 const Login = () => {
   const navigate = useNavigate();
@@ -14,6 +25,23 @@ const Login = () => {
     password: ''
   });
   const [errors, setErrors] = useState({});
+  const [expiryAlertData, setExpiryAlertData] = useState(null);
+  const [pendingRedirect, setPendingRedirect] = useState(null);
+  const [loginBranding, setLoginBranding] = useState(null);
+
+  useEffect(() => {
+    const fetchBranding = async () => {
+      try {
+        const res = await api.get('/auth/login-branding');
+        if (res.data?.data) {
+          setLoginBranding(res.data.data);
+        }
+      } catch (err) {
+        console.warn('Could not load login branding', err);
+      }
+    };
+    fetchBranding();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -102,12 +130,15 @@ const Login = () => {
 
       setUser(userData);
       showToast('Login successful', 'success');
-      
-      // Redirect based on role
-      if (userData.role === 'admin') {
-        navigate('/masters/user-master');
+
+      const alert = userData?.subscription_expiry_alert;
+      const targetPath = userData.role === 'admin' ? '/masters/user-master' : '/dashboard';
+
+      if (alert?.is_expiring_soon) {
+        setExpiryAlertData(alert);
+        setPendingRedirect(targetPath);
       } else {
-        navigate('/dashboard');
+        navigate(targetPath);
       }
     } catch (error) {
       const msg =
@@ -125,7 +156,68 @@ const Login = () => {
   };
 
   return (
-    <main className="w-full bg-neutral-50 flex items-center justify-center min-h-screen">
+    <main className="w-full bg-neutral-50 flex items-center justify-center min-h-screen relative">
+      {/* Subscription Expiry Alert Modal on Login */}
+      {expiryAlertData && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start gap-3 border-b border-neutral-100 pb-4 mb-4">
+              <div
+                className={`p-3 rounded-xl ${
+                  expiryAlertData.days_remaining <= 3 || expiryAlertData.is_expired
+                    ? 'bg-red-100 text-red-600 animate-pulse'
+                    : 'bg-amber-100 text-amber-600'
+                }`}
+              >
+                <FaTriangleExclamation className="text-2xl" />
+              </div>
+              <div>
+                <h3 className="font-bold text-neutral-900 text-lg">Subscription Expiry Warning</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span
+                    className={`px-2.5 py-0.5 text-[11px] font-extrabold uppercase rounded-full ${
+                      expiryAlertData.days_remaining <= 3 || expiryAlertData.is_expired
+                        ? 'bg-red-600 text-white'
+                        : 'bg-amber-600 text-white'
+                    }`}
+                  >
+                    {expiryAlertData.is_expired
+                      ? 'Subscription Expired'
+                      : expiryAlertData.days_remaining === 1
+                      ? 'Expires Tomorrow!'
+                      : `${expiryAlertData.days_remaining} Days Remaining`}
+                  </span>
+                  <span className="text-[11px] font-bold text-neutral-500 uppercase">
+                    ({expiryAlertData.plan_type} Plan)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-sm text-neutral-700 leading-relaxed mb-6">
+              {expiryAlertData.is_expired
+                ? 'Emergency Alert: Your subscription plan has expired! Please renew immediately to prevent service lockout.'
+                : `Emergency Alert: Your subscription plan will expire in ${expiryAlertData.days_remaining} day${
+                    expiryAlertData.days_remaining === 1 ? '' : 's'
+                  } on ${formatDate(expiryAlertData.expiry_date)}. Please renew your plan to ensure continuous access.`}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                const target = pendingRedirect || '/dashboard';
+                setExpiryAlertData(null);
+                setPendingRedirect(null);
+                navigate(target);
+              }}
+              className="w-full py-2.5 px-4 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold rounded-xl text-sm transition shadow-sm"
+            >
+              Proceed to Dashboard
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-md mx-auto p-4">
         <div className="bg-white border border-neutral-200 rounded-lg shadow-sm">
           <div className="p-6 border-b border-neutral-200">
@@ -133,8 +225,16 @@ const Login = () => {
               <img
                 src="/thekbcart_logo_full.png"
                 alt="The KbCart"
-                className="mb-5 h-24 w-72 object-contain sm:w-80"
+                className="mb-3 h-24 w-72 object-contain sm:w-80"
               />
+              {loginBranding?.enabled !== false && loginBranding?.firm_name && (
+                <div className="mb-2 inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-full shadow-xs">
+                  <FaBuilding className="text-blue-600 text-xs" />
+                  <span className="text-xs font-bold text-blue-900 tracking-wide uppercase">
+                    {loginBranding.firm_name}
+                  </span>
+                </div>
+              )}
               <p className="text-sm text-neutral-500 mt-1">Enter your credentials to login.</p>
             </div>
           </div>
@@ -188,25 +288,12 @@ const Login = () => {
 
               {errors.general && (
                 <div className="bg-red-50 border border-red-200 text-red-800 text-sm rounded-md p-3 flex items-start gap-3">
-                  <FaCircleExclamation className="text-red-600 mt-0.5" />
+                  <FaCircleExclamation className="text-red-600 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-red-600">{errors.general}</p>
+                    <p className="text-red-600 font-medium">{errors.general}</p>
                   </div>
                 </div>
               )}
-
-              {/* <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-neutral-800 border-neutral-300 rounded focus:ring-neutral-900"
-                  />
-                  <label className="ml-2 block text-sm text-neutral-700">Remember me</label>
-                </div>
-                <Link to="/forgot-password" className="text-sm text-neutral-600 hover:text-neutral-900">
-                  Forgot password?
-                </Link>
-              </div> */}
 
               <button
                 type="submit"
@@ -218,8 +305,22 @@ const Login = () => {
             </form>
           </div>
 
-          <div className="p-6 bg-neutral-50 border-t border-neutral-200 rounded-b-lg">
-            <p className="text-xs text-center text-neutral-500">Copyright 2025.</p>
+          <div className="p-4 bg-neutral-50 border-t border-neutral-200 rounded-b-lg text-center">
+            {loginBranding?.enabled !== false && loginBranding?.phone && (
+              <div className="flex flex-col items-center justify-center gap-1 mb-2">
+                <span className="text-[11px] font-medium text-neutral-500">
+                  {loginBranding.tagline || 'Support & Inquiries:'}
+                </span>
+                <a
+                  href={`tel:${loginBranding.phone.replace(/[^0-9+]/g, '')}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition"
+                >
+                  <FaPhone className="text-[10px] text-blue-500" />
+                  {loginBranding.phone}
+                </a>
+              </div>
+            )}
+            <p className="text-xs text-neutral-400">Copyright 2025.</p>
           </div>
         </div>
       </div>

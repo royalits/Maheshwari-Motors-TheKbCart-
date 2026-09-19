@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSignOutAlt, FaSync, FaEye, FaKey, FaSave, FaDatabase } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaSignOutAlt, FaSync, FaEye, FaKey, FaSave, FaDatabase, FaStore, FaPhone } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { DataTable, Modal, DeleteConfirmDialog } from '../../components/common';
 import { Button, Input } from '../../components/ui';
@@ -15,15 +15,17 @@ const INDIAN_STATES = [
 ];
 
 const getSubscriptionStatus = (subscription) => {
-  if (!subscription?.validityFrom || !subscription?.validityTo) {
+  const fromRaw = subscription?.validityFrom || subscription?.start_date;
+  const toRaw = subscription?.validityTo || subscription?.expiry_date;
+  if (!fromRaw || !toRaw) {
     return { label: 'No Plan', sort: 5, className: 'bg-gray-200 text-gray-800' };
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const validityFrom = new Date(subscription.validityFrom);
+  const validityFrom = new Date(fromRaw);
   validityFrom.setHours(0, 0, 0, 0);
-  const validityTo = new Date(subscription.validityTo);
+  const validityTo = new Date(toRaw);
   validityTo.setHours(0, 0, 0, 0);
   const oneDay = 1000 * 60 * 60 * 24;
 
@@ -256,7 +258,15 @@ const UserMaster = () => {
   useEffect(() => { editingFormRef.current = editingForm; }, [editingForm]);
   const setEditingFormWithRef = setEditingForm;
   const [editingSignatureFile, setEditingSignatureFile] = useState(null);
-  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, user: null });
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    user: null,
+    hasDownloadedBackup: false,
+    isBackupDownloading: false,
+    confirmText: '',
+    isConfirmChecked: false,
+    isDeleting: false,
+  });
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState(null);
   const [isTransactionHistoryModalOpen, setIsTransactionHistoryModalOpen] = useState(false);
@@ -273,6 +283,15 @@ const UserMaster = () => {
   });
   const [isAdminCredentialModalOpen, setIsAdminCredentialModalOpen] = useState(false);
   const [adminCredentialsSaving, setAdminCredentialsSaving] = useState(false);
+  const [isBrandingModalOpen, setIsBrandingModalOpen] = useState(false);
+  const [brandingData, setBrandingData] = useState({
+    enabled: true,
+    firm_name: '',
+    phone: '',
+    tagline: '',
+  });
+  const [brandingLoading, setBrandingLoading] = useState(false);
+  const [brandingSaving, setBrandingSaving] = useState(false);
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
   const [renewUser, setRenewUser] = useState(null);
   const [renewData, setRenewData] = useState({
@@ -445,6 +464,62 @@ const UserMaster = () => {
       );
     } finally {
       setAdminCredentialsSaving(false);
+    }
+  };
+
+  const fetchLoginBranding = async () => {
+    try {
+      setBrandingLoading(true);
+      const res = await api.get('/admin/login-branding');
+      const data = res.data?.data || {};
+      setBrandingData({
+        enabled: data.enabled !== false,
+        firm_name: data.firm_name || '',
+        phone: data.phone || '',
+        tagline: data.tagline || '',
+      });
+    } catch (error) {
+      console.error('Failed to fetch login branding', error);
+    } finally {
+      setBrandingLoading(false);
+    }
+  };
+
+  const handleSaveBranding = async (e) => {
+    e?.preventDefault?.();
+    const phoneInput = String(brandingData.phone || '').trim();
+    if (phoneInput) {
+      const digits = phoneInput.replace(/\D/g, '');
+      if (
+        digits.length < 10 ||
+        digits.length > 15 ||
+        !/^[+]?[\d\s-]{10,20}$/.test(phoneInput)
+      ) {
+        showToast(
+          'Please enter a valid phone number (10 to 15 digits)',
+          'error',
+        );
+        return;
+      }
+    }
+
+    try {
+      setBrandingSaving(true);
+      await api.put('/admin/login-branding', {
+        ...brandingData,
+        phone: phoneInput,
+        firm_name: String(brandingData.firm_name || '').trim(),
+        tagline: String(brandingData.tagline || '').trim(),
+      });
+      showToast('Login screen branding updated successfully', 'success');
+      setIsBrandingModalOpen(false);
+    } catch (error) {
+      showToast(
+        error.response?.data?.message || 'Failed to update login branding',
+        'error',
+      );
+    } finally {
+      setBrandingSaving(false);
     }
   };
 
@@ -626,6 +701,69 @@ const UserMaster = () => {
     }
   };
 
+  const handleDownloadUserBackup = async (targetUser) => {
+    if (!targetUser?.id) return;
+    try {
+      setDeleteModal((prev) => ({ ...prev, isBackupDownloading: true }));
+      const response = await api.get(`/admin/users/${targetUser.id}/backup`, {
+        responseType: 'blob',
+        skipCache: true,
+      });
+
+      const blob = new Blob([response.data], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const targetName = (targetUser.name || targetUser.username || 'user').replace(/[^a-zA-Z0-9_-]/g, '_');
+      link.setAttribute('download', `user_backup_${targetName}_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setDeleteModal((prev) => ({
+        ...prev,
+        isBackupDownloading: false,
+        hasDownloadedBackup: true,
+      }));
+
+      showToast('User database backup downloaded successfully! You may now confirm deletion.', 'success');
+    } catch (error) {
+      setDeleteModal((prev) => ({ ...prev, isBackupDownloading: false }));
+      showToast(
+        error.response?.data?.message || 'Failed to download user backup',
+        'error',
+      );
+    }
+  };
+
+  const handleDeleteUserSubmit = async () => {
+    const targetUser = deleteModal.user;
+    if (!targetUser?.id) return;
+
+    try {
+      setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
+      await api.delete(`/admin/users/${targetUser.id}`);
+      showToast(`User "${targetUser.name || targetUser.username}" and all database records deleted successfully.`, 'success');
+      setDeleteModal({
+        isOpen: false,
+        user: null,
+        hasDownloadedBackup: false,
+        isBackupDownloading: false,
+        confirmText: '',
+        isConfirmChecked: false,
+        isDeleting: false,
+      });
+      fetchUsers();
+    } catch (error) {
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
+      showToast(
+        error.response?.data?.message || 'Failed to delete user and database',
+        'error',
+      );
+    }
+  };
+
   useEffect(() => {
     if (activeAdminScreen === 'backup') {
       fetchPlatformBackups();
@@ -656,7 +794,7 @@ const UserMaster = () => {
     { 
       key: 'id', 
       label: 'ID',
-      render: (value) => <span className="text-xs sm:text-sm">{value.substring(0, 8)}...</span>
+      render: (value) => <span className="text-xs sm:text-sm">{String(value || '').substring(0, 8)}...</span>
     },
     {
       key: 'subscriptionStatusSort',
@@ -773,11 +911,19 @@ const UserMaster = () => {
       label: <FaTrash size={10} className="sm:size-3 md:size-4" />,
       onClick: (user) => {
         if (user) {
-            setDeleteDialog({ isOpen: true, user });
+          setDeleteModal({
+            isOpen: true,
+            user,
+            hasDownloadedBackup: false,
+            isBackupDownloading: false,
+            confirmText: '',
+            isConfirmChecked: false,
+            isDeleting: false,
+          });
         }
       },
       className: 'bg-red-600 text-white hover:bg-red-700 p-1 sm:p-1.5 md:p-2 text-xs',
-      title: 'Delete'
+      title: 'Delete User & Database'
     }
   ], []);
 
@@ -1118,42 +1264,7 @@ const UserMaster = () => {
       showToast(details ? `${msg}: ${details}` : msg, 'error');
     }
   };
-  const handleConfirmDelete = useCallback(async () => {
-    // 🛡️ LEVEL 1: State Check
-    if (!deleteDialog.isOpen || !deleteDialog.user || !deleteDialog.user.id) {
-       console.warn("🚫 Blocked: Invalid delete confirmation state."); 
-       return;
-    }
-
-    // 🛡️ LEVEL 2: Browser Native Confirm (Cannot be bypassed by scripts easily)
-    // This is the "Nuclear Option" against auto-deletion bugs.
-    // If this dialog appears automatically, the browser blocks it or the user knows something is truly wrong with their browser/extensions.
-    /* 
-       Optimized decision: I will NOT uncomment this unless the user explicitly asks for "annoying" popups, 
-       but I will rely on the React State check which is already robust. 
-       However, to "Fix it one time", I will verify the user ID length to ensure we aren't deleting "undefined".
-    */
-   
-    if (String(deleteDialog.user.id).length < 5) {
-        console.error("🚫 Blocked: Invalid User ID length.");
-        return;
-    }
-
-    try {
-       console.log(`Deleting user explicitly: ${deleteDialog.user.id}`);
-       await api.delete(`/admin/users/${deleteDialog.user.id}`);
-       showToast('User deleted successfully', 'success');
-       setDeleteDialog({ isOpen: false, user: null });
-       fetchUsers();
-    } catch (error) {
-       console.error("User delete error:", error);
-       const msg = error.response?.data?.message || 'Failed to delete user';
-       const details = Array.isArray(error.response?.data?.errors) 
-           ? error.response.data.errors.join(', ') 
-           : '';
-       showToast(details ? `${msg}: ${details}` : msg, 'error');
-    }
-  }, [deleteDialog, showToast]); 
+ 
 
   return (
     <div className="min-h-screen pt-10 bg-gray-50 p-4">
@@ -1176,6 +1287,16 @@ const UserMaster = () => {
               >
                 <FaDatabase className="w-4 h-4" />
                 {activeAdminScreen === 'backup' ? 'User Master' : 'Backup & Restore'}
+              </button>
+              <button
+                onClick={() => {
+                  fetchLoginBranding();
+                  setIsBrandingModalOpen(true);
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
+              >
+                <FaStore className="w-4 h-4" />
+                Login Branding
               </button>
               <button
                 onClick={() => {
@@ -2665,13 +2786,6 @@ const UserMaster = () => {
         )}
       </Modal>
 
-      <DeleteConfirmDialog
-        isOpen={deleteDialog.isOpen}
-        onClose={() => setDeleteDialog({ isOpen: false, user: null })}
-        onConfirm={handleConfirmDelete}
-        itemName={deleteDialog.user?.username}
-      />
-
       <Modal
         isOpen={isRenewModalOpen}
         onClose={() => setIsRenewModalOpen(false)}
@@ -2791,6 +2905,107 @@ const UserMaster = () => {
         </form>
       </Modal>
 
+      {/* Login Screen Branding Modal */}
+      <Modal
+        isOpen={isBrandingModalOpen}
+        onClose={() => setIsBrandingModalOpen(false)}
+        title="Login Screen Branding & Support Contact"
+        size="md"
+      >
+        <form onSubmit={handleSaveBranding} className="space-y-4">
+          <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg text-xs text-purple-900 leading-relaxed">
+            Configure the <strong>Firm Name</strong> and <strong>Contact / Support Mobile Number</strong> displayed on the public login page.
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-gray-800">Show on Login Screen</p>
+              <p className="text-[11px] text-gray-500">Enable or disable branding on the login page</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={brandingData.enabled}
+                onChange={(e) =>
+                  setBrandingData((prev) => ({
+                    ...prev,
+                    enabled: e.target.checked,
+                  }))
+                }
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Firm / Business Name
+            </label>
+            <Input
+              value={brandingData.firm_name}
+              onChange={(value) =>
+                setBrandingData((prev) => ({
+                  ...prev,
+                  firm_name: value,
+                }))
+              }
+              placeholder="e.g. Maheshwari Motors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Contact / Support Mobile Number
+            </label>
+            <Input
+              value={brandingData.phone}
+              onChange={(value) =>
+                setBrandingData((prev) => ({
+                  ...prev,
+                  phone: value,
+                }))
+              }
+              placeholder="e.g. +91 98765 43210"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Support Tagline (Optional)
+            </label>
+            <Input
+              value={brandingData.tagline}
+              onChange={(value) =>
+                setBrandingData((prev) => ({
+                  ...prev,
+                  tagline: value,
+                }))
+              }
+              placeholder="e.g. For login help or inquiries:"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsBrandingModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={brandingSaving}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <FaSave />
+              {brandingSaving ? 'Saving...' : 'Save Branding'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Transaction History Modal */}
       <Modal 
         isOpen={isTransactionHistoryModalOpen} 
@@ -2878,6 +3093,155 @@ const UserMaster = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Delete User & Complete Database Modal */}
+      {deleteModal.isOpen && (
+        <Modal
+          isOpen={deleteModal.isOpen}
+          onClose={() =>
+            !deleteModal.isDeleting &&
+            setDeleteModal({
+              isOpen: false,
+              user: null,
+              hasDownloadedBackup: false,
+              isBackupDownloading: false,
+              confirmText: '',
+              isConfirmChecked: false,
+              isDeleting: false,
+            })
+          }
+          title="Delete User & Complete Database"
+        >
+          <div className="space-y-4 text-xs sm:text-sm">
+            {/* Warning Alert Banner */}
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-900 flex items-start gap-3">
+              <div className="p-2 bg-red-100 text-red-600 rounded-lg shrink-0 mt-0.5">
+                <FaTrash className="text-lg" />
+              </div>
+              <div>
+                <h4 className="font-bold text-red-900 text-sm sm:text-base">
+                  DANGER: Permanent User & Database Destruction
+                </h4>
+                <p className="mt-1 text-xs text-red-800 leading-relaxed">
+                  You are about to permanently delete user <strong className="font-semibold">{deleteModal.user?.name || deleteModal.user?.username}</strong> along with all associated database records (Bills, Challans, Items, Contacts, Transactions, Expenses, Ledgers).
+                </p>
+                <p className="mt-1 text-xs font-bold text-red-700">
+                  This action is irreversible! To ensure data safety, you MUST download a user database backup file before deleting.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 1: Download Backup */}
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-bold text-gray-900 text-xs sm:text-sm">Step 1: Mandatory Backup Download</h5>
+                  <p className="text-[11px] text-gray-500">
+                    Download complete JSON data backup of this user's records before proceeding.
+                  </p>
+                </div>
+                {deleteModal.hasDownloadedBackup && (
+                  <span className="px-2.5 py-1 text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 rounded-full flex items-center gap-1">
+                    ✓ Backup Saved
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDownloadUserBackup(deleteModal.user)}
+                disabled={deleteModal.isBackupDownloading}
+                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
+              >
+                <FaDatabase size={12} />
+                {deleteModal.isBackupDownloading
+                  ? 'Generating & Downloading Backup...'
+                  : deleteModal.hasDownloadedBackup
+                  ? 'Re-download Backup File'
+                  : 'Download User Data Backup'}
+              </button>
+            </div>
+
+            {/* Step 2: Double Confirmation */}
+            <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
+              <h5 className="font-bold text-amber-900 text-xs sm:text-sm">Step 2: Double Confirmation</h5>
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={deleteModal.isConfirmChecked}
+                  onChange={(e) =>
+                    setDeleteModal((prev) => ({
+                      ...prev,
+                      isConfirmChecked: e.target.checked,
+                    }))
+                  }
+                  disabled={!deleteModal.hasDownloadedBackup}
+                  className="mt-0.5 h-4 w-4 text-red-600 rounded border-gray-300 focus:ring-red-500 disabled:opacity-40"
+                />
+                <span className={`text-xs ${deleteModal.hasDownloadedBackup ? 'text-gray-800' : 'text-gray-400'}`}>
+                  I have downloaded the backup file and understand that deleting this user will permanently erase all associated database records.
+                </span>
+              </label>
+
+              {/* Step 3: Type Name Confirmation */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Type <span className="font-mono bg-gray-200 px-1 py-0.5 rounded text-gray-900 font-bold">{deleteModal.user?.name || deleteModal.user?.username}</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteModal.confirmText}
+                  onChange={(e) =>
+                    setDeleteModal((prev) => ({
+                      ...prev,
+                      confirmText: e.target.value,
+                    }))
+                  }
+                  disabled={!deleteModal.hasDownloadedBackup || !deleteModal.isConfirmChecked}
+                  placeholder={`Type "${deleteModal.user?.name || deleteModal.user?.username}" here`}
+                  className="w-full px-3 py-2 border rounded-lg text-xs focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t">
+              <button
+                type="button"
+                onClick={() =>
+                  setDeleteModal({
+                    isOpen: false,
+                    user: null,
+                    hasDownloadedBackup: false,
+                    isBackupDownloading: false,
+                    confirmText: '',
+                    isConfirmChecked: false,
+                    isDeleting: false,
+                  })
+                }
+                disabled={deleteModal.isDeleting}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteUserSubmit}
+                disabled={
+                  !deleteModal.hasDownloadedBackup ||
+                  !deleteModal.isConfirmChecked ||
+                  deleteModal.confirmText.trim().toLowerCase() !==
+                    (deleteModal.user?.name || deleteModal.user?.username || '').trim().toLowerCase() ||
+                  deleteModal.isDeleting
+                }
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <FaTrash size={11} />
+                {deleteModal.isDeleting ? 'Deleting User & Database...' : 'Permanently Delete User & Database'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

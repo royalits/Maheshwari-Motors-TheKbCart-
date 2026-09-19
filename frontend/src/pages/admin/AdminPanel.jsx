@@ -11,6 +11,8 @@ import {
   FaToggleOff,
   FaToggleOn,
   FaUsers,
+  FaStore,
+  FaPhone,
 } from 'react-icons/fa';
 import api from '../../services/axiosInstance';
 import useStore from '../../store';
@@ -27,6 +29,14 @@ const AdminPanel = () => {
   const [downloadingId, setDownloadingId] = useState('');
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
   const [credentialsSaving, setCredentialsSaving] = useState(false);
+  const [brandingData, setBrandingData] = useState({
+    enabled: true,
+    firm_name: '',
+    phone: '',
+    tagline: '',
+  });
+  const [brandingLoading, setBrandingLoading] = useState(false);
+  const [brandingSaving, setBrandingSaving] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -35,8 +45,62 @@ const AdminPanel = () => {
   useEffect(() => {
     if (activeScreen === 'backup') {
       fetchBackups();
+    } else if (activeScreen === 'branding') {
+      fetchBranding();
     }
   }, [activeScreen]);
+
+  const fetchBranding = async () => {
+    try {
+      setBrandingLoading(true);
+      const res = await api.get('/admin/login-branding');
+      const data = res.data?.data || {};
+      setBrandingData({
+        enabled: data.enabled !== false,
+        firm_name: data.firm_name || '',
+        phone: data.phone || '',
+        tagline: data.tagline || '',
+      });
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to fetch login branding', 'error');
+    } finally {
+      setBrandingLoading(false);
+    }
+  };
+
+  const handleBrandingSave = async (e) => {
+    e?.preventDefault?.();
+    const phoneInput = String(brandingData.phone || '').trim();
+    if (phoneInput) {
+      const digits = phoneInput.replace(/\D/g, '');
+      if (
+        digits.length < 10 ||
+        digits.length > 15 ||
+        !/^[+]?[\d\s-]{10,20}$/.test(phoneInput)
+      ) {
+        showToast(
+          'Please enter a valid phone number (10 to 15 digits)',
+          'error',
+        );
+        return;
+      }
+    }
+
+    try {
+      setBrandingSaving(true);
+      await api.put('/admin/login-branding', {
+        ...brandingData,
+        phone: phoneInput,
+        firm_name: String(brandingData.firm_name || '').trim(),
+        tagline: String(brandingData.tagline || '').trim(),
+      });
+      showToast('Login branding settings saved successfully', 'success');
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to save branding settings', 'error');
+    } finally {
+      setBrandingSaving(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -231,6 +295,16 @@ const AdminPanel = () => {
           }`}
         >
           Backup & Restore
+        </button>
+        <button
+          onClick={() => setActiveScreen('branding')}
+          className={`px-4 py-2 rounded-md border text-sm ${
+            activeScreen === 'branding'
+              ? 'bg-neutral-900 text-white border-neutral-900'
+              : 'bg-white text-neutral-700 border-neutral-200'
+          }`}
+        >
+          Login Branding
         </button>
       </div>
 
@@ -476,6 +550,110 @@ const AdminPanel = () => {
             </table>
           </div>
         </div>
+      )}
+
+      {activeScreen === 'branding' && (
+        <form
+          onSubmit={handleBrandingSave}
+          className="bg-white border border-neutral-200 rounded-lg shadow-sm max-w-2xl"
+        >
+          <div className="p-4 border-b border-neutral-200 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-medium text-neutral-900 flex items-center gap-2">
+                <FaStore />
+                Login Screen Branding
+              </h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Customize Firm Name & Support Contact displayed on the login page
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={brandingSaving || brandingLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60 text-sm font-medium"
+            >
+              <FaSave />
+              {brandingSaving ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="flex items-center justify-between p-3.5 bg-neutral-50 border border-neutral-200 rounded-lg">
+              <div>
+                <p className="text-sm font-semibold text-neutral-900">Show on Login Screen</p>
+                <p className="text-xs text-neutral-500">Enable or disable branding on the public login page</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={brandingData.enabled}
+                  onChange={(e) =>
+                    setBrandingData((prev) => ({
+                      ...prev,
+                      enabled: e.target.checked,
+                    }))
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Firm / Business Name
+              </label>
+              <input
+                type="text"
+                value={brandingData.firm_name}
+                onChange={(e) =>
+                  setBrandingData((prev) => ({
+                    ...prev,
+                    firm_name: e.target.value,
+                  }))
+                }
+                placeholder="e.g. Maheshwari Motors"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Contact / Support Mobile Number
+              </label>
+              <input
+                type="text"
+                value={brandingData.phone}
+                onChange={(e) =>
+                  setBrandingData((prev) => ({
+                    ...prev,
+                    phone: e.target.value,
+                  }))
+                }
+                placeholder="e.g. +91 98765 43210"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Support Tagline (Optional)
+              </label>
+              <input
+                type="text"
+                value={brandingData.tagline}
+                onChange={(e) =>
+                  setBrandingData((prev) => ({
+                    ...prev,
+                    tagline: e.target.value,
+                  }))
+                }
+                placeholder="e.g. For login assistance or inquiries:"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </form>
       )}
     </div>
   );
