@@ -20,7 +20,7 @@ A production-grade ERP frontend built with React, TypeScript, and Tailwind CSS f
 - ✅ Login Screen with validation
 - ✅ Firm Selection/Dashboard Selector
 - ✅ Global state management with Zustand
-
+..
 ### Masters
 
 - ✅ Firm Setup (Create/Edit with GST configuration)
