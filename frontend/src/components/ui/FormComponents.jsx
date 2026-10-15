@@ -20,7 +20,7 @@ export const FormField = ({ label, error, required, children, className = "" }) 
   </div>
 );
 
-export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = true, allowNegative = false, trimSpaces = true, ...props }, ref) => {
+export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = true, allowNegative = false, trimSpaces = true, calendarButton = false, ...props }, ref) => {
   const hiddenDateRef = useRef(null);
 
   if (props.type === 'date') {
@@ -43,13 +43,15 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
     };
 
     const openPickerSafely = () => {
-      if (props.disabled) return;
-      if (hiddenDateRef.current && typeof hiddenDateRef.current.showPicker === 'function') {
+      if (props.disabled || !hiddenDateRef.current) return;
+      if (typeof hiddenDateRef.current.showPicker === 'function') {
         try {
           hiddenDateRef.current.showPicker();
         } catch {
-          // Handled silently if browser restricts showPicker invocation
+          hiddenDateRef.current.click();
         }
+      } else {
+        hiddenDateRef.current.click();
       }
     };
 
@@ -86,14 +88,33 @@ export const Input = React.forwardRef(({ error, allowSpaces = true, allowZero = 
           onChange={handlePickerChange}
           onInput={handlePickerChange}
           disabled={props.disabled}
-          className="absolute right-0 top-0 w-9 h-full opacity-0 cursor-pointer z-10"
+          className={`absolute right-0 top-0 w-9 h-full opacity-0 cursor-pointer z-10 ${
+            calendarButton ? 'pointer-events-none' : ''
+          }`}
         />
-        <div
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 pointer-events-none transition-colors"
-          title="Choose date"
-        >
-          <FaCalendarAlt className="w-4 h-4" />
-        </div>
+        {calendarButton ?
+          <button
+            type="button"
+            onPointerDown={(event) => {
+              if (event.button === 0) openPickerSafely();
+            }}
+            onClick={(event) => {
+              if (event.detail === 0) openPickerSafely();
+            }}
+            disabled={props.disabled}
+            aria-label="Choose date"
+            title="Choose date"
+            className="absolute right-0 top-0 flex h-full w-9 items-center justify-center text-gray-500 transition-colors hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 z-10"
+          >
+            <FaCalendarAlt className="w-4 h-4" />
+          </button>
+        : <div
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 pointer-events-none transition-colors"
+            title="Choose date"
+          >
+            <FaCalendarAlt className="w-4 h-4" />
+          </div>
+        }
       </div>
     );
   }

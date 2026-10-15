@@ -3367,6 +3367,7 @@ const BillList = () => {
           </select>
           <Input
             type="date"
+            calendarButton
             value={filters.dateFrom}
             onChange={(val) => {
               setFilters((prev) => ({
@@ -3379,6 +3380,7 @@ const BillList = () => {
           />
           <Input
             type="date"
+            calendarButton
             value={filters.dateTo}
             onChange={(val) => {
               setFilters((prev) => ({
