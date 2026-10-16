@@ -14,6 +14,7 @@ import {
 import useStore from "../../store";
 import { expenseService } from "../../services/expenseService";
 import api from "../../services/axiosInstance";
+import { Input } from "../../components/ui";
 
 // Safe Date Formatting Helpers
 const formatDateForInput = (d) => {
@@ -373,19 +374,21 @@ const ExpenseEntry = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <input
+            <Input
               type="date"
+              calendarButton
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-2 py-2 text-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              onChange={setStartDate}
+              className="bg-neutral-50 rounded-lg text-xs focus:ring-indigo-500"
               placeholder="From Date"
             />
             <span className="text-neutral-400">-</span>
-            <input
+            <Input
               type="date"
+              calendarButton
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-2 py-2 text-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              onChange={setEndDate}
+              className="bg-neutral-50 rounded-lg text-xs focus:ring-indigo-500"
               placeholder="To Date"
             />
           </div>

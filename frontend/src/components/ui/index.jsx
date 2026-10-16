@@ -229,6 +229,7 @@ export const Input = React.forwardRef(({
   allowNegative = false,
   trimSpaces = true,
   error,
+  calendarButton = false,
   ...props
 }, ref) => {
   const hiddenDateRef = useRef(null);
@@ -254,13 +255,20 @@ export const Input = React.forwardRef(({
 
     const openPickerSafely = () => {
       if (disabled) return;
-      if (hiddenDateRef.current && typeof hiddenDateRef.current.showPicker === "function") {
+      const picker = hiddenDateRef.current;
+      if (!picker) return;
+
+      if (typeof picker.showPicker === "function") {
         try {
-          hiddenDateRef.current.showPicker();
+          picker.showPicker();
+          return;
         } catch {
-          // Handled silently if browser restricts showPicker invocation
+          // Fall back for browsers that expose but reject showPicker().
         }
       }
+
+      picker.focus();
+      picker.click();
     };
 
     const handleKeyDownInternal = (e) => {
@@ -297,14 +305,28 @@ export const Input = React.forwardRef(({
           onChange={handlePickerChange}
           onInput={handlePickerChange}
           disabled={disabled}
-          className="absolute right-0 top-0 w-9 h-full opacity-0 cursor-pointer z-10"
+          className={`absolute right-0 top-0 w-9 h-full opacity-0 cursor-pointer z-10 ${
+            calendarButton ? "pointer-events-none" : ""
+          }`}
         />
-        <div
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 pointer-events-none transition-colors"
-          title="Choose date"
-        >
-          <FaCalendarAlt className="w-4 h-4" />
-        </div>
+        {calendarButton ?
+          <button
+            type="button"
+            onClick={openPickerSafely}
+            disabled={disabled}
+            aria-label="Choose date"
+            title="Choose date"
+            className="absolute right-0 top-0 flex h-full w-9 items-center justify-center text-gray-500 transition-colors hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 z-10"
+          >
+            <FaCalendarAlt className="w-4 h-4" />
+          </button>
+        : <div
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 pointer-events-none transition-colors"
+            title="Choose date"
+          >
+            <FaCalendarAlt className="w-4 h-4" />
+          </div>
+        }
       </div>
     );
   }
