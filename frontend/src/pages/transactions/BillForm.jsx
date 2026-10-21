@@ -18,7 +18,12 @@ import QuickAddItemModal from "../../components/inventory/QuickAddItemModal";
 import api from "../../services/axiosInstance";
 import { STOCK_UPDATE_EVENT } from "../../services/stockSocket";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import {
+  drawCompactInvoiceTable,
+  drawCompactInvoiceAmount,
+  drawInvoiceTable,
+  drawInvoiceCellText,
+} from "../../utils/invoicePagination";
 import {
   getResponseData,
   getResponseList,
@@ -3314,40 +3319,6 @@ const BillForm = () => {
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.25);
       doc.rect(margin, margin, contentWidth, pageHeight - margin * 2);
-
-      // Add footer branding as clickable links
-      const link1 = "thekbclick.com";
-      const sep = " / ";
-      const link2 = "thekbcart.com";
-      const fontSize = 7;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(fontSize);
-
-      const w1 = doc.getTextWidth(link1);
-      const wSep = doc.getTextWidth(sep);
-      const w2 = doc.getTextWidth(link2);
-      const totalW = w1 + wSep + w2;
-
-      const xOffset = margin + (contentWidth - totalW) / 2;
-      const yPos = pageHeight - margin + 3.5;
-
-      // Draw first link
-      doc.setTextColor(0, 102, 204);
-      doc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
-
-      // Draw separator
-      doc.setTextColor(0, 0, 0);
-      doc.text(sep, xOffset + w1, yPos);
-
-      // Draw second link
-      doc.setTextColor(0, 102, 204);
-      doc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
-
-      // Add underlines for links
-      doc.setDrawColor(0, 102, 204);
-      doc.setLineWidth(0.1);
-      doc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
-      doc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
     };
 
     drawPageBorder();
@@ -3650,7 +3621,7 @@ const BillForm = () => {
           14: { cellWidth: 16, halign: "right" },
         };
 
-    autoTable(doc, {
+    const tableOptions = {
       head: [headers],
       body: itemRows.length ? itemRows : [fallbackRow],
       startY: cursorY,
@@ -3666,8 +3637,8 @@ const BillForm = () => {
         fontSize: hideDiscountColumns ? 8 : 7,
         lineColor: [0, 0, 0],
         lineWidth: 0.25,
-        minCellHeight: 6,
-        cellPadding: { top: 1.5, right: 1.2, bottom: 1.5, left: 1.2 },
+        minCellHeight: 4.5,
+        cellPadding: { top: 0.6, right: 1.2, bottom: 0.6, left: 1.2 },
       },
       headStyles: {
         fillColor: headerFill,
@@ -3676,10 +3647,10 @@ const BillForm = () => {
         fontSize: hideDiscountColumns ? 8.2 : 7.2,
         halign: "center",
         valign: "middle",
-        cellPadding: { top: 3, right: 1.2, bottom: 3, left: 1.2 },
+        cellPadding: { top: 1.5, right: 1.2, bottom: 1.5, left: 1.2 },
       },
       columnStyles: colWidths,
-    });
+    };
 
     const formatAmount = (val) => Number(val || 0).toFixed(2);
     const totalQty = bill.items.reduce(
@@ -3807,7 +3778,6 @@ const BillForm = () => {
         format: "a4",
       });
       const compactPageWidth = compactDoc.internal.pageSize.getWidth();
-      const compactPageHeight = compactDoc.internal.pageSize.getHeight();
       const compactMargin = 6;
       const compactContentWidth = 133;
       const compactX = compactPageWidth - compactMargin - compactContentWidth;
@@ -3842,12 +3812,6 @@ const BillForm = () => {
 
       compactDoc.setDrawColor(...compactBorder);
       compactDoc.setLineWidth(0.3);
-      compactDoc.rect(
-        compactX,
-        compactMargin,
-        compactContentWidth,
-        compactPageHeight - compactMargin * 2,
-      );
 
       let compactY = compactMargin + 4;
 
@@ -3964,99 +3928,22 @@ const BillForm = () => {
 
       compactY += 25;
 
-      const summaryBoxHeight = 12;
-      const footerReserve = 52;
-      const startTableY = compactY;
-      const tableBottomY =
-        compactPageHeight - compactMargin - footerReserve - summaryBoxHeight;
-      const headerHeight = 6.5;
-      const tableHeight = tableBottomY - startTableY;
-      const bodyHeight = tableHeight - headerHeight;
-      const columnDefs = [
-        { label: "Item Name", width: 57, align: "left" },
-        { label: "Qty", width: 10, align: "right" },
-        { label: "Rate", width: 13, align: "right" },
-        { label: "D1", width: 10, align: "right" },
-        { label: "D2", width: 10, align: "right" },
-        { label: "Net Rate", width: 16, align: "right" },
-        { label: "Amount", width: 17, align: "right" },
-      ];
-      const minRows = Math.max(compactRows.length, 12);
-      const rowHeight = bodyHeight / minRows;
-      const visibleRows =
-        compactRows.length > 0 ?
-          compactRows.slice(0, minRows)
-        : [["--", "0", "0", "0", "0", "0", "0"]];
-
-      compactDoc.setDrawColor(...compactBorder);
-      compactDoc.setLineWidth(0.2);
-      compactDoc.rect(compactX, startTableY, compactContentWidth, tableHeight);
-      compactDoc.setFillColor(...compactHeaderFill);
-      compactDoc.rect(
-        compactX,
-        startTableY,
-        compactContentWidth,
-        headerHeight,
-        "FD",
-      );
-      compactDoc.line(
-        compactX,
-        startTableY + headerHeight,
-        compactX + compactContentWidth,
-        startTableY + headerHeight,
-      );
-
-      const columnStarts = [];
-      let currentX = compactX;
-      columnDefs.forEach((column, index) => {
-        columnStarts.push(currentX);
-        currentX += column.width;
-        if (index < columnDefs.length - 1) {
-          compactDoc.line(currentX, startTableY, currentX, tableBottomY);
-        }
+      const {
+        summaryY: compactSummaryY,
+        invoiceBottomY,
+        columnStarts,
+        columnDefs,
+        summaryBoxHeight,
+      } = drawCompactInvoiceTable(compactDoc, {
+        rows: compactRows,
+        startY: compactY,
+        x: compactX,
+        width: compactContentWidth,
+        margin: compactMargin,
+        border: compactBorder,
+        headerFill: compactHeaderFill,
+        blue: compactBlue,
       });
-
-      compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(9.5);
-      compactDoc.setTextColor(...compactBlue);
-      columnDefs.forEach((column, index) => {
-        const startX = columnStarts[index];
-        if (column.align === "left") {
-          compactDoc.text(column.label, startX + 1.2, startTableY + 4.7);
-        } else {
-          compactDoc.text(
-            column.label,
-            startX + column.width - 1.2,
-            startTableY + 4.7,
-            { align: "right" },
-          );
-        }
-      });
-
-      compactDoc.setFont("times", "normal");
-      compactDoc.setFontSize(9.5);
-      compactDoc.setTextColor(0, 0, 0);
-      visibleRows.forEach((row, rowIndex) => {
-        const rowY = startTableY + headerHeight + rowIndex * rowHeight + (rowHeight * 0.72);
-        row.forEach((cell, cellIndex) => {
-          const value = String(cell ?? "");
-          const startX = columnStarts[cellIndex];
-          const width = columnDefs[cellIndex].width;
-          const align = columnDefs[cellIndex].align;
-          if (align === "left") {
-            const clipped = compactDoc
-              .splitTextToSize(value, width - 2)
-              .slice(0, 1);
-            compactDoc.text(clipped, startX + 1.2, rowY);
-          } else {
-            compactDoc.text(value, startX + width - 1.2, rowY, {
-              align: "right",
-            });
-          }
-        });
-      });
-
-      const compactSummaryY = tableBottomY;
       compactDoc.rect(
         compactX,
         compactSummaryY,
@@ -4078,25 +3965,26 @@ const BillForm = () => {
       compactDoc.setFont("times", "bold");
       compactDoc.setFontSize(9.5);
       compactDoc.setTextColor(0, 0, 0);
-      compactDoc.text("Total :", columnStarts[1] - 1.2, compactSummaryY + 5.5, { align: "right" });
-      compactDoc.text(
+      compactDoc.text("Total :", columnStarts[2] - 1.2, compactSummaryY + 5.5, { align: "right" });
+      drawInvoiceCellText(compactDoc,
         String(Math.round(totalQty)),
-        columnStarts[2] - 1.2,
+        columnStarts[3] - 1.2,
         compactSummaryY + 5.5,
         {
           align: "right",
+          maxWidth: columnDefs[2].width - 2.4,
         },
       );
-      compactDoc.text(
+      drawInvoiceCellText(compactDoc,
         formatAmount(netPreviewAmount),
         compactX + compactContentWidth - 1.2,
         compactSummaryY + 5.5,
-        { align: "right" },
+        { align: "right", maxWidth: columnDefs.at(-1).width - 2.4 },
       );
 
       const compactFooterY = compactSummaryY + summaryBoxHeight;
       const compactFooterHeight =
-        compactPageHeight - compactMargin - compactFooterY;
+        invoiceBottomY - compactFooterY;
       compactDoc.rect(
         compactX,
         compactFooterY,
@@ -4124,33 +4012,14 @@ const BillForm = () => {
         compactFooterY + 20,
       );
 
-      compactDoc.setTextColor(0, 0, 0);
-      compactDoc.setFont("times", "bold");
-      compactDoc.setFontSize(9.5);
-      compactDoc.text(
-        compactDoc
-          .splitTextToSize(
-            `In Words : Rs. ${amountInWords}`,
-            compactContentWidth - 55,
-          )
-          .slice(0, 1),
-        compactX + 1.5,
-        compactFooterY + 28,
-      );
-      compactDoc.setTextColor(...compactBlue);
-      compactDoc.setFontSize(10.0);
-      compactDoc.text(
-        "Net Amount",
-        compactX + compactContentWidth - 31,
-        compactFooterY + 28,
-      );
-      compactDoc.setFontSize(11.0);
-      compactDoc.text(
-        formatAmount(netPreviewAmount),
-        compactX + compactContentWidth - 1.2,
-        compactFooterY + 28,
-        { align: "right" },
-      );
+      drawCompactInvoiceAmount(compactDoc, {
+        x: compactX,
+        width: compactContentWidth,
+        y: compactFooterY,
+        amount: netPreviewAmount,
+        amountInWords,
+        blue: compactBlue,
+      });
       compactDoc.setDrawColor(...compactBorder);
       compactDoc.setLineWidth(0.2);
       compactDoc.line(
@@ -4167,25 +4036,25 @@ const BillForm = () => {
       compactDoc.text(
         "Receiver's Signature",
         compactX + 1.5,
-        compactPageHeight - compactMargin - 3.2,
+        invoiceBottomY - 3.2,
       );
       compactDoc.text(
         `FOR ${String(firmName || "").toUpperCase()}`,
         compactX + compactContentWidth - 2,
-        compactFooterY + 36.8,
+        compactFooterY + 34.2,
         {
           align: "right",
         },
       );
       if (signatureImage) {
         try {
-          let imgWidth = 38;
-          let imgHeight = 12;
+          let imgWidth = 28;
+          let imgHeight = 9;
           try {
             const props = compactDoc.getImageProperties(signatureImage);
             const aspect = props.width / props.height;
-            const maxW = 38;
-            const maxH = 12;
+            const maxW = 28;
+            const maxH = 9;
             if (aspect > maxW / maxH) {
               imgWidth = maxW;
               imgHeight = maxW / aspect;
@@ -4203,7 +4072,7 @@ const BillForm = () => {
             signatureImage,
             "PNG",
             compactX + compactContentWidth - 2 - imgWidth,
-            compactFooterY + 39,
+            invoiceBottomY - 5.8 - imgHeight,
             imgWidth,
             imgHeight,
           );
@@ -4214,43 +4083,9 @@ const BillForm = () => {
       compactDoc.text(
         "Authorised Signatory",
         compactX + compactContentWidth - 2,
-        compactPageHeight - compactMargin - 3.2,
+        invoiceBottomY - 3.2,
         { align: "right" },
       );
-      // Add footer branding as clickable links
-      const link1 = "thekbclick.com";
-      const sep = " / ";
-      const link2 = "thekbcart.com";
-      const fontSize = 6.5;
-      compactDoc.setFont("helvetica", "normal");
-      compactDoc.setFontSize(fontSize);
-
-      const w1 = compactDoc.getTextWidth(link1);
-      const wSep = compactDoc.getTextWidth(sep);
-      const w2 = compactDoc.getTextWidth(link2);
-      const totalW = w1 + wSep + w2;
-
-      const xOffset = compactX + (compactContentWidth - totalW) / 2;
-      const yPos = compactPageHeight - compactMargin + 3.5;
-
-      // Draw first link
-      compactDoc.setTextColor(0, 102, 204);
-      compactDoc.textWithLink(link1, xOffset, yPos, { url: "https://thekbclick.com" });
-
-      // Draw separator
-      compactDoc.setTextColor(0, 0, 0);
-      compactDoc.text(sep, xOffset + w1, yPos);
-
-      // Draw second link
-      compactDoc.setTextColor(0, 102, 204);
-      compactDoc.textWithLink(link2, xOffset + w1 + wSep, yPos, { url: "https://thekbcart.com" });
-
-      // Add underlines for links
-      compactDoc.setDrawColor(0, 102, 204);
-      compactDoc.setLineWidth(0.1);
-      compactDoc.line(xOffset, yPos + 0.3, xOffset + w1, yPos + 0.3);
-      compactDoc.line(xOffset + w1 + wSep, yPos + 0.3, xOffset + w1 + wSep + w2, yPos + 0.3);
-
       const previewUrl = compactDoc.output("bloburl");
       const previewWindow = window.open(previewUrl, "_blank");
       if (!previewWindow) {
@@ -4262,24 +4097,29 @@ const BillForm = () => {
       return;
     }
 
-    let summaryY = (doc.lastAutoTable?.finalY || cursorY) + 6;
     const totalRowHeight = 13;
     const midBlockHeight = 32;
     const wordsRowHeight = 8;
-    const termsBlockHeight = 33;
-    // Dynamic breakdown height: title(8) + taxable(5.2) + optional rows + net(8) + padding(4)
-    const breakdownRows =
-      1 + (isGstBill ? 2 : 0) + (transportCharge > 0 ? 1 : 0);
-    const amountBreakdownHeight = 8 + breakdownRows * 5.2 + 12;
+    const breakdownRowCount = 1 + (isGstBill ? 2 : 0) + (transportCharge > 0 ? 1 : 0);
+    const amountBoxHeight = 8 + breakdownRowCount * 4 + 11 + 1;
+    const termsBlockHeight = 16 + amountBoxHeight + 2 + 30;
+    const netAmountSectionWidth = 44;
+    doc.setFont("times", "bold");
+    doc.setFontSize(9.2);
+    const wordsMaxWidth = contentWidth - netAmountSectionWidth - 3;
+    const wordsLines = doc.splitTextToSize(
+      `(in Words) : ${amountInWords}`,
+      wordsMaxWidth,
+    );
+    const actualWordsRowHeight = Math.max(
+      wordsRowHeight,
+      wordsLines.length * 4.5 + 3,
+    );
     const signatureHeight = 30;
     const summaryHeight =
-      totalRowHeight + midBlockHeight + wordsRowHeight + termsBlockHeight;
+      totalRowHeight + midBlockHeight + actualWordsRowHeight + termsBlockHeight;
 
-    if (summaryY + summaryHeight > pageHeight - margin - 1) {
-      doc.addPage();
-      drawPageBorder();
-      summaryY = margin + 8;
-    }
+    const summaryY = drawInvoiceTable(doc, tableOptions, summaryHeight);
 
     const summaryRightX = margin + contentWidth;
     const tableColumnWidths =
@@ -4302,30 +4142,17 @@ const BillForm = () => {
       margin +
       (tableColumnWidths[0] + tableColumnWidths[1] + tableColumnWidths[2]) / 2;
     doc.text("TOTAL :", totalLabelCenter, summaryY + 5.3, { align: "center" });
-    doc.text(
-      String(Math.round(totalQty)),
-      columnRightEdges[3] - 1.2,
-      summaryY + 5.3,
-      { align: "right" },
-    );
-    doc.text(
-      formatAmount(totalBeforeTax),
-      columnRightEdges[hideDiscountColumns ? 7 : 11] - 1.2,
-      summaryY + 5.3,
-      { align: "right" },
-    );
-    doc.text(
-      formatAmount(taxTotal),
-      columnRightEdges[hideDiscountColumns ? 9 : 13] - 1.2,
-      summaryY + 5.3,
-      { align: "right" },
-    );
-    doc.text(
-      formatAmount(totalAmount),
-      columnRightEdges[hideDiscountColumns ? 10 : 14] - 1.2,
-      summaryY + 5.3,
-      { align: "right" },
-    );
+    const drawTotalValue = (value, columnIndex, span = 1) => {
+      drawInvoiceCellText(doc, value, columnRightEdges[columnIndex] - 1.2, summaryY + 5.3, {
+        align: "right",
+        maxWidth: tableColumnWidths.slice(columnIndex - span + 1, columnIndex + 1)
+          .reduce((sum, width) => sum + width, 0) - 2.4,
+      });
+    };
+    drawTotalValue(String(Math.round(totalQty)), 3);
+    drawTotalValue(String(formatAmount(totalBeforeTax)), hideDiscountColumns ? 7 : 11, 2);
+    drawTotalValue(String(formatAmount(taxTotal)), hideDiscountColumns ? 9 : 13, 2);
+    drawTotalValue(String(formatAmount(totalAmount)), hideDiscountColumns ? 10 : 14);
 
     const midBlockY = summaryY + totalRowHeight;
     const rightInfoWidth = 58;
@@ -4348,7 +4175,7 @@ const BillForm = () => {
     doc.text(`PAN No. : ${firmPan}`, margin + 1.8, midBlockY + 24);
 
     const taxGridLeftX = bankAreaRightX + 2;
-    const taxColumnWidths = [12, 18, 11, 11, 11];
+    const taxColumnWidths = [14, 20, 14, 14, 16];
     const taxColumnStarts = [];
     const taxColumnEnds = [];
     let taxCursorX = taxGridLeftX;
@@ -4372,38 +4199,32 @@ const BillForm = () => {
       midBlockY + 16,
       { align: "right" },
     );
-    doc.text(
-      String(formatAmount(totalBeforeTax)),
-      taxColumnEnds[1] - 0.8,
-      midBlockY + 16,
-      { align: "right" },
-    );
-    doc.text(String(formatAmount(sgstAmount)), taxColumnEnds[2] - 0.8, midBlockY + 16, {
-      align: "right",
+    drawInvoiceCellText(doc, String(formatAmount(totalBeforeTax)), taxColumnEnds[1] - 0.8, midBlockY + 16, {
+      align: "right", maxWidth: taxColumnWidths[1] - 1.6,
     });
-    doc.text(String(formatAmount(cgstAmount)), taxColumnEnds[3] - 0.8, midBlockY + 16, {
-      align: "right",
+    drawInvoiceCellText(doc, String(formatAmount(sgstAmount)), taxColumnEnds[2] - 0.8, midBlockY + 16, {
+      align: "right", maxWidth: taxColumnWidths[2] - 1.6,
     });
-    doc.text(String(formatAmount(taxTotal)), taxColumnEnds[4] - 0.8, midBlockY + 16, {
-      align: "right",
+    drawInvoiceCellText(doc, String(formatAmount(cgstAmount)), taxColumnEnds[3] - 0.8, midBlockY + 16, {
+      align: "right", maxWidth: taxColumnWidths[3] - 1.6,
+    });
+    drawInvoiceCellText(doc, String(formatAmount(taxTotal)), taxColumnEnds[4] - 0.8, midBlockY + 16, {
+      align: "right", maxWidth: taxColumnWidths[4] - 1.6,
     });
 
     doc.setFont("times", "bold");
     doc.text("* TOTAL :", taxColumnStarts[0], midBlockY + 24);
-    doc.text(
-      String(formatAmount(totalBeforeTax)),
-      taxColumnEnds[1] - 0.8,
-      midBlockY + 24,
-      { align: "right" },
-    );
-    doc.text(String(formatAmount(sgstAmount)), taxColumnEnds[2] - 0.8, midBlockY + 24, {
-      align: "right",
+    drawInvoiceCellText(doc, String(formatAmount(totalBeforeTax)), taxColumnEnds[1] - 0.8, midBlockY + 24, {
+      align: "right", maxWidth: taxColumnWidths[1] - 1.6,
     });
-    doc.text(String(formatAmount(cgstAmount)), taxColumnEnds[3] - 0.8, midBlockY + 24, {
-      align: "right",
+    drawInvoiceCellText(doc, String(formatAmount(sgstAmount)), taxColumnEnds[2] - 0.8, midBlockY + 24, {
+      align: "right", maxWidth: taxColumnWidths[2] - 1.6,
     });
-    doc.text(String(formatAmount(taxTotal)), taxColumnEnds[4] - 0.8, midBlockY + 24, {
-      align: "right",
+    drawInvoiceCellText(doc, String(formatAmount(cgstAmount)), taxColumnEnds[3] - 0.8, midBlockY + 24, {
+      align: "right", maxWidth: taxColumnWidths[3] - 1.6,
+    });
+    drawInvoiceCellText(doc, String(formatAmount(taxTotal)), taxColumnEnds[4] - 0.8, midBlockY + 24, {
+      align: "right", maxWidth: taxColumnWidths[4] - 1.6,
     });
 
     const rightLabelX = splitInfoX + 2;
@@ -4452,19 +4273,7 @@ const BillForm = () => {
     );
 
     const wordsY = midBlockY + midBlockHeight;
-    const netAmountSectionWidth = 44;
     const netAmountLeftX = summaryRightX - netAmountSectionWidth;
-    doc.setFont("times", "bold");
-    doc.setFontSize(9.2);
-    const wordsMaxWidth = netAmountLeftX - margin - 3;
-    const wordsLines = doc.splitTextToSize(
-      `(in Words) : ${amountInWords}`,
-      wordsMaxWidth,
-    );
-    const actualWordsRowHeight = Math.max(
-      wordsRowHeight,
-      wordsLines.length * 4.5 + 3,
-    );
     doc.setFillColor(...headerFill);
     doc.rect(margin, wordsY, contentWidth, actualWordsRowHeight, "FD");
     doc.line(
@@ -4474,22 +4283,22 @@ const BillForm = () => {
       wordsY + actualWordsRowHeight,
     );
     doc.setTextColor(0, 0, 0);
+    doc.setFont("times", "bold");
+    doc.setFontSize(9.2);
     doc.text(wordsLines, margin + 1.8, wordsY + 5.3);
-    doc.text(
-      "NET AMOUNT :",
-      netAmountLeftX + 2,
-      wordsY + actualWordsRowHeight / 2 + 1.5,
-    );
+    const netAmountText = String(printNetAmount);
+    const netAmountY = wordsY + actualWordsRowHeight / 2 + 1.5;
+    doc.setFontSize(11);
+    const netAmountWidth = Math.min(22, doc.getTextWidth(netAmountText));
+    doc.setFontSize(9.2);
+    drawInvoiceCellText(doc, "NET AMOUNT :", netAmountLeftX + 2, netAmountY, {
+      maxWidth: netAmountSectionWidth - 3.8 - netAmountWidth - 1.5,
+    });
     doc.setTextColor(...blue);
     doc.setFontSize(11);
-    doc.text(
-      String(printNetAmount),
-      summaryRightX - 1.8,
-      wordsY + actualWordsRowHeight / 2 + 1.5,
-      {
-        align: "right",
-      },
-    );
+    drawInvoiceCellText(doc, netAmountText, summaryRightX - 1.8, netAmountY, {
+      align: "right", maxWidth: netAmountWidth,
+    });
 
     const termsY = wordsY + actualWordsRowHeight;
     const termsSplitX = margin + contentWidth * 0.56;
@@ -4707,6 +4516,7 @@ const BillForm = () => {
     doc.text("Authorised Signatory", rightSectionCenterX, signatureY, {
       align: "center",
     });
+
 
     const previewUrl = doc.output("bloburl");
     const previewWindow = window.open(previewUrl, "_blank");
