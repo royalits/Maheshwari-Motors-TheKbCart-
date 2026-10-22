@@ -5206,7 +5206,7 @@ const BillForm = () => {
         </div>
 
         {/* Consignee / Shipped To Section */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+        {isFirmGST && <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
@@ -5438,7 +5438,7 @@ const BillForm = () => {
               Default: Same as Billed To party details will be printed on Tax Invoice.
             </p>
           )}
-        </div>
+        </div>}
 
         <div className="border rounded-lg  flex flex-col">
           <div className="bg-gray-100 px-4 py-2">

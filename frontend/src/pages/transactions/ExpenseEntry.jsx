@@ -15,6 +15,7 @@ import useStore from "../../store";
 import { expenseService } from "../../services/expenseService";
 import api from "../../services/axiosInstance";
 import { Input } from "../../components/ui";
+import { getFinancialYearStartDate } from "../../utils/dateHelpers";
 
 // Safe Date Formatting Helpers
 const formatDateForInput = (d) => {
@@ -64,7 +65,7 @@ const ExpenseEntry = () => {
   const [search, setSearch] = useState("");
   const [modeFilter, setModeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(getFinancialYearStartDate);
   const [endDate, setEndDate] = useState("");
 
   // Modal State
