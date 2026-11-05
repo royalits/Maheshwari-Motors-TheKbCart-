@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Bill from "../../models/transaction/bill.model.js";
 import Contact from "../../models/master/contact.model.js";
+import Return from "../../models/transaction/return.model.js";
 import { ApiError, Pagination } from "../../utils/index.js";
 
 class OutstandingService {
@@ -112,25 +113,90 @@ class OutstandingService {
               ],
             },
           },
+          total_overpaid: {
+            $sum: {
+              $cond: [
+                {
+                  $gt: [
+                    { $ifNull: ["$paid_amount", 0] },
+                    {
+                      $subtract: [
+                        "$amount",
+                        {
+                          $add: [
+                            { $ifNull: ["$return_amount", 0] },
+                            { $ifNull: ["$settlement_discount", 0] },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  $subtract: [
+                    { $ifNull: ["$paid_amount", 0] },
+                    {
+                      $subtract: [
+                        "$amount",
+                        {
+                          $add: [
+                            { $ifNull: ["$return_amount", 0] },
+                            { $ifNull: ["$settlement_discount", 0] },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+                0,
+              ],
+            },
+          },
           total_bills: { $sum: 1 },
           due_count: {
-            $sum: { $cond: [{ $eq: ["$payment_status", "due"] }, 1, 0] },
+            $sum: { $cond: [{ $in: ["$payment_status", ["due", "overpaid"]] }, 1, 0] },
           },
           settled_count: {
             $sum: {
-              $cond: [{ $in: ["$payment_status", ["paid", "overpaid"]] }, 1, 0],
+              $cond: [{ $eq: ["$payment_status", "paid"] }, 1, 0],
             },
           },
         },
       },
     ]);
 
+    const unlinkedReturns = await Return.aggregate([
+      {
+        $match: {
+          contact_id: new mongoose.Types.ObjectId(contactId),
+          user_id: new mongoose.Types.ObjectId(userId),
+          is_gst: isGst,
+          bill_id: null,
+          ...this._financialYearMatch(financialYearId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total_unlinked: { $sum: "$total_amount" },
+        },
+      },
+    ]);
+
+    const totalOverpaid = summary?.total_overpaid || 0;
+    const totalCredit = totalOverpaid + (unlinkedReturns[0]?.total_unlinked || 0);
+    const grossDue = summary?.total_due || 0;
+    const netDue = Math.max(0, Math.round((grossDue - totalCredit) * 100) / 100);
+
     return {
       contact,
       total_amount: summary?.total_amount || 0,
       total_paid: summary?.total_paid || 0,
       total_discount: summary?.total_discount || 0,
-      total_due: summary?.total_due || 0,
+      total_due: netDue,
+      gross_due: grossDue,
+      total_overpaid: totalOverpaid,
+      total_credit: totalCredit,
       total_bills: summary?.total_bills || 0,
       due_count: summary?.due_count || 0,
       settled_count: summary?.settled_count || 0,
@@ -157,9 +223,9 @@ class OutstandingService {
     Object.assign(filter, this._financialYearMatch(query.financial_year_id));
 
     if (query.status === "due") {
-      filter.payment_status = "due";
+      filter.payment_status = { $in: ["due", "overpaid"] };
     } else if (query.status === "settled") {
-      filter.payment_status = { $in: ["paid", "overpaid"] };
+      filter.payment_status = "paid";
     }
 
     return Pagination.paginate(Bill, filter, {

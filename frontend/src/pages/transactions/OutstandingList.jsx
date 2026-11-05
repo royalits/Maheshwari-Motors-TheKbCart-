@@ -213,7 +213,7 @@ const OutstandingList = () => {
             settlementDiscount,
             due: Number(due.toFixed(2)),
             daysSince,
-            status: bill.payment_status || (due <= 0.009 ? "settled" : "due"),
+            status: bill.payment_status || (due < -0.009 ? "overpaid" : due <= 0.009 ? "settled" : "due"),
             paymentEntries:
               Array.isArray(bill.payment_entries) ? bill.payment_entries : [],
             raw: bill,
@@ -348,7 +348,7 @@ const OutstandingList = () => {
               settlementDiscount,
               due: Number(due.toFixed(2)),
               daysSince,
-              status: bill.payment_status || (due <= 0.009 ? "settled" : "due"),
+              status: bill.payment_status || (due < -0.009 ? "overpaid" : due <= 0.009 ? "settled" : "due"),
             };
           });
 
@@ -490,7 +490,12 @@ const OutstandingList = () => {
         totalAmount += b.amount;
       });
     });
-    return { totalDue, totalPaid, totalDiscount, totalAmount };
+    return {
+      totalDue: Math.max(0, Number(totalDue.toFixed(2))),
+      totalPaid: Number(totalPaid.toFixed(2)),
+      totalDiscount: Number(totalDiscount.toFixed(2)),
+      totalAmount: Number(totalAmount.toFixed(2)),
+    };
   }, [multiPartyData]);
 
   const historyEntries = useMemo(() => {
@@ -533,7 +538,10 @@ const OutstandingList = () => {
     return Math.max(0, diffDays); // Ensure non-negative days
   };
 
-  const formatRs = (value) => `Rs ${toNumber(value, 0).toLocaleString()}`;
+  const formatRs = (value) => {
+    const num = toNumber(value, 0);
+    return num < 0 ? `-Rs ${Math.abs(num).toLocaleString()}` : `Rs ${num.toLocaleString()}`;
+  };
 
   const formatDateDDMMYYYY = (value) => {
     if (!value) return "-";
@@ -1645,7 +1653,7 @@ const OutstandingList = () => {
                                   {totalPaid > 0 ? formatRs(totalPaid) : "---"}
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2 text-right">
-                                  {formatRs(totalDue)}
+                                  {formatRs(Math.max(0, totalDue))}
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2 text-center"></td>
                               </tr>

@@ -249,20 +249,18 @@ const resolveLdBalanceAmount = async ({
   contactId,
   currentAmount,
   currentBillId,
-  contactBalance,
 }) => {
   const amount = Number(currentAmount) || 0;
-  const availableBalance = Math.max(0, Number(contactBalance) || 0);
   try {
-    if (!contactId) return Math.max(0, Math.round(amount - availableBalance));
+    if (!contactId) return amount;
     const response = await apiClient.get(`/outstanding/${contactId}/summary`);
     const summary = getResponseData(response) || {};
     const existingDue = Math.max(0, Number(summary.total_due) || 0);
     const totalDue = currentBillId ? existingDue : existingDue + amount;
-    return Math.max(0, Math.round(totalDue - availableBalance));
+    return Math.max(0, Math.round(totalDue));
   } catch (error) {
     console.error("Failed to resolve LD balance:", error);
-    return Math.max(0, Math.round(amount - availableBalance));
+    return Math.max(0, Math.round(amount));
   }
 };
 
