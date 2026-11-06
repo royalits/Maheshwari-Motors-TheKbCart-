@@ -212,11 +212,13 @@ const OutstandingList = () => {
             returnAmount,
             settlementDiscount,
             due: Number(due.toFixed(2)),
-            daysSince,
+            daysSince: bill.is_transaction ? 0 : daysSince,
             status: bill.payment_status || (due < -0.009 ? "overpaid" : due <= 0.009 ? "settled" : "due"),
             paymentEntries:
               Array.isArray(bill.payment_entries) ? bill.payment_entries : [],
             raw: bill,
+            type: bill.type,
+            isTransaction: Boolean(bill.is_transaction),
           };
         });
 
@@ -347,8 +349,10 @@ const OutstandingList = () => {
               returnAmount,
               settlementDiscount,
               due: Number(due.toFixed(2)),
-              daysSince,
+              daysSince: bill.is_transaction ? 0 : daysSince,
               status: bill.payment_status || (due < -0.009 ? "overpaid" : due <= 0.009 ? "settled" : "due"),
+              type: bill.type,
+              isTransaction: Boolean(bill.is_transaction),
             };
           });
 
@@ -749,7 +753,7 @@ const OutstandingList = () => {
       String(billOrId?.id || "")
     : String(billOrId || "");
 
-  const isBillSelectable = (bill) => Boolean(getBillId(bill));
+  const isBillSelectable = (bill) => Boolean(getBillId(bill)) && !bill.isTransaction && bill.status !== "on_account";
 
   const getBillSortTime = (bill) => {
     const rawDate = bill?.date || bill?.createdAt || bill?.created_at || "";
@@ -1027,13 +1031,13 @@ const OutstandingList = () => {
         tableBody.push([
           formatDateDDMMYYYY(bill.date),
           bill.billNo,
-          contactType === "supplier" ? "Purchase" : "Sale",
-          bill.amount.toFixed(2),
+          bill.type || (contactType === "supplier" ? "Purchase" : "Sale"),
+          bill.amount > 0 ? bill.amount.toFixed(2) : "--",
           bill.returnAmount > 0 ? bill.returnAmount.toFixed(2) : "--",
           bill.settlementDiscount > 0 ? bill.settlementDiscount.toFixed(2) : "--",
           bill.paidAmount > 0 ? bill.paidAmount.toFixed(2) : "--",
           runningCumm.toFixed(2),
-          String(bill.daysSince),
+          bill.isTransaction ? "--" : String(bill.daysSince),
         ]);
       });
 
@@ -1562,12 +1566,12 @@ const OutstandingList = () => {
                                   {bill.billNo}
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2 whitespace-nowrap">
-                                  {contactType === "supplier" ?
+                                  {bill.type || (contactType === "supplier" ?
                                     "Purchase"
-                                  : "Sale"}
+                                  : "Sale")}
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2 text-right whitespace-nowrap">
-                                  {formatRs(bill.amount)}
+                                  {bill.amount > 0 ? formatRs(bill.amount) : "---"}
                                 </td>
                                 <td className="border border-gray-300 px-3 py-2 text-right whitespace-nowrap">
                                   {bill.returnAmount > 0 ?
@@ -1910,12 +1914,12 @@ const OutstandingList = () => {
                                       {bill.billNo}
                                     </td>
                                     <td className="px-3 py-2 whitespace-nowrap">
-                                      {contactType === "supplier" ?
+                                      {bill.type || (contactType === "supplier" ?
                                         "Purchase"
-                                      : "Sale"}
+                                      : "Sale")}
                                     </td>
                                     <td className="px-3 py-2 text-right">
-                                      {formatRs(bill.amount)}
+                                      {bill.amount > 0 ? formatRs(bill.amount) : "---"}
                                     </td>
                                     <td className="px-3 py-2 text-right">
                                       {bill.returnAmount > 0 ?
@@ -1945,6 +1949,11 @@ const OutstandingList = () => {
                                     </td>
                                     {canWrite && (
                                       <td className="px-3 py-2 text-center">
+                                        {bill.isTransaction ? (
+                                          <span className="text-xs text-blue-600 font-semibold px-2 py-0.5 bg-blue-50 rounded">
+                                            Advance
+                                          </span>
+                                        ) : (
                                         <div className="flex items-center justify-center gap-2">
                                           {bill.status === "due" &&
                                             bill.due > 0.009 && (
@@ -1996,6 +2005,7 @@ const OutstandingList = () => {
                                             <FaTrash className="h-3.5 w-3.5" />
                                           </Button>
                                         </div>
+                                        )}
                                       </td>
                                     )}
                                   </tr>

@@ -662,6 +662,9 @@ class TransactionService {
       const allocated = allocationMap.get(String(txn._id)) || 0;
       const remaining = Math.max(0, Number(txn.amount || 0) - allocated);
       if (remaining > 0.009) {
+        txn.allocated_amount = allocated;
+        txn.remaining_amount = remaining;
+        txn.unsettled_amount = remaining;
         unsettled.push(txn);
       }
     }

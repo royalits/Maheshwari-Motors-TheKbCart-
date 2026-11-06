@@ -1,3 +1,4 @@
+import transactionService from "../transaction/transaction.service.js";
 import mongoose from "mongoose";
 import Bill from "../../models/transaction/bill.model.js";
 import Contact from "../../models/master/contact.model.js";
@@ -183,19 +184,32 @@ class OutstandingService {
       },
     ]);
 
+    const unsettledTxns = await transactionService.getUnsettledTransactions(
+      contactId,
+      userId,
+      isGst
+    );
+    const totalUnsettled = (unsettledTxns || []).reduce(
+      (sum, t) => sum + (t.remaining_amount ?? t.unsettled_amount ?? t.amount ?? 0),
+      0
+    );
+
     const totalOverpaid = summary?.total_overpaid || 0;
-    const totalCredit = totalOverpaid + (unlinkedReturns[0]?.total_unlinked || 0);
+    const totalUnlinkedReturns = unlinkedReturns[0]?.total_unlinked || 0;
+    const totalCredit = totalOverpaid + totalUnlinkedReturns + totalUnsettled;
     const grossDue = summary?.total_due || 0;
     const netDue = Math.max(0, Math.round((grossDue - totalCredit) * 100) / 100);
 
     return {
       contact,
       total_amount: summary?.total_amount || 0,
-      total_paid: summary?.total_paid || 0,
+      total_paid: (summary?.total_paid || 0) + totalUnsettled,
       total_discount: summary?.total_discount || 0,
       total_due: netDue,
       gross_due: grossDue,
       total_overpaid: totalOverpaid,
+      total_unsettled: totalUnsettled,
+      total_unlinked_returns: totalUnlinkedReturns,
       total_credit: totalCredit,
       total_bills: summary?.total_bills || 0,
       due_count: summary?.due_count || 0,
@@ -228,12 +242,58 @@ class OutstandingService {
       filter.payment_status = "paid";
     }
 
-    return Pagination.paginate(Bill, filter, {
+    const billsResult = await Pagination.paginate(Bill, filter, {
       ...query,
       select:
-        "id bill_no date amount paid_amount return_amount settlement_discount payment_status payment_entries",
+        "id bill_no date createdAt amount paid_amount return_amount settlement_discount payment_status payment_entries",
       sort: { date: -1, createdAt: -1 },
     });
+
+    if (query.status === "due") {
+      const unsettledTxns = await transactionService.getUnsettledTransactions(
+        contactId,
+        userId,
+        isGst
+      );
+
+      if (unsettledTxns && unsettledTxns.length > 0) {
+        const txnRows = unsettledTxns.map((t) => {
+          const remaining = t.remaining_amount ?? t.unsettled_amount ?? t.amount ?? 0;
+          const displayType =
+            t.type === "bank_received"
+              ? "Bank Rec"
+              : t.type === "cash_received"
+              ? "Cash Rec"
+              : t.type === "bank_payment"
+              ? "Bank Pmt"
+              : t.type === "cash_payment"
+              ? "Cash Pmt"
+              : t.type;
+
+          return {
+            _id: t._id,
+            id: t._id,
+            bill_no: t.transaction_no,
+            date: t.date,
+            createdAt: t.createdAt,
+            amount: 0,
+            paid_amount: remaining,
+            return_amount: 0,
+            settlement_discount: 0,
+            payment_status: "on_account",
+            payment_entries: [],
+            type: displayType,
+            is_transaction: true,
+          };
+        });
+
+        billsResult.data = [...billsResult.data, ...txnRows];
+        billsResult.data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        billsResult.meta.total += txnRows.length;
+      }
+    }
+
+    return billsResult;
   }
 
   async getContactHistory(contactId, userId, isGst, query) {
