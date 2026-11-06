@@ -162,23 +162,20 @@ class BankService {
         { assignment_type: { $exists: false } },
       ];
 
-      if (firmBankIds.length > 0) {
+      // A firm bank is visible unless it was exclusively assigned ONLY to the other firm
+      const firmBankIdsStr = firmBankIds.map((id) => id.toString());
+      const exclusiveOtherFirmIds = otherFirmBankIds
+        .map((id) => id.toString())
+        .filter((id) => !firmBankIdsStr.includes(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
+
+      if (exclusiveOtherFirmIds.length > 0) {
         orConditions.push({
           assignment_type: "firm",
-          _id: { $in: firmBankIds },
+          _id: { $nin: exclusiveOtherFirmIds },
         });
-        if (otherFirmBankIds.length > 0) {
-          orConditions.push({
-            assignment_type: "firm",
-            _id: { $nin: otherFirmBankIds },
-          });
-        }
       } else {
-        const firmQuery = { assignment_type: "firm" };
-        if (otherFirmBankIds.length > 0) {
-          firmQuery._id = { $nin: otherFirmBankIds };
-        }
-        orConditions.push(firmQuery);
+        orConditions.push({ assignment_type: "firm" });
       }
 
       andClauses.push({ $or: orConditions });
@@ -358,13 +355,16 @@ class BankService {
       );
     }
 
-    // Auto-sync: push to firm's bank_ids
+    // Auto-sync: push to firm's bank_ids across both firms so bank is accessible
     if (validatedAssignmentType === "firm") {
-      const firmPath =
-        firmType === "GST" ? "gst_firm.bank_ids" : "nongst_firm.bank_ids";
       await User.updateOne(
         { _id: userId },
-        { $addToSet: { [firmPath]: bank._id } },
+        {
+          $addToSet: {
+            "gst_firm.bank_ids": bank._id,
+            "nongst_firm.bank_ids": bank._id,
+          },
+        },
       );
     }
 
@@ -475,12 +475,15 @@ class BankService {
           );
         }
 
-        // Sync: push to firm's bank_ids
-        const firmPath =
-          firmType === "GST" ? "gst_firm.bank_ids" : "nongst_firm.bank_ids";
+        // Sync: push to firm's bank_ids across both firms
         await User.updateOne(
           { _id: userId },
-          { $addToSet: { [firmPath]: bankId } },
+          {
+            $addToSet: {
+              "gst_firm.bank_ids": bankId,
+              "nongst_firm.bank_ids": bankId,
+            },
+          },
         );
       } else if (
         newAssignmentType === "party" ||
