@@ -90,7 +90,7 @@ class Database {
       console.log("MONGODB_URI from env:", env.MONGODB_URI);
       const options = {
         maxPoolSize: 10,
-        serverSelectionTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 30000,
         socketTimeoutMS: 45000,
       };
 
