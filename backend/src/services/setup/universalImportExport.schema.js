@@ -117,8 +117,10 @@ export const UNIVERSAL_COLLECTION_SCHEMAS = {
     columns: [
       "bill_no",
       "date",
-      "contact_type",
+      "party_name",
       "customer_name",
+      "contact_name",
+      "contact_type",
       "vehicle_number",
       "transport_charge",
       "amount",
@@ -185,6 +187,7 @@ export const UNIVERSAL_COLLECTION_SCHEMAS = {
     sheet: "contacts",
     columns: [
       "name",
+      "party_name",
       "type",
       "alias",
       "phone",

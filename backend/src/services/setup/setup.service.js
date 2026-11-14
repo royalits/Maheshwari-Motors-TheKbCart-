@@ -10,6 +10,8 @@ import Item from "../../models/master/item.model.js";
 import Brand from "../../models/master/brand.model.js";
 import Department from "../../models/master/department.model.js";
 import Hsn from "../../models/master/hsn.model.js";
+import Contact from "../../models/master/contact.model.js";
+import { getNextId } from "../../helpers/counter.js";
 import {
   getUniversalCollectionSchema,
   IGNORED_UNIVERSAL_SHEETS,
@@ -192,6 +194,10 @@ const rowHasUniversalData = (row, allowedColumns) => {
 };
 
 const buildUniversalUpsertFilter = (schema, doc, userObjectId) => {
+  if (schema.collectionName === "bills" && doc.bill_no) {
+    const isGstVal = doc.is_gst !== undefined ? doc.is_gst : 1;
+    return { user_id: userObjectId, bill_no: doc.bill_no, is_gst: isGstVal };
+  }
   for (const key of schema.naturalKey || []) {
     if (doc[key] !== undefined && doc[key] !== null && String(doc[key]).trim() !== "") {
       return { user_id: userObjectId, [key]: doc[key] };
@@ -226,6 +232,135 @@ const resolveUniversalItemReferences = async (doc, userObjectId) => {
   if (!doc.item_id) {
     doc.item_id = await generateUniqueItemId(userObjectId);
   }
+};
+
+const resolveUniversalBillReferences = async (doc, userObjectId, isGst = 1) => {
+  const partyLookupName = String(
+    doc.party_name || doc.contact_name || doc.customer_name || ""
+  ).trim();
+
+  if (partyLookupName) {
+    const escaped = partyLookupName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const contactFilter = {
+      user_id: userObjectId,
+      name: { $regex: `^${escaped}$`, $options: "i" },
+    };
+    if (
+      doc.contact_type &&
+      ["party", "supplier", "book"].includes(String(doc.contact_type).toLowerCase())
+    ) {
+      contactFilter.type = String(doc.contact_type).toLowerCase();
+    }
+
+    let contact = await Contact.findOne(contactFilter)
+      .select("_id type name transport_id")
+      .lean();
+
+    if (!contact && contactFilter.type) {
+      contact = await Contact.findOne({
+        user_id: userObjectId,
+        name: { $regex: `^${escaped}$`, $options: "i" },
+      })
+        .select("_id type name transport_id")
+        .lean();
+    }
+
+    if (!contact) {
+      contact = await Contact.findOne({
+        user_id: userObjectId,
+        alias: { $regex: `^${escaped}$`, $options: "i" },
+      })
+        .select("_id type name transport_id")
+        .lean();
+    }
+
+    if (!contact) {
+      // Auto-create contact if not found so the bill is properly linked
+      const contactType =
+        ["supplier", "party", "book"].includes(
+          String(doc.contact_type || "").toLowerCase(),
+        ) ?
+          String(doc.contact_type).toLowerCase()
+        : "party";
+      try {
+        contact = await Contact.create({
+          user_id: userObjectId,
+          name: partyLookupName,
+          type: contactType,
+          balance: 0,
+          gst_balance: 0,
+          nongst_balance: 0,
+          is_gst: Number(isGst) === 0 ? 0 : 1,
+        });
+      } catch (createErr) {
+        console.error("Failed to auto-create contact on bill import:", createErr.message);
+      }
+    }
+
+    if (contact?._id) {
+      doc.contact_id = contact._id;
+      doc.contact_type = contact.type || doc.contact_type || "party";
+      doc.customer_name = contact.name || partyLookupName;
+      if (contact.transport_id && !doc.transport_id) {
+        doc.transport_id = contact.transport_id;
+      }
+    }
+  }
+
+  // If contact_id is still missing, fallback to Cashbook
+  if (!doc.contact_id) {
+    const cashbook = await Contact.findOne({
+      user_id: userObjectId,
+      name: { $regex: /^cashbook$/i },
+    })
+      .select("_id type name")
+      .lean();
+    if (cashbook?._id) {
+      doc.contact_id = cashbook._id;
+      doc.contact_type = cashbook.type || "party";
+      if (!doc.customer_name) doc.customer_name = cashbook.name;
+    }
+  }
+
+  // Attach active financial_year_id if missing
+  if (!doc.financial_year_id) {
+    try {
+      const defaultYear = await financialYearService.getDefaultYear(userObjectId);
+      if (defaultYear?._id) {
+        doc.financial_year_id = defaultYear._id;
+      }
+    } catch (e) {
+      // Ignore if no financial year is configured
+    }
+  }
+
+  if (doc.date) {
+    const parsedDate = parseExcelDate(doc.date);
+    if (parsedDate) doc.date = parsedDate;
+  }
+
+  if (!doc.id) {
+    try {
+      doc.id = await getNextId("Bill", userObjectId);
+    } catch (e) {}
+  }
+
+  // Ensure defaults for arrays and fields required by Bill queries
+  doc.payment_entries = doc.payment_entries || [];
+  doc.auto_bill_items = doc.auto_bill_items || [];
+  doc.challan_ids = doc.challan_ids || [];
+  if (!doc.payment_status) {
+    const amt = Number(doc.amount || 0);
+    const paid = Number(doc.paid_amount || 0);
+    if (paid >= amt && amt > 0) {
+      doc.payment_status = paid > amt ? "overpaid" : "paid";
+    } else {
+      doc.payment_status = "due";
+    }
+  }
+
+  delete doc.party_name;
+  delete doc.contact_name;
 };
 
 const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
@@ -317,11 +452,18 @@ const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
       if (schema.columns.includes("is_gst") && doc.is_gst === undefined) {
         doc.is_gst = Number(isGst) === 0 ? 0 : 1;
       }
-      if (schema.collectionName === "contacts" && doc.type) {
-        doc.type = String(doc.type).trim().toLowerCase();
+      if (schema.collectionName === "contacts") {
+        if (doc.party_name && !doc.name) doc.name = doc.party_name;
+        delete doc.party_name;
+        if (doc.type) {
+          doc.type = String(doc.type).trim().toLowerCase();
+        }
       }
       if (schema.collectionName === "items") {
         await resolveUniversalItemReferences(doc, userObjectId);
+      }
+      if (schema.collectionName === "bills") {
+        await resolveUniversalBillReferences(doc, userObjectId, isGst);
       }
 
       const missingRowRequired = schema.required.filter(
@@ -1458,10 +1600,11 @@ const exportData = async (userId) => {
       .catch(() => []);
     return new Map(docs.map((doc) => [String(doc._id), doc[labelField] || ""]));
   };
-  const [brandNames, departmentNames, hsnCodes] = await Promise.all([
+  const [brandNames, departmentNames, hsnCodes, contactNames] = await Promise.all([
     buildMap("brands", "name"),
     buildMap("departments", "name"),
     buildMap("hsns", "hsn_code"),
+    buildMap("contacts", "name"),
   ]);
   const workbook = new ExcelJS.Workbook();
 
@@ -1489,6 +1632,13 @@ const exportData = async (userId) => {
         row.brand_name = brandNames.get(String(document.brand_id)) || "";
         row.dept_name = departmentNames.get(String(document.dept_id)) || "";
         row.hsn_code = hsnCodes.get(String(document.hsn_id)) || "";
+      }
+      if (schema.collectionName === "bills") {
+        const contactName =
+          contactNames.get(String(document.contact_id)) || document.customer_name || "";
+        row.party_name = contactName;
+        row.customer_name = document.customer_name || contactName;
+        row.contact_name = contactName;
       }
       worksheet.addRow(row);
     }
