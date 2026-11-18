@@ -246,7 +246,7 @@ class OutstandingService {
       ...query,
       select:
         "id bill_no date createdAt amount paid_amount return_amount settlement_discount payment_status payment_entries",
-      sort: query.sort || { date: 1, createdAt: 1 },
+      sort: { date: -1, createdAt: -1 },
     });
 
     if (query.status === "due") {
@@ -288,7 +288,7 @@ class OutstandingService {
         });
 
         billsResult.data = [...billsResult.data, ...txnRows];
-        billsResult.data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        billsResult.data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         billsResult.meta.total += txnRows.length;
       }
     }
