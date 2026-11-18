@@ -167,7 +167,7 @@ const OutStandings = ({
   );
   const [selectedContact, setSelectedContact] = useState(initialContact || "");
   const [bills, setBills] = useState([]);
-  const [billSortDirection, setBillSortDirection] = useState("desc");
+  const [billSortDirection, setBillSortDirection] = useState("asc");
 
   const getBillSortTime = (item) => {
     const raw = item?.date || item?.createdAt || "";

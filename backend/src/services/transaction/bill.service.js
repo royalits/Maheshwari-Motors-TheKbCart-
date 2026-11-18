@@ -2394,7 +2394,7 @@ class BillService {
         },
         { path: "transport_id", select: "name phone" },
       ],
-      sort: query.sort || { date: -1, bill_no: -1, createdAt: -1 },
+      sort: query.sort || { date: 1, bill_no: 1, createdAt: 1 },
     });
   }
 

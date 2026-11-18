@@ -222,7 +222,7 @@ const OutstandingList = () => {
           };
         });
 
-        setBills(sortBillsNewestFirst(mappedBills));
+        setBills(sortBillsChronological(mappedBills));
         setSelectedBillIds(new Set());
         setBillsPagination((prev) => ({
           ...prev,
@@ -358,7 +358,7 @@ const OutstandingList = () => {
 
           return {
             contact: contact || { id: contactId, name: "Unknown" },
-            bills: sortBillsNewestFirst(mappedBills),
+            bills: sortBillsChronological(mappedBills),
           };
         });
 
@@ -776,11 +776,13 @@ const OutstandingList = () => {
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
-  const sortBillsNewestFirst = (rows = []) =>
+  const sortBillsChronological = (rows = []) =>
     [...rows].sort((left, right) => {
-      const dateDiff = getBillSortTime(right) - getBillSortTime(left);
+      const dateDiff = getBillSortTime(left) - getBillSortTime(right);
       if (dateDiff !== 0) return dateDiff;
-      return getBillSortNo(right) - getBillSortNo(left);
+      const noDiff = getBillSortNo(left) - getBillSortNo(right);
+      if (noDiff !== 0) return noDiff;
+      return String(left.billNo || "").localeCompare(String(right.billNo || ""), undefined, { numeric: true });
     });
 
   const isBillDeletable = (bill) =>
