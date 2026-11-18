@@ -2224,7 +2224,9 @@ class BillService {
       Number(bill.settlement_discount || 0) > 0 ||
       Number(bill.return_amount || 0) > 0 ||
       (Array.isArray(bill.payment_entries) &&
-        bill.payment_entries.length > 0);
+        bill.payment_entries.length > 0) ||
+      bill.payment_status === "paid" ||
+      bill.payment_status === "overpaid";
 
     if (hasSettlement) {
       throw ApiError.badRequest(
@@ -2302,9 +2304,6 @@ class BillService {
     }
 
     await Bill.findByIdAndDelete(billId);
-    if (bill.contact_id) {
-      await this._recalculateContactBalance(bill.contact_id, userId, bill.is_gst);
-    }
   }
 
   async undoBillSettlement(billId, userId, isGst, financialYearId = null) {
