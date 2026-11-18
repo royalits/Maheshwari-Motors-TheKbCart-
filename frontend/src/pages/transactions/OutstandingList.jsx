@@ -286,6 +286,16 @@ const OutstandingList = () => {
     fetchHistory();
   }, [selectedContact, activeTab, historyPagination.page, showToast]);
 
+  // Auto-sync selectedContact when 1 contact is selected in multi-select
+  useEffect(() => {
+    if (selectedContacts.size === 1) {
+      const [singleId] = selectedContacts;
+      if (selectedContact !== singleId) {
+        setSelectedContact(singleId);
+      }
+    }
+  }, [selectedContacts, selectedContact]);
+
   // Load due bills for multiple selected contacts
   useEffect(() => {
     if (selectedContacts.size === 0) {
@@ -1306,7 +1316,7 @@ const OutstandingList = () => {
           <Button
             variant="outline"
             onClick={() => {
-              if (selectedContacts.size > 0) {
+              if (selectedContacts.size > 1) {
                 downloadMultiPartyPDF("print");
               } else {
                 downloadHistoryPDF("print");
@@ -1320,7 +1330,7 @@ const OutstandingList = () => {
           <Button
             variant="outline"
             onClick={() => {
-              if (selectedContacts.size > 0) {
+              if (selectedContacts.size > 1) {
                 downloadMultiPartyPDF("download");
               } else {
                 downloadHistoryPDF("download");
@@ -1392,7 +1402,10 @@ const OutstandingList = () => {
                   return (
                     <button
                       key={contact.id}
-                      onClick={() => setSelectedContact(contact.id)}
+                      onClick={() => {
+                        setSelectedContact(contact.id);
+                        setSelectedContacts(new Set());
+                      }}
                       className={`w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-gray-50 ${
                         isActive ? "bg-blue-50" : "bg-white"
                       }`}
@@ -1427,7 +1440,7 @@ const OutstandingList = () => {
       )}
 
         <div className={`${isClientUser ? "lg:col-span-4" : "lg:col-span-3"} space-y-4`}>
-          {selectedContacts.size > 0 ?
+          {selectedContacts.size > 1 ?
             <>
               {/* Multi Party Summary Card */}
               <div className="bg-white border rounded-lg p-4">
