@@ -783,8 +783,7 @@ const OutstandingList = () => {
   const isBillSettlementUndoable = (bill) =>
     Boolean(getBillId(bill)) &&
     (toNumber(bill?.paidAmount, 0) > 0.009 ||
-      toNumber(bill?.settlementDiscount, 0) > 0.009 ||
-      ["paid", "overpaid"].includes(String(bill?.status || "").toLowerCase()));
+      toNumber(bill?.settlementDiscount, 0) > 0.009);
 
   const applyDiscountToBill = async (bill) => {
     const discountAmount = toNumber(bill?.due, 0);

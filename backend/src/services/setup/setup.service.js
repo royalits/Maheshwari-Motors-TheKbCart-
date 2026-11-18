@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import { ApiError, toNumber, toNumberIfDefined } from "../../utils/index.js";
 import backupService from "../backup/backup.service.js";
 import financialYearService from "../common/financialYear.service.js";
+import billService from "../transaction/bill.service.js";
 import Item from "../../models/master/item.model.js";
 import Brand from "../../models/master/brand.model.js";
 import Department from "../../models/master/department.model.js";
@@ -196,7 +197,9 @@ const rowHasUniversalData = (row, allowedColumns) => {
 const buildUniversalUpsertFilter = (schema, doc, userObjectId) => {
   if (schema.collectionName === "bills" && doc.bill_no) {
     const isGstVal = doc.is_gst !== undefined ? doc.is_gst : 1;
-    return { user_id: userObjectId, bill_no: doc.bill_no, is_gst: isGstVal };
+    const filter = { user_id: userObjectId, bill_no: doc.bill_no, is_gst: isGstVal };
+    if (doc.contact_id) filter.contact_id = doc.contact_id;
+    return filter;
   }
   for (const key of schema.naturalKey || []) {
     if (doc[key] !== undefined && doc[key] !== null && String(doc[key]).trim() !== "") {
@@ -439,6 +442,8 @@ const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
     }
 
     const bulkOps = [];
+    const seenBillsInSheet = new Set();
+    const affectedBillContactIds = new Set();
     for (const { row, rowNumber } of rows) {
       const doc = { ...(schema.defaults || {}), user_id: userObjectId };
       for (const header of allowedHeaders) {
@@ -464,6 +469,56 @@ const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
       }
       if (schema.collectionName === "bills") {
         await resolveUniversalBillReferences(doc, userObjectId, isGst);
+
+        const billAmount = Number(doc.amount || 0);
+        if (billAmount < 0) {
+          errors.push({
+            sheet: sheetName,
+            row: rowNumber,
+            error: `Negative bill amount (${doc.amount}) is not allowed for Bill No "${doc.bill_no || "N/A"}" in sheet "${sheetName}" row ${rowNumber}. Bill amount must be zero or positive.`,
+          });
+          continue;
+        }
+
+        if (Number(doc.paid_amount || 0) < 0) {
+          errors.push({
+            sheet: sheetName,
+            row: rowNumber,
+            error: `Negative paid amount (${doc.paid_amount}) is not allowed for Bill No "${doc.bill_no || "N/A"}" in sheet "${sheetName}" row ${rowNumber}.`,
+          });
+          continue;
+        }
+
+        if (Number(doc.settlement_discount || 0) < 0) {
+          errors.push({
+            sheet: sheetName,
+            row: rowNumber,
+            error: `Negative settlement discount (${doc.settlement_discount}) is not allowed for Bill No "${doc.bill_no || "N/A"}" in sheet "${sheetName}" row ${rowNumber}.`,
+          });
+          continue;
+        }
+
+        if (Number(doc.return_amount || 0) < 0) {
+          errors.push({
+            sheet: sheetName,
+            row: rowNumber,
+            error: `Negative return amount (${doc.return_amount}) is not allowed for Bill No "${doc.bill_no || "N/A"}" in sheet "${sheetName}" row ${rowNumber}.`,
+          });
+          continue;
+        }
+
+        const dedupKey = `${String(doc.contact_id || doc.customer_name || "").toLowerCase()}__${String(doc.bill_no || "").trim().toLowerCase()}__${doc.is_gst}`;
+        if (seenBillsInSheet.has(dedupKey)) {
+          warnings.push(
+            `Duplicate bill row skipped in sheet "${sheetName}" row ${rowNumber}: Bill No "${doc.bill_no}" for "${doc.customer_name || "N/A"}" was already processed earlier in this file.`,
+          );
+          continue;
+        }
+        seenBillsInSheet.add(dedupKey);
+
+        if (doc.contact_id) {
+          affectedBillContactIds.add(String(doc.contact_id));
+        }
       }
 
       const missingRowRequired = schema.required.filter(
@@ -480,13 +535,40 @@ const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
 
       const filter = buildUniversalUpsertFilter(schema, doc, userObjectId);
       if (filter) {
-        bulkOps.push({
-          updateOne: {
-            filter,
-            update: { $set: doc },
-            upsert: true,
-          },
-        });
+        if (schema.collectionName === "bills") {
+          const {
+            paid_amount,
+            return_amount,
+            settlement_discount,
+            payment_status,
+            payment_entries,
+            ...restOfDoc
+          } = doc;
+          bulkOps.push({
+            updateOne: {
+              filter,
+              update: {
+                $set: restOfDoc,
+                $setOnInsert: {
+                  paid_amount: paid_amount || 0,
+                  return_amount: return_amount || 0,
+                  settlement_discount: settlement_discount || 0,
+                  payment_status: payment_status || "due",
+                  payment_entries: payment_entries || [],
+                },
+              },
+              upsert: true,
+            },
+          });
+        } else {
+          bulkOps.push({
+            updateOne: {
+              filter,
+              update: { $set: doc },
+              upsert: true,
+            },
+          });
+        }
       } else {
         bulkOps.push({ insertOne: { document: doc } });
       }
@@ -497,6 +579,16 @@ const importUniversalWorkbook = async (workbook, userId, isGst = 1) => {
     const result = await db.collection(schema.collectionName).bulkWrite(bulkOps, {
       ordered: false,
     });
+
+    if (schema.collectionName === "bills" && affectedBillContactIds.size > 0) {
+      for (const contactIdStr of affectedBillContactIds) {
+        try {
+          await billService._recalculateContactBalance(contactIdStr, userObjectId, isGst);
+        } catch (recalcErr) {
+          console.error("Failed to recalculate balance for contact on import:", contactIdStr, recalcErr.message);
+        }
+      }
+    }
     const imported = bulkOps.length;
     collectionStats[sheetName] = {
       rows: rows.length,
