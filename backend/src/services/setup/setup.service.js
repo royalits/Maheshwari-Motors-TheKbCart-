@@ -12,6 +12,7 @@ import Brand from "../../models/master/brand.model.js";
 import Department from "../../models/master/department.model.js";
 import Hsn from "../../models/master/hsn.model.js";
 import Contact from "../../models/master/contact.model.js";
+import Bill from "../../models/transaction/bill.model.js";
 import { getNextId } from "../../helpers/counter.js";
 import {
   getUniversalCollectionSchema,
@@ -1879,7 +1880,211 @@ const isBackupFile = async (file) => {
   }
 };
 
+
+// Preview import changes before committing
+const previewImport = async (file, userId, isGst = 1) => {
+  const workbook = new ExcelJS.Workbook();
+  const filePath = file.path;
+  if (filePath) {
+    await workbook.xlsx.readFile(filePath);
+  } else if (file.buffer) {
+    await workbook.xlsx.load(file.buffer);
+  }
+
+  const userObjectId = new mongoose.Types.ObjectId(String(userId));
+  const isGstVal = Number(isGst) === 0 ? 0 : 1;
+  const isBackup = await isBackupFile(file);
+
+  const result = {
+    fileName: file.originalname || "import.xlsx",
+    isBackup,
+    summary: {
+      totalSheets: workbook.worksheets.length,
+      totalRows: 0,
+      newCount: 0,
+      updatedCount: 0,
+      unchangedCount: 0,
+      skippedCount: 0,
+    },
+    sheets: {},
+    warnings: [],
+    errors: [],
+  };
+
+  for (const worksheet of workbook.worksheets) {
+    const sheetName = worksheet.name;
+    const normalizedSheetName = String(sheetName || "").toLowerCase();
+    if (IGNORED_UNIVERSAL_SHEETS.has(normalizedSheetName)) continue;
+
+    const schema = getUniversalCollectionSchema(sheetName);
+    if (!schema) continue;
+    if (isLegacyEmptyWorksheet(worksheet)) continue;
+
+    const headers = getUniversalHeaders(worksheet);
+    if (headers.length === 0) continue;
+
+    const schemaColumns = new Set(schema.columns);
+    const allowedHeaders = headers.filter((header) => schemaColumns.has(header.key));
+    const rows = [];
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      if (rowHasUniversalData(row, allowedHeaders)) rows.push({ row, rowNumber });
+    });
+
+    if (rows.length === 0) continue;
+
+    result.summary.totalRows += rows.length;
+
+    const sheetResult = {
+      sheetName,
+      collection: schema.collectionName,
+      totalRows: rows.length,
+      newCount: 0,
+      updatedCount: 0,
+      unchangedCount: 0,
+      skippedCount: 0,
+      updates: [],
+      newRecords: [],
+      skipped: [],
+    };
+
+    if (schema.collectionName === "bills") {
+      const existingBills = await Bill.find({
+        user_id: userObjectId,
+        is_gst: isGstVal,
+      })
+        .select("_id bill_no contact_id amount date customer_name is_gst")
+        .lean();
+
+      const billByKey = new Map();
+      const billByNo = new Map();
+      for (const b of existingBills) {
+        const key = `${String(b.contact_id || "")}__${String(b.bill_no || "").trim().toLowerCase()}`;
+        billByKey.set(key, b);
+        billByNo.set(String(b.bill_no || "").trim().toLowerCase(), b);
+      }
+
+      const allContacts = await Contact.find({ user_id: userObjectId })
+        .select("_id name type alias")
+        .lean();
+      const contactByName = new Map();
+      for (const c of allContacts) {
+        contactByName.set(String(c.name || "").trim().toLowerCase(), c);
+        if (c.alias) {
+          contactByName.set(String(c.alias || "").trim().toLowerCase(), c);
+        }
+      }
+
+      const seenBillsInFile = new Set();
+
+      for (const { row, rowNumber } of rows) {
+        const doc = {};
+        for (const header of allowedHeaders) {
+          const val = normalizeImportedCellValue(row.getCell(header.colIndex).value);
+          if (val !== undefined && val !== null && String(val).trim() !== "") {
+            doc[header.key] = normalizeUniversalValue(schema, header.key, val);
+          }
+        }
+
+        const billNo = String(doc.bill_no || "").trim();
+        const partyName = String(doc.party_name || doc.customer_name || doc.contact_name || "").trim();
+        const amount = Number(doc.amount || 0);
+
+        if (!billNo) {
+          sheetResult.skippedCount++;
+          sheetResult.skipped.push({
+            row: rowNumber,
+            bill_no: "N/A",
+            party_name: partyName || "N/A",
+            reason: "Missing Bill Number",
+          });
+          continue;
+        }
+
+        if (amount < 0) {
+          sheetResult.skippedCount++;
+          sheetResult.skipped.push({
+            row: rowNumber,
+            bill_no: billNo,
+            party_name: partyName || "N/A",
+            amount,
+            reason: `Negative amount (-₹${Math.abs(amount).toLocaleString('en-IN')}) is not allowed`,
+          });
+          continue;
+        }
+
+        if (Number(doc.paid_amount || 0) < 0 || Number(doc.settlement_discount || 0) < 0 || Number(doc.return_amount || 0) < 0) {
+          sheetResult.skippedCount++;
+          sheetResult.skipped.push({
+            row: rowNumber,
+            bill_no: billNo,
+            party_name: partyName || "N/A",
+            reason: "Negative paid/discount/return amount not allowed",
+          });
+          continue;
+        }
+
+        const dedupKey = `${partyName.toLowerCase()}__${billNo.toLowerCase()}`;
+        if (seenBillsInFile.has(dedupKey)) {
+          sheetResult.skippedCount++;
+          sheetResult.skipped.push({
+            row: rowNumber,
+            bill_no: billNo,
+            party_name: partyName || "N/A",
+            amount,
+            reason: "Duplicate bill row in the same Excel sheet",
+          });
+          continue;
+        }
+        seenBillsInFile.add(dedupKey);
+
+        const matchedContact = contactByName.get(partyName.toLowerCase());
+        const matchKey = matchedContact ? `${String(matchedContact._id)}__${billNo.toLowerCase()}` : null;
+        const existing = (matchKey && billByKey.get(matchKey)) || billByNo.get(billNo.toLowerCase());
+
+        if (existing) {
+          const oldAmount = Number(existing.amount || 0);
+          if (Math.abs(oldAmount - amount) > 0.009) {
+            sheetResult.updatedCount++;
+            sheetResult.updates.push({
+              row: rowNumber,
+              bill_no: billNo,
+              party_name: partyName || existing.customer_name || "N/A",
+              old_amount: oldAmount,
+              new_amount: amount,
+              diff: Math.round((amount - oldAmount) * 100) / 100,
+              change: `Amount will change from ₹${oldAmount.toLocaleString('en-IN')} to ₹${amount.toLocaleString('en-IN')}`,
+            });
+          } else {
+            sheetResult.unchangedCount++;
+          }
+        } else {
+          sheetResult.newCount++;
+          sheetResult.newRecords.push({
+            row: rowNumber,
+            bill_no: billNo,
+            party_name: partyName || "N/A",
+            amount,
+            date: doc.date || "N/A",
+          });
+        }
+      }
+    } else {
+      sheetResult.newCount = rows.length;
+    }
+
+    result.summary.newCount += sheetResult.newCount;
+    result.summary.updatedCount += sheetResult.updatedCount;
+    result.summary.unchangedCount += sheetResult.unchangedCount;
+    result.summary.skippedCount += sheetResult.skippedCount;
+    result.sheets[sheetName] = sheetResult;
+  }
+
+  return result;
+};
+
 export default {
+  previewImport,
   importData,
   importFromBackup,
   isBackupFile,

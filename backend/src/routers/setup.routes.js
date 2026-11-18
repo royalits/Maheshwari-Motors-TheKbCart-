@@ -27,6 +27,7 @@ const upload = multer({
 });
 
 router.get("/import/template", setupController.downloadTemplate);
+router.post("/import/preview", upload.single("file"), setupController.previewImportExcel);
 router.post("/import", upload.single("file"), setupController.importExcel);
 router.post("/import-backup", upload.single("file"), setupController.importFromBackup);
 router.get("/import/progress/:jobId", setupController.getImportProgress);

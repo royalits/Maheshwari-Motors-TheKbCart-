@@ -42,6 +42,29 @@ class SetupController {
       );
   });
 
+  previewImportExcel = asyncHandler(async (req, res) => {
+    if (!req.file) {
+      res.status(400).json(new ApiResponse(400, null, "File is required"));
+      return;
+    }
+
+    const preview = await setupService.previewImport(
+      req.file,
+      req.user._id,
+      req.isGst,
+    );
+
+    if (req.file.path) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+    }
+
+    res
+      .status(200)
+      .json(
+        new ApiResponse(200, preview, "Import preview generated successfully"),
+      );
+  });
+
   importExcel = asyncHandler(async (req, res) => {
     if (!req.file) {
       res.status(400).json(new ApiResponse(400, null, "File is required"));

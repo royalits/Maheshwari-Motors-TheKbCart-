@@ -6,8 +6,13 @@ import {
   FaPlay,
   FaArrowUpRightFromSquare,
   FaTrash,
+  FaCircleCheck,
+  FaTriangleExclamation,
+  FaCircleXmark,
+  FaFileExcel,
+  FaSpinner,
 } from "react-icons/fa6";
-import { DataTable } from "../../components/common";
+import { DataTable, Modal } from "../../components/common";
 import api from "../../services/axiosInstance";
 import useStore from "../../store";
 
@@ -230,7 +235,43 @@ const BackupRestore = () => {
     }
   };
 
-  const handleImport = async () => {
+  const handleInitiateImport = async () => {
+    if (!selectedFile) return;
+    const isExcel = /\.xlsx$/i.test(selectedFile.name);
+    if (!isExcel) {
+      executeImport();
+      return;
+    }
+
+    try {
+      setPreviewLoading(true);
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const res = await api.post("/setup/import/preview", formData);
+      const data = res?.data?.data;
+      if (data) {
+        setPreviewData(data);
+        setShowPreviewModal(true);
+      } else {
+        executeImport();
+      }
+    } catch (err) {
+      console.error("Preview failed:", err);
+      showToast(
+        err?.response?.data?.message || "Failed to generate import preview",
+        "error"
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmImport = () => {
+    setShowPreviewModal(false);
+    executeImport();
+  };
+
+  const executeImport = async () => {
     if (!selectedFile) return;
     const formData = new FormData();
     formData.append("file", selectedFile);
@@ -542,12 +583,27 @@ const BackupRestore = () => {
             )}
 
             <button
-              onClick={handleImport}
-              disabled={!selectedFile || importing}
+              onClick={handleInitiateImport}
+              disabled={!selectedFile || importing || previewLoading}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-40 hover:bg-gray-700 transition-colors"
             >
               <FaUpload size={11} />
-              {importing ? `Importing... ${uploadProgress}%` : "Import & Upload"}
+              {previewLoading ? (
+                <>
+                  <FaSpinner className="animate-spin text-xs" />
+                  Analyzing file...
+                </>
+              ) : importing ? (
+                <>
+                  <FaUpload size={11} />
+                  {`Importing... ${uploadProgress}%`}
+                </>
+              ) : (
+                <>
+                  <FaUpload size={11} />
+                  Import & Upload
+                </>
+              )}
             </button>
 
             {importing && (
@@ -615,6 +671,187 @@ const BackupRestore = () => {
           )}
         </div>
       </div>
+
+      {/* Import Preview & Confirmation Modal */}
+      <Modal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        title="Excel Import Preview & Confirmation"
+        size="xl"
+      >
+        {previewData && (
+          <div className="space-y-4">
+            {/* File & Header Info */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FaFileExcel className="text-green-600 text-lg" />
+                <span className="font-semibold text-gray-800 text-sm">
+                  {previewData.fileName}
+                </span>
+              </div>
+              <span className="text-xs text-gray-500 bg-white border px-2 py-0.5 rounded">
+                Total Rows: {previewData.summary?.totalRows || 0}
+              </span>
+            </div>
+
+            {/* Summary KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 text-center">
+                <div className="text-xs font-medium text-green-700">New Records</div>
+                <div className="text-xl font-bold text-green-700">
+                  {previewData.summary?.newCount || 0}
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-center">
+                <div className="text-xs font-medium text-amber-700">Will Update</div>
+                <div className="text-xl font-bold text-amber-700">
+                  {previewData.summary?.updatedCount || 0}
+                </div>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-center">
+                <div className="text-xs font-medium text-gray-600">Unchanged</div>
+                <div className="text-xl font-bold text-gray-700">
+                  {previewData.summary?.unchangedCount || 0}
+                </div>
+              </div>
+              <div className="bg-rose-50 border border-rose-200 rounded-lg p-2.5 text-center">
+                <div className="text-xs font-medium text-rose-700">Skipped / Invalid</div>
+                <div className="text-xl font-bold text-rose-700">
+                  {previewData.summary?.skippedCount || 0}
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Warning for Updates if any */}
+            {previewData.sheets?.bills?.updates?.length > 0 && (
+              <div className="border border-amber-200 bg-amber-50/50 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm">
+                  <FaTriangleExclamation className="text-amber-600" />
+                  Existing Bills Amount Updates ({previewData.sheets.bills.updates.length}):
+                </div>
+                <p className="text-xs text-amber-700">
+                  The following bills already exist in the database. Importing will update their bill amount:
+                </p>
+                <div className="max-h-40 overflow-y-auto border border-amber-200 rounded bg-white">
+                  <table className="w-full text-xs">
+                    <thead className="bg-amber-100 text-amber-900 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-1 text-left">Bill No</th>
+                        <th className="px-2 py-1 text-left">Party</th>
+                        <th className="px-2 py-1 text-right">Old Amount</th>
+                        <th className="px-2 py-1 text-right">New Amount</th>
+                        <th className="px-2 py-1 text-right">Difference</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-100">
+                      {previewData.sheets.bills.updates.map((u, idx) => (
+                        <tr key={idx} className="hover:bg-amber-50/50">
+                          <td className="px-2 py-1 font-mono font-medium">{u.bill_no}</td>
+                          <td className="px-2 py-1 truncate max-w-[150px]">{u.party_name}</td>
+                          <td className="px-2 py-1 text-right text-gray-500 line-through">
+                            ₹{Number(u.old_amount).toLocaleString("en-IN")}
+                          </td>
+                          <td className="px-2 py-1 text-right font-semibold text-amber-700">
+                            ₹{Number(u.new_amount).toLocaleString("en-IN")}
+                          </td>
+                          <td className="px-2 py-1 text-right font-mono font-medium text-blue-600">
+                            {u.diff > 0 ? `+₹${u.diff.toLocaleString("en-IN")}` : `-₹${Math.abs(u.diff).toLocaleString("en-IN")}`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Skipped Rows / Errors if any */}
+            {previewData.sheets?.bills?.skipped?.length > 0 && (
+              <div className="border border-rose-200 bg-rose-50/50 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 text-rose-800 font-semibold text-sm">
+                  <FaCircleXmark className="text-rose-600" />
+                  Skipped / Invalid Rows ({previewData.sheets.bills.skipped.length}):
+                </div>
+                <div className="max-h-36 overflow-y-auto border border-rose-200 rounded bg-white">
+                  <table className="w-full text-xs">
+                    <thead className="bg-rose-100 text-rose-900 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-1 text-center w-12">Row</th>
+                        <th className="px-2 py-1 text-left">Bill No</th>
+                        <th className="px-2 py-1 text-left">Party</th>
+                        <th className="px-2 py-1 text-left">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-rose-100">
+                      {previewData.sheets.bills.skipped.map((s, idx) => (
+                        <tr key={idx} className="hover:bg-rose-50/50">
+                          <td className="px-2 py-1 text-center text-gray-500">{s.row}</td>
+                          <td className="px-2 py-1 font-mono">{s.bill_no}</td>
+                          <td className="px-2 py-1 truncate max-w-[140px]">{s.party_name}</td>
+                          <td className="px-2 py-1 text-rose-700 font-medium">{s.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* New Bills sample if any */}
+            {previewData.sheets?.bills?.newRecords?.length > 0 && (
+              <div className="border border-green-200 bg-green-50/50 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 text-green-800 font-semibold text-sm">
+                  <FaCircleCheck className="text-green-600" />
+                  New Bills to be Created ({previewData.sheets.bills.newRecords.length}):
+                </div>
+                <div className="max-h-36 overflow-y-auto border border-green-200 rounded bg-white">
+                  <table className="w-full text-xs">
+                    <thead className="bg-green-100 text-green-900 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-1 text-center w-12">Row</th>
+                        <th className="px-2 py-1 text-left">Bill No</th>
+                        <th className="px-2 py-1 text-left">Party</th>
+                        <th className="px-2 py-1 text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-green-100">
+                      {previewData.sheets.bills.newRecords.slice(0, 50).map((n, idx) => (
+                        <tr key={idx} className="hover:bg-green-50/50">
+                          <td className="px-2 py-1 text-center text-gray-500">{n.row}</td>
+                          <td className="px-2 py-1 font-mono font-medium">{n.bill_no}</td>
+                          <td className="px-2 py-1 truncate max-w-[140px]">{n.party_name}</td>
+                          <td className="px-2 py-1 text-right font-semibold text-green-700">
+                            ₹{Number(n.amount).toLocaleString("en-IN")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors"
+              >
+                Cancel / रद्द करें
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmImport}
+                className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium shadow-sm transition-colors"
+              >
+                <FaCircleCheck className="text-white" />
+                Confirm & Import / पुष्टि करें और इम्पोर्ट करें
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
