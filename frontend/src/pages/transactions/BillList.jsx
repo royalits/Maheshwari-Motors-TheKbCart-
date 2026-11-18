@@ -591,13 +591,13 @@ const BillList = () => {
     [...items].sort((a, b) => {
       const timeA = getBillSortTime(a);
       const timeB = getBillSortTime(b);
-      if (timeA !== timeB) return timeB - timeA;
+      if (timeA !== timeB) return timeA - timeB;
       const noA = Number(String(a?.billNo || a?.bill_no || "").replace(/\D/g, "")) || 0;
       const noB = Number(String(b?.billNo || b?.bill_no || "").replace(/\D/g, "")) || 0;
-      if (noA !== noB) return noB - noA;
+      if (noA !== noB) return noA - noB;
       const createdA = new Date(a?.createdAt || 0).getTime() || 0;
       const createdB = new Date(b?.createdAt || 0).getTime() || 0;
-      return createdB - createdA;
+      return createdA - createdB;
     });
 
   const handleOpenUploadModal = () => {
