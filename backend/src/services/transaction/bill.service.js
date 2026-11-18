@@ -966,7 +966,7 @@ class BillService {
             "item_name barcode item_id sale_rate gst_percent stock physical_stock logical_stock",
         },
       ],
-      sort: { createdAt: -1 },
+      sort: convertedQuery.sort || { date: -1, bill_no: -1, createdAt: -1 },
     });
 
     result.data = (result.data || []).map((bill) =>
@@ -2394,7 +2394,7 @@ class BillService {
         },
         { path: "transport_id", select: "name phone" },
       ],
-      sort: { createdAt: -1 },
+      sort: query.sort || { date: -1, bill_no: -1, createdAt: -1 },
     });
   }
 

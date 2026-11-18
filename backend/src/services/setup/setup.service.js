@@ -90,7 +90,23 @@ const parseExcelDate = (value) => {
     const excelEpoch = new Date(1900, 0, 1);
     return new Date(excelEpoch.getTime() + (value - 2) * 86400 * 1000);
   }
-  const parsed = new Date(String(value));
+  const raw = String(value).trim();
+  const dmyMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})$/);
+  if (dmyMatch) {
+    const [, dd, mm, yyyy] = dmyMatch;
+    const day = Number(dd);
+    const month = Number(mm);
+    const year =
+      yyyy.length === 2
+        ? Number(yyyy) >= 70
+          ? 1900 + Number(yyyy)
+          : 2000 + Number(yyyy)
+        : Number(yyyy);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return new Date(Date.UTC(year, month - 1, day));
+    }
+  }
+  const parsed = new Date(raw);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 

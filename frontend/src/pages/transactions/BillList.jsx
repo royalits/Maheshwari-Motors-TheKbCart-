@@ -572,11 +572,32 @@ const BillList = () => {
   const [showSummaryMetrics, setShowSummaryMetrics] = useState(false);
   const [summaryScope, setSummaryScope] = useState("current_month");
 
+  const getBillSortTime = (item) => {
+    const raw = item?.date || item?.raw?.date || item?.createdAt || "";
+    if (!raw) return 0;
+    if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw.getTime();
+    const str = String(raw).trim();
+    const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})/);
+    if (dmy) {
+      const [, dd, mm, yyyy] = dmy;
+      const year = yyyy.length === 2 ? 2000 + Number(yyyy) : Number(yyyy);
+      return new Date(year, Number(mm) - 1, Number(dd)).getTime() || 0;
+    }
+    const time = new Date(str).getTime();
+    return Number.isFinite(time) ? time : 0;
+  };
+
   const sortBills = (items) =>
     [...items].sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.date);
-      const dateB = new Date(b.createdAt || b.date);
-      return dateB - dateA;
+      const timeA = getBillSortTime(a);
+      const timeB = getBillSortTime(b);
+      if (timeA !== timeB) return timeB - timeA;
+      const noA = Number(String(a?.billNo || a?.bill_no || "").replace(/\D/g, "")) || 0;
+      const noB = Number(String(b?.billNo || b?.bill_no || "").replace(/\D/g, "")) || 0;
+      if (noA !== noB) return noB - noA;
+      const createdA = new Date(a?.createdAt || 0).getTime() || 0;
+      const createdB = new Date(b?.createdAt || 0).getTime() || 0;
+      return createdB - createdA;
     });
 
   const handleOpenUploadModal = () => {

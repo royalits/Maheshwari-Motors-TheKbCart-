@@ -757,7 +757,16 @@ const OutstandingList = () => {
 
   const getBillSortTime = (bill) => {
     const rawDate = bill?.date || bill?.createdAt || bill?.created_at || "";
-    const time = new Date(rawDate).getTime();
+    if (!rawDate) return 0;
+    if (rawDate instanceof Date && !Number.isNaN(rawDate.getTime())) return rawDate.getTime();
+    const str = String(rawDate).trim();
+    const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})/);
+    if (dmy) {
+      const [, dd, mm, yyyy] = dmy;
+      const year = yyyy.length === 2 ? 2000 + Number(yyyy) : Number(yyyy);
+      return new Date(year, Number(mm) - 1, Number(dd)).getTime() || 0;
+    }
+    const time = new Date(str).getTime();
     return Number.isFinite(time) ? time : 0;
   };
 

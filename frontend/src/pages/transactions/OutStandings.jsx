@@ -167,6 +167,41 @@ const OutStandings = ({
   );
   const [selectedContact, setSelectedContact] = useState(initialContact || "");
   const [bills, setBills] = useState([]);
+  const [billSortDirection, setBillSortDirection] = useState("desc");
+
+  const getBillSortTime = (item) => {
+    const raw = item?.date || item?.createdAt || "";
+    if (!raw) return 0;
+    if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw.getTime();
+    const str = String(raw).trim();
+    const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})/);
+    if (dmy) {
+      const [, dd, mm, yyyy] = dmy;
+      const year = yyyy.length === 2 ? 2000 + Number(yyyy) : Number(yyyy);
+      return new Date(year, Number(mm) - 1, Number(dd)).getTime() || 0;
+    }
+    const time = new Date(str).getTime();
+    return Number.isFinite(time) ? time : 0;
+  };
+
+  const sortBillsList = (items, direction = billSortDirection) => {
+    return [...items].sort((a, b) => {
+      const dateA = getBillSortTime(a);
+      const dateB = getBillSortTime(b);
+      if (dateA !== dateB) {
+        return direction === "desc" ? dateB - dateA : dateA - dateB;
+      }
+      return direction === "desc"
+        ? String(b.billNo || "").localeCompare(String(a.billNo || ""), undefined, { numeric: true })
+        : String(a.billNo || "").localeCompare(String(b.billNo || ""), undefined, { numeric: true });
+    });
+  };
+
+  const toggleSortDirection = () => {
+    const nextDir = billSortDirection === "desc" ? "asc" : "desc";
+    setBillSortDirection(nextDir);
+    setBills((prev) => sortBillsList(prev, nextDir));
+  };
   const [allocations, setAllocations] = useState({});
   const [discountDrafts, setDiscountDrafts] = useState({});
   const [lastSettlement, setLastSettlement] = useState(null);
@@ -472,16 +507,7 @@ const OutStandings = ({
           };
         });
 
-        const sorted = [...list].sort((a, b) => {
-          const dateA = new Date(a.date).getTime() || 0;
-          const dateB = new Date(b.date).getTime() || 0;
-          if (dateA !== dateB) return dateA - dateB;
-          return String(a.billNo || "").localeCompare(
-            String(b.billNo || ""),
-            undefined,
-            { numeric: true },
-          );
-        });
+        const sorted = sortBillsList(list, billSortDirection);
         setBills(sorted);
 
         const fetchedTxns = txnsResponse?.data?.data || [];
@@ -639,7 +665,13 @@ const OutStandings = ({
     }
     let remaining = totalAmount;
     const nextAllocations = {};
-    bills.forEach((bill) => {
+    const fifoBills = [...bills].sort((a, b) => {
+      const dateA = getBillSortTime(a);
+      const dateB = getBillSortTime(b);
+      if (dateA !== dateB) return dateA - dateB;
+      return String(a.billNo || "").localeCompare(String(b.billNo || ""), undefined, { numeric: true });
+    });
+    fifoBills.forEach((bill) => {
       const settle = Math.min(remaining, bill.due);
       nextAllocations[bill.id] = settle > 0 ? Number(settle.toFixed(2)) : 0;
       remaining = Number((remaining - settle).toFixed(2));
@@ -656,7 +688,13 @@ const OutStandings = ({
     }
     let remaining = totalAmount;
     const nextAllocations = {};
-    bills.forEach((bill) => {
+    const fifoBills = [...bills].sort((a, b) => {
+      const dateA = getBillSortTime(a);
+      const dateB = getBillSortTime(b);
+      if (dateA !== dateB) return dateA - dateB;
+      return String(a.billNo || "").localeCompare(String(b.billNo || ""), undefined, { numeric: true });
+    });
+    fifoBills.forEach((bill) => {
       if (remaining >= bill.due && bill.due > 0) {
         nextAllocations[bill.id] = bill.due;
         remaining = Number((remaining - bill.due).toFixed(2));
@@ -868,16 +906,7 @@ const OutStandings = ({
             status: bill.payment_status || "due",
           };
         });
-        const sorted = [...list].sort((a, b) => {
-          const dateA = new Date(a.date).getTime() || 0;
-          const dateB = new Date(b.date).getTime() || 0;
-          if (dateA !== dateB) return dateA - dateB;
-          return String(a.billNo || "").localeCompare(
-            String(b.billNo || ""),
-            undefined,
-            { numeric: true },
-          );
-        });
+        const sorted = sortBillsList(list, billSortDirection);
         setBills(sorted);
       }
     } catch (error) {
@@ -1368,6 +1397,15 @@ const OutStandings = ({
             <Button
               variant="outline"
               size="sm"
+              onClick={toggleSortDirection}
+              disabled={loadingBills || bills.length === 0}
+              title="Toggle bill sorting order"
+            >
+              Sort: {billSortDirection === "desc" ? "Newest First ↓" : "Oldest First ↑"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleAutoAllocate}
               disabled={loadingBills}
               title="Settle bills in order, including partial amounts"
@@ -1407,8 +1445,20 @@ const OutStandings = ({
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="text-left px-3 py-2">Bill No</th>
-	                  <th className="text-left px-3 py-2">Date</th>
+                  <th
+                    className="text-left px-3 py-2 cursor-pointer select-none hover:text-gray-900"
+                    onClick={toggleSortDirection}
+                    title="Click to toggle sort order"
+                  >
+                    Bill No {billSortDirection === "desc" ? "↓" : "↑"}
+                  </th>
+	                  <th
+                    className="text-left px-3 py-2 cursor-pointer select-none hover:text-gray-900"
+                    onClick={toggleSortDirection}
+                    title="Click to toggle sort order"
+                  >
+                    Date {billSortDirection === "desc" ? "(Newest ↓)" : "(Oldest ↑)"}
+                  </th>
 	                  <th className="text-right px-3 py-2">Amount</th>
 	                  <th className="text-right px-3 py-2">Returned</th>
 	                  <th className="text-right px-3 py-2">Paid</th>
