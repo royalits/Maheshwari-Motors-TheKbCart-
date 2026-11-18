@@ -1506,9 +1506,9 @@ const OutstandingList = () => {
                   <div className="text-sm text-gray-500 py-4 text-center">
                     No outstanding bills found for selected contacts.
                   </div>
-                : <div className="overflow-x-auto border rounded-lg">
+                : <div className="overflow-x-auto overflow-y-auto max-h-[600px] border rounded-lg shadow-inner relative">
                     <table className="min-w-full divide-y divide-gray-200 border-collapse border border-gray-300">
-                      <thead className="bg-slate-100 text-slate-700 text-xs font-semibold uppercase tracking-wider">
+                      <thead className="bg-slate-100 text-slate-700 text-xs font-semibold uppercase tracking-wider sticky top-0 z-20 shadow-sm">
                         <tr>
                           <th className="border border-gray-300 px-3 py-2 text-center whitespace-nowrap">
                             Date
@@ -1771,9 +1771,9 @@ const OutstandingList = () => {
                     Select a contact to view details.
                   </div>
                 : activeTab === "history" ?
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto overflow-y-auto max-h-[600px] border rounded-lg shadow-inner relative">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 text-gray-600">
+                      <thead className="bg-gray-100 text-gray-700 sticky top-0 z-20 shadow-sm">
                         <tr>
                           <th className="text-left px-3 py-2">Date</th>
                           <th className="text-left px-3 py-2">Bill No</th>
@@ -1813,9 +1813,9 @@ const OutstandingList = () => {
                       </tbody>
                     </table>
                   </div>
-                : <div className="overflow-x-auto">
+                : <div className="overflow-x-auto overflow-y-auto max-h-[600px] border rounded-lg shadow-inner relative">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 text-gray-600">
+                      <thead className="bg-gray-100 text-gray-700 sticky top-0 z-20 shadow-sm">
                         <tr>
                           {canWrite && (
                             <th className="text-center px-3 py-2 w-10">

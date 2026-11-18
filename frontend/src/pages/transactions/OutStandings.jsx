@@ -1441,9 +1441,9 @@ const OutStandings = ({
               : "Select a party/supplier to view bills."}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px] border rounded-lg shadow-inner relative">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
+              <thead className="bg-gray-100 text-gray-700 sticky top-0 z-20 shadow-sm">
                 <tr>
                   <th
                     className="text-left px-3 py-2 cursor-pointer select-none hover:text-gray-900"
