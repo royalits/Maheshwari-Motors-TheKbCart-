@@ -30,6 +30,9 @@ const BackupRestore = () => {
   const [filterStatus, setFilterStatus] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [downloadingBackupId, setDownloadingBackupId] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const handleDownloadBackup = async (log) => {
     try {
