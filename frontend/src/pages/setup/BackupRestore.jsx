@@ -120,7 +120,7 @@ const BackupRestore = () => {
     {
       key: "id",
       label: "#",
-      render: (v) => <span className="text-xs text-gray-400">{v}</span>,
+      render: (v, row, index) => <span className="text-xs font-semibold text-gray-600" title={String(v)}>{typeof index === "number" ? index + 1 : 1}</span>,
     },
     {
       key: "date",
